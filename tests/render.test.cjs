@@ -120,9 +120,23 @@ function firstDifference(a, b, at = '$') {
 // and current Node. Procedural sky positions allow one ULP horizontally and
 // at most 1e-12 world units vertically (sine then offset can cancel near zero).
 // Every other serialized value stays exact; recorded hashes are never replaced.
+// The legacy tape drew balls in the original eight colours. Since the 2026-11-14 palette pruning (VIS-M3) the same palette
+// indexes draw different colours, so a recorded ball is matched by index: current palette colours 0-7 are mapped back to the
+// original colour at that index before hashing. Any other colour, or a ball at the wrong index, still fails.
+// Shader uniforms (the trail's `col`) hold the colour after displayColor, so both forms are mapped.
+const ORIGINAL_EIGHT = [0xff4fb8, 0x3e8ef7, 0xf5a623, 0x8e4ec6, 0x12a594, 0xe5484d, 0x99d52a, 0xe8e8e8];
+let TO_LEGACY = null; // Map: current colour (raw or displayed) -> original colour at the same palette index, same form
+function toLegacyPalette(value) {
+  const swap = c => TO_LEGACY.get(c) ?? c;
+  const m = value.material;
+  const material = !m ? m : { ...m, ...(m.color === undefined ? {} : { color: swap(m.color) }),
+    ...(m.uniforms ? { uniforms: Object.fromEntries(Object.entries(m.uniforms).map(([k, v]) => [k, typeof v === 'number' ? swap(v) : v])) } : {}) };
+  return { ...value, material, children: value.children?.map(toLegacyPalette) };
+}
 function matchesRecordedNode(object, expected) {
   const value = node(object);
   if (sha(value) === expected) return true;
+  if (TO_LEGACY && sha(toLegacyPalette(value)) === expected) return true;
   if (!Number.isInteger(object.userData.p)) return false;
   const [x, y, z] = value.position;
   const ulp = n => Number.EPSILON * 2 ** Math.floor(Math.log2(Math.abs(n) || 1));
@@ -145,6 +159,12 @@ let TUNING;
   const env = createWindow();
   const { w } = env;
   const THREE = w.THREE;
+  {
+    const current = (await import('../src/shared/colors.js')).PLAYER_COLORS.slice(0, 8).map(h => parseInt(h.slice(1), 16));
+    const { displayColor } = await import('../src/render/materials.js');
+    const shown = hex => displayColor(new THREE.Color(), hex).getHex();
+    TO_LEGACY = new Map(current.flatMap((hex, i) => [[hex, ORIGINAL_EIGHT[i]], [shown(hex), shown(ORIGINAL_EIGHT[i])]]));
+  }
   await scenario('recorded scenery tolerance accepts numeric roundoff and rejects changed layout/materials', async () => {
     const object = new THREE.Mesh(new THREE.SphereGeometry(1,8,6),new THREE.MeshBasicMaterial({color:0xffffff}));
     object.userData.p=0; object.position.set(100,20,100);

@@ -352,6 +352,19 @@ const { JSDOM } = require('jsdom');
     assert.equal(big.scale, 2);
     assert.ok(Math.abs((big.y - normal.y) - 5) < 1e-9, 'a doubled ball rests one radius higher');
   }
+  // A Bumper wears its owner's colour for every palette index, not only the first eight (VIS-M3 12-colour palette).
+  {
+    const { createDeployableLayer } = await import('../src/render/deployables.js');
+    const { PLAYER_COLORS } = await import('../src/shared/colors.js');
+    const scene = new THREE.Scene(), layer = createDeployableLayer({ THREE, scene });
+    const transform = { ground: (x, y, h) => [x, h, y] };
+    const list = PLAYER_COLORS.map((_, i) => ({ id: 'b' + i, kind: 'bumper', x: i * 30, y: 0, impacts: 0, color: i }));
+    layer.update(list, null, transform, definitions[0], 0);
+    const bodies = layer.group.children.map(root => root.children[0].material.color.getHex());
+    assert.deepEqual(bodies, PLAYER_COLORS.map(h => new THREE.Color(h).getHex()), 'each bumper body is its owner\'s palette colour');
+    assert.equal(new Set(bodies).size, PLAYER_COLORS.length, 'no two owners share a bumper colour');
+    layer.dispose();
+  }
   const fallback = createGameRenderer({ THREE: fallbackNamespace, canvas, createWebGLRenderer: () => backend, style: 'legacy' });
   assert.equal(failedGeneratorReleased, 1); assert.equal(temporaryReleased, 1);
   fallback.setCourse(definitions[0]); fallback.dispose();
