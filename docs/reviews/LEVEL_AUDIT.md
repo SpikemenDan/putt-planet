@@ -337,7 +337,7 @@ Gaia has 24 maps in six regions. Only 8 of them are six-putt maps that players c
 
 Ares (gravity 490) has eight six-putt maps in two regions, Rustfall Canyons (24–27) and Ironcrown Highlands (28–31). All are in the playable pool, and all were built at the same time on two templates: the 3 × 2 chamber grid and the 2 × 3 long-lane layout.
 
-**Gravity check.** Each recorded route was replayed once at its own gravity and once at Gaia's 700, with the nominal shot only (not the test's nine perturbations). Every Ares route still sinks at Gaia gravity on Redrock Rebound, Dust Devil Draw, Basalt Bounce and Ironstone Ridge, so **half of Ares does not use Ares gravity**. Across Ares, 15 of 48 nominal routes fail at Gaia gravity; `tests/world-maps.test.cjs`, which counts a route as failed if any of its nine perturbations fails, reports 21. Flat rolling distance is the same on every world by design (MODERNIZATION_PLAN.md, gravity decision), so a map built from banks, sand and ice plays exactly as it would on Gaia.
+**Gravity check.** Each recorded route was replayed once at its own gravity and once at Gaia's 700, with the nominal shot only (not the test's nine perturbations). Every Ares route still sinks at Gaia gravity on Redrock Rebound, Dust Devil Draw, Basalt Bounce and Ironstone Ridge, so **half of Ares does not use Ares gravity**. Across Ares, 15 of 48 nominal routes fail at Gaia gravity. `tests/world-maps.test.cjs` reports 21, because it replays each route robustly (with the finishing perturbations) and skips the putts it re-solves after rounding. Flat rolling distance is the same on every world by design (MODERNIZATION_PLAN.md, gravity decision), so a map built from banks, sand and ice plays exactly as it would on Gaia.
 
 **Note:** MODERNIZATION_PLAN.md says ambient Ares wind is visual-only scenery. Dust Devil Draw and Scarlet Summit use gameplay wind zones (the W3 course element), which is a different thing, but the owner should confirm that Ares courses are meant to have gameplay wind, because players will not easily tell the two kinds apart.
 
@@ -351,7 +351,7 @@ In the route notes below, "straight" means the recorded hole-in-one leaves withi
 - **Par:** 2, 3, 2, 2, 2, 2 (13). R 1/2/1/1/1/1.
 - **Problems:**
   - It is a bank-shot map with nothing Martian about it except colour, and every route works at Gaia gravity.
-  - Putt 3 is a min-power straight tap (0°, 0.3) through a 26-unit gap between two pit pairs (656,46 and 656,174). The pits never matter at that pace.
+  - Putt 3 is a min-power straight tap (0°, 0.3) through the gaps between two wall stubs and two crevasses (656,46 and 656,174). The crevasses never matter at that pace.
   - Putt 4 frames a sand box (126,326 70×54) with two walls, and the route simply goes around it.
   - Putt 2 is the good one: a two-bank route over a crevasse (436,136 78×22).
   - The sand drifts all sit off the routes.
@@ -365,7 +365,7 @@ In the route notes below, "straight" means the recorded hole-in-one leaves withi
 - **Mechanics:** seven launch ramps (0→26 to 0→34) and ten canyon pits.
 - **Par:** 2, 2, 2, 2, 2, 3 (13). R 1/1/1/1/1/2.
 - **Problems:**
-  - All six putts are the same shot: tee, ramp, canyon, cup, in a straight lane. Putts 1, 2, 4 and 5 are straight aces at power 0.45–0.55, and putt 4 is putt 1 mirrored.
+  - All six putts are the same shot: tee, ramp, canyon, cup, in a straight lane. Putts 1–5 are straight aces at power 0.45–0.55, and putt 4 is putt 1 mirrored.
   - Putt 3 adds a wall stub (256,232); putt 6 adds a second ramp (616,360) and canyon.
   - It does use the gravity (five of six routes fail at 700), but one idea six times is the clearest repetition among the new maps.
   - Rimwalker Ridge (37) reuses this layout: 7 of its 8 wall rectangles and all six tee/cup pairs are identical.
@@ -438,7 +438,7 @@ In the route notes below, "straight" means the recorded hole-in-one leaves withi
 - **Par:** 2 on all six (12). R 1/1/1/1/1/1.
 - **Problems:**
   - Putts 1 and 5 are straight min-power aces along an ice run (126,76 180×68; 106,346 220×88). The ice speeds a ball that is already on line.
-  - Putt 4's portal is optional: the route crosses the wall (546,182) the long way and lands at the cup off the far wall.
+  - Putt 4's portal does the putting: a firm straight shot (354.75°, 0.7) rolls into the entry (506,286) and leaves the exit (656,216) 70 units from the cup on the same line, as in Comet Run.
   - Putt 3's gate is a moving block, a timing hazard the solver tests at hazard time 0 only.
   - Every route works at Gaia gravity.
   - Putt 6 (an ice zig-zag across 546,326) has the best feel.
@@ -458,3 +458,119 @@ In the route notes below, "straight" means the recorded hole-in-one leaves withi
   - As a "summit" it has no climb.
 - **Scores:** fun 2 · clarity 3 · fairness 2 · variety 3.
 - **Verdict:** **rework**. It should be Ares' finale: height, a long multi-shot putt and one fair wind putt.
+
+## Luna
+
+Luna (gravity 315) has eight six-putt maps in two regions, Hushed Mare (32–35) and Craterpeak Highlands (36–39). All are playable. They were built with Ares, on the same two templates, and four of them reuse an Ares or Luna layout.
+
+**Gravity check** (nominal replay, as for Ares): 21 of 48 routes fail at Gaia gravity; the test, by its own rule, reports 18. They are concentrated in Moondust Mile (3), Regolith Rise (5), Starlight Skip (6) and Rimwalker Ridge (4). **Gaiarise Run, Crater Hop, Ghostlight Basin and Polar Hollow each have at most one route that needs Luna gravity.** The low-gravity world's defining feature is missing from half its maps.
+
+### 32 · Moondust Mile: Hushed Mare
+
+![Moondust Mile](level-audit/32-moondust-mile.png)
+
+- **Mechanics:** six moondust (sand) patches, three pads and two craters.
+- **Par:** 2, 2, 2, 2, 3, 2 (13). R 1/1/1/1/2/1.
+- **Problems:**
+  - Putts 2, 4 and 6 are pad-over-crater min-power aces. Two of the recorded routes are taps *away* from the cup (179.75° and 179.5°, power 0.3) that rebound off the wall behind the tee onto the pad. Tees 24–44 units in front of a wall with a pad just ahead make the backward tap the most forgiving shot, which says the pad does all the work.
+  - The description promises that "rolling putts drag in the dust", but moondust is ordinary sand.
+  - Putt 1 is a straight ace over a sand patch (146,66 80×88).
+  - Putt 5 (a long sand strip, 106,326 230×60, beside a wall) is the only putt that needs a plan.
+  - It shares tee/cup layouts with Starlight Skip (all six) and Ochre Overlook (putts 3 and 6).
+- **Scores:** fun 2 · clarity 4 · fairness 4 · variety 2.
+- **Verdict:** **rework**. Make the long lanes into long, multi-shot Luna putts (par 3–4) with floaty hops between dust fields.
+
+### 33 · Regolith Rise: Hushed Mare
+
+![Regolith Rise](level-audit/33-regolith-rise.png)
+
+- **Mechanics:** six ramps and five raised plateaus (z 18–22); two craters.
+- **Par:** 2, 3, 2, 3, 2, 2 (14). R 1/2/1/2/1/1.
+- **Problems:**
+  - It is Caldera Climb on Luna: 8 of 9 wall rectangles are identical, and putts 1, 3 and 6 match Caldera's ramp-to-mesa shots.
+  - Unlike Caldera, it does feel lunar: five of six routes fail at Gaia gravity. Putt 4 (a ramp onto an 80×98 mesa at 120,356 between craters 46,376 and 224,376) needs two strokes and is a good use of float.
+  - Putt 5 (a bank between two walls) ignores the theme.
+- **Scores:** fun 3 · clarity 3 · fairness 4 · variety 3.
+- **Verdict:** **rework**. Keep the plateau idea, but give it a layout of its own so it stops being a Caldera copy (wider terraces, longer floats).
+
+### 34 · Starlight Skip: Hushed Mare
+
+![Starlight Skip](level-audit/34-starlight-skip.png)
+
+- **Mechanics:** seven pads and eight craters.
+- **Par:** 2, 2, 2, 2, 2, 3 (13). R 1/1/1/1/1/2.
+- **Problems:**
+  - Every putt is "tap into the pad, float over the crater". All five aces are min-power (0.3) taps, and four of them go *away* from the cup into the wall behind the tee (179.5°, 179.75°, 171° and 188.75°). It fully depends on Luna gravity (all six routes fail at 700), but the pad does the shot.
+  - Its tee/cup positions are identical to Moondust Mile's.
+  - Putt 6 has two pads (466,356 and 466,424) and is the only putt with a choice.
+- **Scores:** fun 2 · clarity 5 · fairness 4 · variety 1.
+- **Verdict:** **replace**. "Skip from pad to pad" is a good Luna theme, but it needs chains of pads, landing choices and pads the player must aim at with pace.
+
+### 35 · Gaiarise Run: Hushed Mare
+
+![Gaiarise Run](level-audit/35-gaiarise-run.png)
+
+- **Mechanics:** walls, five craters, one launch ramp, one pad and sand.
+- **Par:** 2 on all six (12). R 1/1/1/1/1/1.
+- **Problems:**
+  - It is a set of bank shots that play the same on Gaia: only putt 3 (a ramp over a crater, again the Obsidian Spiral 3 / Sandstorm Spire 2 shot) needs Luna gravity.
+  - Putt 5's pad (356,355) is beside a wall (376,282 14×138) that the route simply banks under.
+  - The theme ("under the rising blue face of Gaia") is skybox only.
+  - Putt 6's two small craters (586,316 and 656,376) in an open chamber make a nice diamond bank.
+- **Scores:** fun 2 · clarity 4 · fairness 4 · variety 2.
+- **Verdict:** **replace**.
+
+### 36 · Crater Hop: Craterpeak
+
+![Crater Hop](level-audit/36-crater-hop.png)
+
+- **Mechanics:** five pads and nine craters.
+- **Par:** 2, 3, 2, 4, 2, 2 (15). R 1/2/1/3/1/1.
+- **Problems:**
+  - The name says hop, but only putt 2's route needs Luna gravity. Pads are bypassed: putt 1 banks around the crater (136,96 70×98) instead of using the pad (106,145); putt 5 banks right (318.75°) around the crater bar (326,316 148×50) instead of using the pad (400,396).
+  - **Putt 4 is the most frustrating putt in the new maps.** The pad (102,355) sits 32 units in front of the tee on the only straight line, between two big craters (126,256 90×80 and 126,374 90×80). Any direct shot is launched into the air. The recorded route takes 3 strokes (258°, 135°, 358°) and par is 4 for a 176-unit putt.
+- **Scores:** fun 2 · clarity 2 · fairness 2 · variety 3.
+- **Verdict:** **rework**. Make hopping the best route (craters too wide to roll round), and remove the tee-side pad trap on putt 4.
+
+### 37 · Rimwalker Ridge: Craterpeak
+
+![Rimwalker Ridge](level-audit/37-rimwalker-ridge.png)
+
+- **Mechanics:** four launch ramps and eleven crater pits that leave thin rims.
+- **Par:** 2, 2, 2, 2, 4, 2 (14). R 1/1/1/1/3/1.
+- **Problems:**
+  - It is Canyon Leap's layout (all six tee/cup pairs and 7 of 8 wall rectangles are the same) with craters for canyons.
+  - Putt 2 is a straight ace along a 28-unit rim between craters (506,46 and 506,124). That is a real "rim walk" and a good idea, but at power 0.4 it is not demanding.
+  - Putt 5 squeezes a 22-unit gap between craters (136,326 and 136,400), then a thin crater bar (266,366 128×24). It takes 3 strokes, and par is 4.
+  - Putts 1, 3, 4 and 6 are ramp-over-crater lanes, the same as Canyon Leap.
+- **Scores:** fun 2 · clarity 4 · fairness 3 · variety 2.
+- **Verdict:** **rework**. Keep the rim-walking putts (2 and 5) and drop the Canyon Leap copies.
+
+### 38 · Ghostlight Basin: Craterpeak
+
+![Ghostlight Basin](level-audit/38-ghostlight-basin.png)
+
+- **Mechanics:** four ice sheets, two portal pairs (346,186)↔(466,106) and (326,416)↔(476,296), three pits and sand.
+- **Par:** 2 on all six (12). R 1/1/1/1/1/1.
+- **Problems:**
+  - **No route needs Luna gravity.** It is a flat ice-and-portal map.
+  - Putt 1 is a min-power straight tap across an ice sheet (106,86 120×118), and putt 6 a min-power diagonal across the ice band (526,316 228×80).
+  - Putts 2 and 5 use their portals well: the portal is the route through a dividing wall.
+  - The "dim basin" theme is visual only.
+- **Scores:** fun 2 · clarity 3 · fairness 4 · variety 3.
+- **Verdict:** **rework**. Keep the two portal putts, and add slopes into the basin so the ice and the low gravity combine (long, curving slides).
+
+### 39 · Polar Hollow: Craterpeak
+
+![Polar Hollow](level-audit/39-polar-hollow.png)
+
+- **Mechanics:** five ice sheets, two pads, three pits and a launch ramp.
+- **Par:** 2 on all six (12). R 1/1/1/1/1/1.
+- **Problems:**
+  - Only putt 4 (a ramp over a crater, 126,256 70×198) needs Luna gravity.
+  - Putt 5 is a min-power straight tap (270°, 0.3) over ice through a gap between two walls.
+  - Putts 1 and 3 are ice banks that play like Frost Hollow on Gaia.
+  - The pads (346,145 and 586,316) are bypassed by putts 2 and 6, whose routes bank around the pits.
+  - It overlaps Ghostlight Basin's theme (polar ice) in the same region.
+- **Scores:** fun 2 · clarity 4 · fairness 4 · variety 2.
+- **Verdict:** **replace**. Merge the polar-ice idea into Ghostlight Basin, and give Craterpeak a different fourth map (for example a crater-bowl or lunar-installation map).
