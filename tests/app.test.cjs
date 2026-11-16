@@ -134,20 +134,23 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
   // ---------------------------------------------------------------------------------------------
   await scenario('cosmetics (F1): the picked style is saved locally, restored on reload and junk storage falls back to defaults', async () => {
     const W = world();
+    // Skins menu (owner, 2026-11-16): one tab per kind; each tab's cards are radios carrying the catalog id.
+    const tab = async (c, kind) => act(async () => { c.doc.querySelector(`[data-ui=skins] [role=tab][data-kind=${kind}]`).click(); });
+    const chosen = async c => { const out = []; for (const kind of ['ball', 'trail', 'celebration']) { await tab(c, kind); out.push(c.doc.querySelector('[data-ui=cosmetics] [aria-checked=true]')?.dataset.id); } return out; };
+    const pick = async (c, kind, id) => { await tab(c, kind); await act(async () => { c.doc.querySelector(`[data-ui=cosmetics] [data-id=${id}]`).click(); }); };
     const first = await W.client('Pat');
-    await first.menu('settings');
-    const selects = [...first.doc.querySelectorAll('[data-ui=landing] [data-ui=cosmetics] select')];
-    assert.deepEqual(selects.map(s => s.value), ['classic', 'classic', 'confetti']);
-    await act(async () => { selects[0].value = 'frost'; selects[0].dispatchEvent(new first.win.w.Event('change', { bubbles: true })); });
-    await act(async () => { selects[2].value = 'gold'; selects[2].dispatchEvent(new first.win.w.Event('change', { bubbles: true })); });
+    await first.menu('skins');
+    assert.deepEqual(await chosen(first), ['classic', 'classic', 'confetti']);
+    await pick(first, 'ball', 'frost');
+    await pick(first, 'celebration', 'gold');
     const saved = first.win.w.localStorage.getItem('pp_cosmetics');
     assert.deepEqual(JSON.parse(saved), { ball: 'frost', trail: 'classic', celebration: 'gold' });
     const reloaded = await W.client('Pat2', { local: { pp_cosmetics: saved } });
-    await reloaded.menu('settings');
-    assert.deepEqual([...reloaded.doc.querySelectorAll('[data-ui=cosmetics] select')].map(s => s.value), ['frost', 'classic', 'gold']);
+    await reloaded.menu('skins');
+    assert.deepEqual(await chosen(reloaded), ['frost', 'classic', 'gold']);
     const junk = await W.client('Pat3', { local: { pp_cosmetics: '{"ball":"<img src=x>","trail":"comet"}' } });
-    await junk.menu('settings');
-    assert.deepEqual([...junk.doc.querySelectorAll('[data-ui=cosmetics] select')].map(s => s.value), ['classic', 'comet', 'confetti'], 'unknown ids fall back, valid ones are kept');
+    await junk.menu('skins');
+    assert.deepEqual(await chosen(junk), ['classic', 'comet', 'confetti'], 'unknown ids fall back, valid ones are kept');
     await first.dispose(); await reloaded.dispose(); await junk.dispose();
   });
 
