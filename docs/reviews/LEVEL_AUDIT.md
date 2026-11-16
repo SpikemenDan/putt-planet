@@ -574,3 +574,173 @@ Luna (gravity 315) has eight six-putt maps in two regions, Hushed Mare (32–35)
   - It overlaps Ghostlight Basin's theme (polar ice) in the same region.
 - **Scores:** fun 2 · clarity 4 · fairness 4 · variety 2.
 - **Verdict:** **replace**. Merge the polar-ice idea into Ghostlight Basin, and give Craterpeak a different fourth map (for example a crater-bowl or lunar-installation map).
+
+## Scoreboard
+
+| Map | Name | World / region | Pool | Fun | Clarity | Fairness | Variety | Total /20 | Verdict |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 0 | Switchback Garden | Gaia temperate | yes | 2 | 5 | 5 | 1 | 13 | rework |
+| 1 | Clover Crossing | Gaia temperate | no | 2 | 3 | 3 | 1 | 9 | replace |
+| 2 | Moonshot | Gaia polar | no | 2 | 5 | 3 | 1 | 11 | replace |
+| 3 | Portal Archipelago | Gaia tropical | no | 2 | 2 | 2 | 2 | 8 | replace |
+| 4 | Clockwork Maze | Gaia temperate | no | 1 | 3 | 1 | 1 | 6 | replace |
+| 5 | Cyclone Ring | Gaia wetland | yes | 3 | 2 | 3 | 2 | 10 | rework |
+| 6 | Skybridge | Gaia polar | no | 3 | 4 | 2 | 2 | 11 | rework (as one putt) |
+| 7 | Pinwheel | Gaia temperate | no | 2 | 3 | 2 | 1 | 8 | replace |
+| 8 | Dune Serpent | Gaia desert | yes | 2 | 4 | 5 | 1 | 12 | replace |
+| 9 | Twin Peaks | Gaia polar | no | 2 | 5 | 3 | 1 | 11 | replace |
+| 10 | Wind Tunnel | Gaia wetland | no | 2 | 3 | 2 | 2 | 9 | replace |
+| 11 | Fortress Spiral | Gaia desert | no | 2 | 4 | 4 | 1 | 11 | replace |
+| 12 | Bounce Harbor | Gaia tropical | no | 2 | 5 | 3 | 1 | 11 | replace |
+| 13 | Hourglass | Gaia desert | no | 1 | 3 | 1 | 1 | 6 | replace |
+| 14 | Thunder Basin | Gaia wetland | no | 3 | 2 | 3 | 2 | 10 | rework (as one putt) |
+| 15 | Portal Labyrinth | Gaia tropical | no | 2 | 2 | 3 | 2 | 9 | replace |
+| 16 | Crescent Coast | Gaia tropical | no | 1 | 3 | 1 | 2 | 7 | replace |
+| 17 | Elevator Alley | Gaia volcanic | no | 2 | 4 | 2 | 1 | 9 | replace |
+| 18 | Comet Run | Gaia volcanic | no | 1 | 3 | 1 | 2 | 7 | replace |
+| 19 | Grand Finale | Gaia volcanic | yes | 3 | 1 | 2 | 3 | 9 | rework |
+| 20 | Frost Hollow | Gaia polar | yes | 2 | 4 | 4 | 2 | 12 | rework |
+| 21 | Slime Springs | Gaia wetland | yes | 2 | 3 | 4 | 2 | 11 | replace |
+| 22 | Sandstorm Spire | Gaia desert | yes | 3 | 4 | 4 | 4 | 15 | keep with tweaks |
+| 23 | Obsidian Spiral | Gaia volcanic | yes | 3 | 4 | 4 | 4 | 15 | keep with tweaks |
+| 24 | Redrock Rebound | Ares Rustfall | yes | 3 | 4 | 4 | 3 | 14 | rework |
+| 25 | Canyon Leap | Ares Rustfall | yes | 2 | 5 | 3 | 1 | 11 | rework |
+| 26 | Dust Devil Draw | Ares Rustfall | yes | 2 | 3 | 4 | 2 | 11 | rework |
+| 27 | Ochre Overlook | Ares Rustfall | yes | 1 | 5 | 4 | 1 | 11 | replace |
+| 28 | Basalt Bounce | Ares Ironcrown | yes | 3 | 4 | 4 | 3 | 14 | keep with tweaks |
+| 29 | Caldera Climb | Ares Ironcrown | yes | 4 | 3 | 4 | 4 | 15 | keep with tweaks |
+| 30 | Ironstone Ridge | Ares Ironcrown | yes | 2 | 3 | 3 | 3 | 11 | rework |
+| 31 | Scarlet Summit | Ares Ironcrown | yes | 2 | 3 | 2 | 3 | 10 | rework |
+| 32 | Moondust Mile | Luna Hushed Mare | yes | 2 | 4 | 4 | 2 | 12 | rework |
+| 33 | Regolith Rise | Luna Hushed Mare | yes | 3 | 3 | 4 | 3 | 13 | rework |
+| 34 | Starlight Skip | Luna Hushed Mare | yes | 2 | 5 | 4 | 1 | 12 | replace |
+| 35 | Gaiarise Run | Luna Hushed Mare | yes | 2 | 4 | 4 | 2 | 12 | replace |
+| 36 | Crater Hop | Luna Craterpeak | yes | 2 | 2 | 2 | 3 | 9 | rework |
+| 37 | Rimwalker Ridge | Luna Craterpeak | yes | 2 | 4 | 3 | 2 | 11 | rework |
+| 38 | Ghostlight Basin | Luna Craterpeak | yes | 2 | 3 | 4 | 3 | 12 | rework |
+| 39 | Polar Hollow | Luna Craterpeak | yes | 2 | 4 | 4 | 2 | 12 | replace |
+
+The verdicts are 4 keep with tweaks, 16 rework and 20 replace. No map scores above 15/20, and no map scores 4 or more on fun except Caldera Climb. The clarity scores are high for the wrong reason: many putts are easy to read because they are a straight line.
+
+## Cross-map findings
+
+### 1. Most putts are robust hole-in-ones, so par means little
+
+- In the playable pool (24 maps, 144 putts), **128 putts (89%) have a robust one-stroke route**, and 105 putts (73%) are par 2. No putt is par 5 or 6, so the 2–6 par range is used only from 2 to 4.
+- Of the 108 recorded routes on maps 22–39, **28 are minimum-power (0.3) aces**, and 47 of the aces start within 2° of the direct line to the cup.
+- The par rule (a robust route within par 2–6, hole-in-one optional) was meant to allow longer, more complicated holes (MODERNIZATION_PLAN.md, "Par up to 6 per putt"). The content has not used it: maps are a string of short one-shot puzzles.
+- Legacy maps add slack the other way: Cyclone Ring and Grand Finale are par 4 on putts with robust aces.
+
+### 2. One island shape, two templates
+
+- **All 24 playable maps are the same island**: one 720 × 420 tile with perimeter walls (`tiles` = `[[40,40,720,420]]`).
+- 18 of them split it into the 3 × 2 chamber grid; 6 use 2 × 3 lanes.
+- Tee/cup layouts repeat exactly:
+  - Dune Serpent = Frost Hollow; Canyon Leap = Rimwalker Ridge; Moondust Mile = Starlight Skip.
+  - Twelve tee/cup pairs appear on three to five maps each. For example, the pair (70,145)→(246,145) is putt 1 of Basalt Bounce, Scarlet Summit, Gaiarise Run, Crater Hop and Ghostlight Basin.
+- Wall layouts repeat:
+  - Regolith Rise is Caldera Climb (8 of 9 walls).
+  - Rimwalker Ridge is Canyon Leap (7 of 8 walls).
+  - Slime Springs is Grand Finale (13 of 16 walls, plus the same pads and two shared portal pairs).
+- This contradicts the vision line "Regions are places with their own identity, never one course recoloured" (MODERNIZATION_PLAN.md).
+- Every chamber putt is 150–230 units long and every lane putt about 300. There are no long holes, no short tricky holes and no putt that uses two chambers.
+
+### 3. Overused patterns
+
+- **The ramp-over-pit straight shot:** Sandstorm Spire 2, Obsidian Spiral 3, Scarlet Summit 1, Gaiarise Run 3, Polar Hollow 4, five putts of Canyon Leap and four of Rimwalker Ridge. That is 14 putts with the same shot, plus legacy Moonshot.
+- **The pad on the line that does the shot:** Ochre Overlook (all six), Starlight Skip (five), Moondust Mile (three). The robust route is often a backward tap into the wall behind the tee.
+- **The wall stub between tee and cup** in a rectangular chamber: Switchback Garden, Dune Serpent, Frost Hollow and most bank putts on Ares and Luna.
+- **The diamond bank** (two wall bounces in an open chamber) appears on almost every chamber map; see the route traces.
+
+### 4. Mechanics that are missing or underused
+
+- **None of the newer course elements appear in any map:** water and currents, G1g mechanics (wedges, bouncers, vortices, oriented portals), K0 structures (bridges, overpasses, ceilings), K1a floating islands, K1b curved ramps and tier drops, and K1c transport tubes. All have schema, simulation, rendering and solver support and proof chambers (src/courses/README.md), but they live only in test chambers. These are exactly the elements that would make "3D courses and more complicated level design" real.
+- Moving blocks (`movers`) appear only on legacy single-putt maps and Ironstone Ridge 3, where they are timing gates the solver tests at one hazard time.
+- Raised platforms (`pl`) appear only on Caldera Climb and Regolith Rise.
+- Fans appear on no Ares or Luna map. Slime appears only on Gaia.
+- Jump pads are placed either on the line (doing the work) or beside it (bypassed). No putt makes the player aim at a pad with pace as a choice.
+
+### 5. World identity is mostly skin-deep
+
+- Half of Ares and half of Luna play the same at Gaia gravity (see the gravity checks).
+- "Moondust drag", "lava", "dust devils guarding cups" and "polar ice" are ordinary sand, pits, off-line tornadoes and ice.
+- Gaia regions are inconsistent: polar holds Twin Peaks, Skybridge and Moonshot, which have no ice; desert holds Fortress Spiral, which has no sand; volcanic holds Elevator Alley, which has no heat.
+
+### 6. Difficulty curve
+
+- **Gaia legacy starters:** there is a curve by B4 forgiveness: Switchback Garden (6052) > Dune Serpent (4776) > Frost Hollow (4253) > Slime Springs (3541) > Cyclone Ring (1949) > Grand Finale (1391). Much of the late difficulty comes from shrinking cups (radius 8–11) rather than from course design.
+- **Ares and Luna:** summed difficulty is flat. Ares runs 9.0–11.5, and the second region (Ironcrown, mean 10.3) is barely harder than the first (Rustfall, 9.8). Luna runs 8.7–13.0; Ghostlight Basin (8.67) and Polar Hollow (9.67), the last two maps, are among the easiest (VIS_G_WORLD_MAPS.md table).
+
+### 7. Fairness
+
+The cheap failures cluster in a few patterns:
+- A force pushes toward an unguarded edge or pit: Crescent Coast, Skybridge, Wind Tunnel and Scarlet Summit 4.
+- A timing gate cannot be read from the tee: Clockwork Maze, Hourglass, Pinwheel, Elevator Alley and Ironstone Ridge 3.
+- A landing island has no backstop: Comet Run and Portal Archipelago.
+- A pad in front of the tee: Crater Hop 4.
+
+The newer maps are mostly fair. Their problem is that they are too easy and too similar.
+
+### 8. Readability
+
+- Cups under fans (Cyclone Ring 1 and 3, Grand Finale 1 and 3) and tornadoes drawn as soft clouds hide what will happen.
+- Grand Finale's stacked mechanics make the intended route unreadable.
+- Portals are two-way and give no hint of their exit.
+- Tees placed 24–44 units in front of a back wall, with a pad just ahead, invite the backward-tap solutions above.
+
+## Proposed redesign plan (for owner approval)
+
+### Design principles
+
+1. **One headline idea per putt, and six different ones per map.** A map has a theme of two or three mechanics that fit its world and region, introduced in putts 1–2, combined in 3–4 and tested in 5–6.
+2. **Use the par range.** Target per map: two par-2 putts, three par-3 putts and one par-4 or par-5 putt (map par about 17–19). At most two putts per map should have a robust ace, and none should be a minimum-power ace. Par 3+ putts offer a choice: a safe lay-up route and a riskier shortcut.
+3. **The world's physics must matter.** On Ares, at least three of six routes should fail at Gaia gravity; on Luna, at least four. Gaia's regions use their own surfaces: ice in polar, sand and wind in desert, slime and water in wetland, lava (pits that look like lava) in volcanic, and grass banks and slopes in temperate.
+4. **Shape the island to the holes.** Stop using the 720 × 420 rectangle for every map. Use K1a islands, K0 bridges and overpasses, K1b curved ramps and tier drops, K1c tubes, water and G1g wedges and bouncers, so that putts have height, length and shape. Putts can span two chambers or a whole long fairway.
+5. **No cheap failures.** Open edges only where a jump or gap is intended, with a visible lip or rail elsewhere. No force (fan, wind, vortex) pushes toward an unguarded edge without a visible cue. No pad on the only line from the tee. Prefer static hazards to timing gates; where something moves, its phase must be visible from the tee and its period short.
+6. **Readable from the tee.** The cup or a clear signpost is visible from the tee camera. Force fields show their direction and extent. Portals show where they lead. Each cup sits on clean ground, not under a fan or on a pad.
+7. **No reskins.** No two maps share tee/cup layouts or interior walls. A check like the one in this audit (shared wall rectangles and tee/cup pairs) can guard this.
+8. **A difficulty curve.** Within a region, maps 1→4 get harder; each world's second region is harder than its first; Gaia temperate is the gentlest start. Difficulty comes from course reading and choices, not from shrunken cups.
+9. **Give tees room.** Leave at least 40 units of run-up behind the tee, and face the tee into the putt, not into a wall.
+
+### Order
+
+1. **Owner decisions first** (blocking):
+   - (a) approve or adjust the principles above, especially the par-mix target;
+   - (b) what to do with the 16 single-putt legacy maps: retire them as maps and harvest their ideas as putts (recommended), or rebuild each as a six-putt map;
+   - (c) whether gameplay wind zones belong on Ares, given the visual-only ambient wind decision;
+   - (d) the fate of Clockwork Maze and Comet Run (Q1's open decision): replacement is recommended.
+2. **Pilot: one map per world** to prove the principles, the tooling and the look before scaling up:
+   - Switchback Garden (rework; the first map most players see);
+   - Ochre Overlook (replace; the weakest new map);
+   - Starlight Skip (replace; the weakest Luna map, and it needs real pad chains).
+   - The owner playtests the three in a local preview and adjusts the principles.
+3. **Gaia's playable core:**
+   - Dune Serpent and Slime Springs (replace, to break the shared template);
+   - Frost Hollow and Cyclone Ring (rework);
+   - tweaks to Sandstorm Spire and Obsidian Spiral;
+   - Grand Finale (rework) last, as Gaia's finale.
+4. **Ares:**
+   - Canyon Leap, Dust Devil Draw, Redrock Rebound, Ironstone Ridge and Scarlet Summit (rework);
+   - tweaks to Basalt Bounce and Caldera Climb;
+   - Scarlet Summit becomes Ironcrown's finale.
+5. **Luna:**
+   - Gaiarise Run and Polar Hollow (replace);
+   - Regolith Rise and Rimwalker Ridge (rework away from their Ares originals);
+   - Moondust Mile, Crater Hop and Ghostlight Basin (rework).
+6. **Gaia's remaining 16 slots,** according to decision 1(b). This is the largest block of work and, while those maps stay outside the pool, the least visible to players.
+
+Each map should go on its own task branch with:
+- before and after renders (`node docs/reviews/level-audit/render.mjs <outDir> <map>`);
+- `node tools/cli/measure-par.mjs --only <map>/0,...,<map>/5` at the map's gravity;
+- `node tools/cli/main.mjs check` and `npm run test:courses`, with refreshed par evidence;
+- an owner preview before acceptance (AGENTS.md: geometry changes invalidate difficulty evidence).
+
+A small lint for the measurable principles would make reviews cheaper. It would report robust-ace count, minimum-power aces, routes that fail at Gaia gravity, and duplicated walls or tee/cup pairs. That lint is a separate task.
+
+## Verification for this audit
+
+- `node tools/cli/main.mjs check`: CHECK OK, 40 courses.
+- `node tests/world-maps.test.cjs`: PASS; the par evidence for maps 22–39 is current and replays at each world's gravity.
+- Gravity check, ace and straightness figures: a nominal replay of the recorded routes with `SimulationEngine` (no solver search).
+- Links in this file checked by script.
+- No solver sweep, course-data or `src/` change. Scores and verdicts are design judgements and have not been playtested by the owner.
