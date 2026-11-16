@@ -44,9 +44,11 @@ export function LobbyVehicle({ vehicle = 'plane', passengers = [], hidden = fals
         const tag = tags.current[a.seat];
         if (!tag) continue;
         const below = tag.dataset.side === 'bottom';
-        // Above: the tag's foot sits just over the ball. Below: it hangs under the vehicle's belly, about four balls down.
-        const y = below ? a.y + a.r * (vehicle === 'helicopter' ? 2.2 : 4.4) : a.y - a.r - 6;
-        tag.style.transform = `translate(${a.x.toFixed(1)}px, ${y.toFixed(1)}px) translate(-50%, ${below ? '0' : '-100%'})`;
+        // Above: the tag's foot sits just over the ball. Below: it hangs under the vehicle's belly (the scene's `below` point).
+        // Each side staggers its tags over two rows, so tags on the same row are four seats apart and never overlap.
+        const stagger = Math.floor(a.seat / 2) % 2 ? 30 : 0;
+        const x = below && a.below ? a.below.x : a.x, y = below ? (a.below ? a.below.y : a.y + a.r * 4.4) + stagger : a.y - a.r - 6 - stagger;
+        tag.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) translate(-50%, ${below ? '0' : '-100%'})`;
         tag.style.visibility = 'visible';
       }
     });

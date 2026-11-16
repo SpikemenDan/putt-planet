@@ -92,7 +92,7 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', re
     // Centre the vehicle on its real extent (rotor tips and tail included), so nothing hangs out of the frame.
     const box = new THREE.Box3().setFromObject(built), centre = box.getCenter(new THREE.Vector3()), size = box.getSize(new THREE.Vector3());
     built.position.set(-centre.x, -centre.y, -centre.z);
-    model.half = { x: size.x * 0.5 + size.z * 0.08, y: size.y * 0.5 + size.z * 0.12 }; // the turn toward the viewer shows some depth
+    model.half = { x: size.x * 0.5 + size.z * 0.04, y: size.y * 0.5 + size.z * 0.1 }; // the turn toward the viewer shows some depth
     rig.add(built);
     stats.vehicle = kind;
     buildBalls();
@@ -119,10 +119,10 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', re
     const l = display.lobby, t = reducedMotion ? 0 : time / 1000;
     // Frame the vehicle: far enough back that its radius fills the narrower view direction, then zoom.
     const tan = Math.tan((FOV * Math.PI / 180) / 2);
-    const dist = Math.max(model.half.x / (tan * camera.aspect), model.half.y / tan) * 0.92 / l.zoom;
+    const dist = Math.max(model.half.x / (tan * camera.aspect), model.half.y / tan) * (model.seats.length > 1 ? 1.0 : 0.92) / l.zoom; // the long vehicles keep room to sway
     camera.position.set(dist * 0.12, dist * 0.42, dist);
     camera.lookAt(0, 0, 0);
-    rig.rotation.y = -0.38 + Math.sin(t * 0.6) * l.sway * Math.PI / 180;
+    rig.rotation.y = -0.26 + Math.sin(t * 0.6) * l.sway * Math.PI / 180;
     rig.position.y = Math.sin(t * 1.7) * l.bob;
     rig.rotation.x = Math.sin(t * 1.1) * 0.02;
     for (const mesh of spinners) {
@@ -140,7 +140,8 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', re
         const x = (v.x + 1) / 2 * width, y = (1 - v.y) / 2 * height;
         b.getWorldPosition(v); v.y += BALL_RADIUS; v.project(camera);
         const top = (1 - v.y) / 2 * height;
-        out.push({ seat: b.userData.seat, x, y, r: Math.max(4, y - top) });
+        b.getWorldPosition(v); v.y -= model.drop ?? 2.5; v.project(camera); // under the vehicle's belly, where bottom tags hang
+        out.push({ seat: b.userData.seat, x, y, r: Math.max(4, y - top), below: { x: (v.x + 1) / 2 * width, y: (1 - v.y) / 2 * height } });
       }
       anchorListener(out, { width, height });
     }

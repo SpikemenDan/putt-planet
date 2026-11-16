@@ -4,7 +4,7 @@
  * models (sky-models.js): one vertex-coloured body per vehicle, drawn with the game's toon material and ink hull.
  *
  * Units: a ball is 1 across (radius 0.5). Local axes: +x forward (nose), +y up, +z toward the viewer's side. Each builder returns
- * { body, glass?, seats, spinners, flame?, radius }: `seats` are ball centres, `spinners` parts that turn about `axis` (rotors and
+ * { body, glass?, seats, spinners, flame?, radius, drop }: `seats` are ball centres, `drop` how far below a seat its tag may hang, `spinners` parts that turn about `axis` (rotors and
  * propellers), `flame` the rocket's exhaust (pivot at the nozzle, pointing -x), `radius` how big the whole vehicle is for framing.
  * `THREE` is injected.
  */
@@ -68,6 +68,7 @@ export function makeHelicopter(THREE) {
       { geometry: rotor(THREE, 1.5, 0.18, 0x3b3557).rotateX(Math.PI / 2), position: new THREE.Vector3(-4.95, 2.35, 0.2), axis: 'z', speed: 1.6 },
     ],
     radius: 4.4,
+    drop: 1.7,
   };
 }
 
@@ -77,8 +78,8 @@ const seatRow = (THREE, count, cx, y, step) => Array.from({ length: count }, (_,
 /** The party plane for Gaia: an open-top toy airliner with eight seats in a row, four propellers, a pink livery and a yellow nose. */
 export function makeLobbyPlane(THREE, seatsCount = 8) {
   const white = 0xf8f6ff, pink = 0xff3d8b, blue = 0x3e8ef7, yellow = 0xffd23f, glass = 0x2a4a86, metal = 0x4b4570;
-  const r = 1.05, mid = 9.6;
-  const seats = seatRow(THREE, seatsCount, 0.2, r - 0.08, 1.2);
+  const r = 1.05, mid = 11.4;
+  const seats = seatRow(THREE, seatsCount, 0.2, r - 0.08, 1.45);
   const parts = [
     { geometry: capsule(THREE, r, mid, 12, 24), color: white },
     { geometry: capsule(THREE, r * 1.012, mid, 12, 24), color: pink, at: at(THREE, 0, -0.42, 0, 0, 0, 0, 1, 0.62, 1.01) }, // livery belly
@@ -100,14 +101,14 @@ export function makeLobbyPlane(THREE, seatsCount = 8) {
     }
   }
   for (const z of [0.55, -0.55]) parts.push({ geometry: new THREE.CylinderGeometry(0.1, 0.1, 0.7, 8), color: metal, at: at(THREE, 3.5, -r - 0.2, z) }, { geometry: new THREE.CylinderGeometry(0.28, 0.28, 0.2, 14).rotateX(Math.PI / 2), color: 0x2a2346, at: at(THREE, 3.5, -r - 0.55, z) });
-  return { body: mergeParts(THREE, parts), seats, spinners, radius: 7.6 };
+  return { body: mergeParts(THREE, parts), seats, spinners, radius: 7.6, drop: 2.7 };
 }
 
 /** The party rocket for Ares and Luna: a red-and-white rocket with eight seats along its back, portholes, fins and a live flame. */
 export function makeLobbyRocket(THREE, seatsCount = 8) {
   const white = 0xf8f6ff, red = 0xe5484d, violet = 0x8e4ec6, yellow = 0xffd23f, cyan = 0x25d1e6, metal = 0x4b4570;
-  const r = 1.15, mid = 9.4;
-  const seats = seatRow(THREE, seatsCount, 0.1, r - 0.08, 1.2);
+  const r = 1.15, mid = 11.2;
+  const seats = seatRow(THREE, seatsCount, 0.1, r - 0.08, 1.45);
   const parts = [
     { geometry: capsule(THREE, r, mid, 12, 24), color: white },
     { geometry: new THREE.ConeGeometry(r * 0.98, 2.6, 24).rotateZ(-Math.PI / 2), color: red, at: at(THREE, mid / 2 + 1.25, 0, 0) }, // nose cone
@@ -121,7 +122,7 @@ export function makeLobbyRocket(THREE, seatsCount = 8) {
     { geometry: new THREE.ConeGeometry(0.62, 2.4, 16).rotateZ(Math.PI / 2).translate(-1.2, 0, 0), color: 0xff8a1f },
     { geometry: new THREE.ConeGeometry(0.36, 1.5, 14).rotateZ(Math.PI / 2).translate(-0.85, 0, 0), color: 0xffe36b },
   ]);
-  return { body: mergeParts(THREE, parts), seats, spinners: [], flame, flameAt: new THREE.Vector3(-mid / 2 - 1.65, 0, 0), radius: 8.2, tilt: 0.14 };
+  return { body: mergeParts(THREE, parts), seats, spinners: [], flame, flameAt: new THREE.Vector3(-mid / 2 - 1.65, 0, 0), radius: 8.2, tilt: 0.14, drop: 2.6 };
 }
 
 /** The vehicle for a kind: 'helicopter' (Solo), 'plane' (a party bound for Gaia) or 'rocket' (Ares and Luna). */
