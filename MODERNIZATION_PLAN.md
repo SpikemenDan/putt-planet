@@ -179,6 +179,12 @@ The owner accepted these from the decision brief on 2026-11-11.
 
 ### Decided 2026-11-14
 
+The owner settled the three defaults left open in VIS-E #166 (PR #221); all three stay as shipped.
+
+- **Off-Gaia slipperiness.** Dust Storm and Solar Wind use Rain's strength, for visual consistency. It matters little for play: weather belongs to the putt it was cast on and clears when the next putt starts (today it can also end sooner, after `globalHazards.durationSeconds`, 20 s).
+- **How often Precipitation appears.** One Precipitation item in boxes on every world and map, as often as Rain or Snow each appeared before (half of the two together).
+- **Cold maps.** Only Frost Hollow counts as cold for now; more cold maps will be tagged with a course `climate` as they are added.
+
 The owner decided these for VIS-M3 (#175) on 2026-11-14. They replace "colour pick before the lobby" in #175 and the 2026-11-11 notes.
 
 - **No colour choice on the way into a party.** Creating or joining asks for no colour: each player gets a free colour on arrival, keeping VIS-C uniqueness, reservation for disconnected players and boundary validation.
