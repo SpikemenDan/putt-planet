@@ -332,3 +332,129 @@ Gaia has 24 maps in six regions. Only 8 of them are six-putt maps that players c
   - Lava is only a black pit; it does not look or behave like lava.
 - **Scores:** fun 3 · clarity 4 · fairness 4 · variety 4.
 - **Verdict:** **keep with tweaks**. Replace putt 3 (duplicate idea) and make putt 5 diagonal or curved so the ice matters.
+
+## Ares
+
+Ares (gravity 490) has eight six-putt maps in two regions, Rustfall Canyons (24–27) and Ironcrown Highlands (28–31). All are in the playable pool, and all were built at the same time on two templates: the 3 × 2 chamber grid and the 2 × 3 long-lane layout.
+
+**Gravity check.** Each recorded route was replayed once at its own gravity and once at Gaia's 700, with the nominal shot only (not the test's nine perturbations). Every Ares route still sinks at Gaia gravity on Redrock Rebound, Dust Devil Draw, Basalt Bounce and Ironstone Ridge, so **half of Ares does not use Ares gravity**. Across Ares, 15 of 48 nominal routes fail at Gaia gravity; `tests/world-maps.test.cjs`, which counts a route as failed if any of its nine perturbations fails, reports 21. Flat rolling distance is the same on every world by design (MODERNIZATION_PLAN.md, gravity decision), so a map built from banks, sand and ice plays exactly as it would on Gaia.
+
+**Note:** MODERNIZATION_PLAN.md says ambient Ares wind is visual-only scenery. Dust Devil Draw and Scarlet Summit use gameplay wind zones (the W3 course element), which is a different thing, but the owner should confirm that Ares courses are meant to have gameplay wind, because players will not easily tell the two kinds apart.
+
+In the route notes below, "straight" means the recorded hole-in-one leaves within 2° of the direct tee-to-cup line, and "min-power" means it uses the lowest power in the solver grid (0.3).
+
+### 24 · Redrock Rebound: Rustfall
+
+![Redrock Rebound](level-audit/24-redrock-rebound.png)
+
+- **Mechanics:** walls, four sand drifts, five crevasse pits.
+- **Par:** 2, 3, 2, 2, 2, 2 (13). R 1/2/1/1/1/1.
+- **Problems:**
+  - It is a bank-shot map with nothing Martian about it except colour, and every route works at Gaia gravity.
+  - Putt 3 is a min-power straight tap (0°, 0.3) through a 26-unit gap between two pit pairs (656,46 and 656,174). The pits never matter at that pace.
+  - Putt 4 frames a sand box (126,326 70×54) with two walls, and the route simply goes around it.
+  - Putt 2 is the good one: a two-bank route over a crevasse (436,136 78×22).
+  - The sand drifts all sit off the routes.
+- **Scores:** fun 3 · clarity 4 · fairness 4 · variety 3.
+- **Verdict:** **rework**. Keep the bank-shot character for one or two putts and add slopes or ramps that use the lower gravity.
+
+### 25 · Canyon Leap: Rustfall
+
+![Canyon Leap](level-audit/25-canyon-leap.png)
+
+- **Mechanics:** seven launch ramps (0→26 to 0→34) and ten canyon pits.
+- **Par:** 2, 2, 2, 2, 2, 3 (13). R 1/1/1/1/1/2.
+- **Problems:**
+  - All six putts are the same shot: tee, ramp, canyon, cup, in a straight lane. Putts 1, 2, 4 and 5 are straight aces at power 0.45–0.55, and putt 4 is putt 1 mirrored.
+  - Putt 3 adds a wall stub (256,232); putt 6 adds a second ramp (616,360) and canyon.
+  - It does use the gravity (five of six routes fail at 700), but one idea six times is the clearest repetition among the new maps.
+  - Rimwalker Ridge (37) reuses this layout: 7 of its 8 wall rectangles and all six tee/cup pairs are identical.
+- **Scores:** fun 2 · clarity 5 · fairness 3 · variety 1.
+- **Verdict:** **rework**. Keep two jump putts and build different ones: a jump to a raised mesa, a jump with a choice of landing shelves, a jump into a bowl.
+
+### 26 · Dust Devil Draw: Rustfall
+
+![Dust Devil Draw](level-audit/26-dust-devil-draw.png)
+
+- **Mechanics:** five dust devils (tornadoes) and four wind zones: a gusting draft east (326,46 140×198), a gust north (46,336 228×50), and an opposed swirl pair in putt 6.
+- **Par:** 2 on all six (12). R 1/1/1/1/1/1.
+- **Problems:**
+  - Every route is a straight ace (within 2° of the direct line), and three are min-power (putts 1, 3 and 5).
+  - A dust devil centred on the line is neutral for a centred shot. Putt 5's devil (400,355 r40) sits exactly on the tee-to-cup line, and the route goes straight through it at 0°, 0.3.
+  - Putt 1's devil (160,106) and putt 3's two (596,186 and 686,106) sit off the line.
+  - The theme is "read the wind", but no putt needs the wind read.
+  - The pit in putt 4 (106,406 110×48) sits below the gust zone, so the gust pushes the ball away from it.
+- **Scores:** fun 2 · clarity 3 · fairness 4 · variety 2.
+- **Verdict:** **rework**. Put devils beside the line so they bend it, make one putt need an upwind aim with a visible wind cue, and keep the gust periods readable.
+
+### 27 · Ochre Overlook: Rustfall
+
+![Ochre Overlook](level-audit/27-ochre-overlook.png)
+
+- **Mechanics:** seven jump pads, three pits and one sand patch.
+- **Par:** 2 on all six (12). R 1/1/1/1/1/1.
+- **Problems:**
+  - **Every route is a minimum-power (0.3) ace, and five are straight at the cup.** The pad sits on the line (136,110; 486,110; 656,250; 516,390), so the player taps the ball into the pad and the hop does the rest.
+  - Putts 3 and 6 share tee/cup positions with Moondust Mile and Starlight Skip.
+  - The "overlook" has no height: the pads hop wall stubs and pits on flat ground.
+  - It is the most trivial map in the game.
+- **Scores:** fun 1 · clarity 5 · fairness 4 · variety 1.
+- **Verdict:** **replace**.
+
+### 28 · Basalt Bounce: Ironcrown
+
+![Basalt Bounce](level-audit/28-basalt-bounce.png)
+
+- **Mechanics:** walls, four pads, one lava bar (326,316 148×20) and one sand patch.
+- **Par:** 2, 2, 2, 2, 2, 3 (13). R 1/1/1/1/1/2.
+- **Problems:**
+  - It has the best bank-shot puzzles on Ares. Putt 4 banks into a three-sided cup box (176–236, 302–400); putt 6 snakes between two staggered walls.
+  - The pads are optional: no recorded route uses them. Putt 1's pad (106,145) sits right in front of the tee, and the route banks past it.
+  - Every route works at Gaia gravity, so on Ares this is a Gaia map.
+  - The theme says "bounce a pad hop clean over them", and nothing requires that.
+- **Scores:** fun 3 · clarity 4 · fairness 4 · variety 3.
+- **Verdict:** **keep with tweaks**. Give one or two putts a pad route that beats the bank (a higher wall, or a cup on a ledge).
+
+### 29 · Caldera Climb: Ironcrown
+
+![Caldera Climb](level-audit/29-caldera-climb.png)
+
+- **Mechanics:** six ramps up to five raised rims (z 20–24) with cups on top; four pits.
+- **Par:** 2, 2, 3, 2, 2, 3 (14). R 1/1/2/1/1/2.
+- **Problems:**
+  - It is the strongest new map. It has real height, a different ramp direction on most putts and a cup on a mesa, and five of six routes depend on Ares gravity.
+  - Putt 4 (ramp up and over a 40-wide mesa at 156,316 between two ramps) is a good small idea.
+  - Putt 6 has no ramp at all: a wall-and-pit bank that duplicates Basalt Bounce putt 6.
+  - Putt 3 drops to a z 20 rim between two pits (526,166 and 704,166), and its route has to come back from the top wall. It is hard to read from the tee.
+  - Regolith Rise (33) reuses this layout: 8 of its 9 wall rectangles are identical.
+- **Scores:** fun 4 · clarity 3 · fairness 4 · variety 4.
+- **Verdict:** **keep with tweaks**. Replace putt 6 with a climbing putt and add a visible path for putt 3.
+
+### 30 · Ironstone Ridge: Ironcrown
+
+![Ironstone Ridge](level-audit/30-ironstone-ridge.png)
+
+- **Mechanics:** three ice runs, a moving gate (206,230 14×40, sweeping ±40), a portal pair (506,286)↔(656,216), two pits and sand.
+- **Par:** 2 on all six (12). R 1/1/1/1/1/1.
+- **Problems:**
+  - Putts 1 and 5 are straight min-power aces along an ice run (126,76 180×68; 106,346 220×88). The ice speeds a ball that is already on line.
+  - Putt 4's portal is optional: the route crosses the wall (546,182) the long way and lands at the cup off the far wall.
+  - Putt 3's gate is a moving block, a timing hazard the solver tests at hazard time 0 only.
+  - Every route works at Gaia gravity.
+  - Putt 6 (an ice zig-zag across 546,326) has the best feel.
+- **Scores:** fun 2 · clarity 3 · fairness 3 · variety 3.
+- **Verdict:** **rework**. Turn the ice runs into curving lanes or downhill runs, make the portal the better route, and replace the moving gate or make its timing visible.
+
+### 31 · Scarlet Summit: Ironcrown
+
+![Scarlet Summit](level-audit/31-scarlet-summit.png)
+
+- **Mechanics:** a launch ramp over a canyon, three pads, two dust devils, a gusting updraft and three pits.
+- **Par:** 2, 2, 2, 2, 2, 3 (13). R 1/1/1/1/1/2.
+- **Problems:**
+  - Putt 1 is the ramp-over-canyon straight ace again (the same shot as Sandstorm Spire 2, Obsidian Spiral 3 and Gaiarise Run 3).
+  - Putt 4's gusting updraft (126,256 70×198, pushing south with period 3) blows toward the pit directly beneath it (126,416 70×38). Whether the ball is pushed in depends on the gust phase when it arrives, which the player cannot plan.
+  - Putt 5 is a min-power straight tap (270°, 0.3) through the dust devil sitting on the line (400,326).
+  - As a "summit" it has no climb.
+- **Scores:** fun 2 · clarity 3 · fairness 2 · variety 3.
+- **Verdict:** **rework**. It should be Ares' finale: height, a long multi-shot putt and one fair wind putt.
