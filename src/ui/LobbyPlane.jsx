@@ -11,7 +11,7 @@ export const PICKER_CLOSE_MS = 140;
  * Copies `display.lobby` onto the plane as CSS variables. The shipped DISPLAY is frozen, so that is done once; the development
  * tuner's live object is not, so it is re-read every frame while the lobby shows (presentation only, never room state).
  */
-function useLobbyLook(ref, display, hidden) {
+export function useLobbyLook(ref, display, hidden, extra = null) {
   useEffect(() => {
     const el = ref.current;
     if (!el || hidden) return undefined;
@@ -21,6 +21,7 @@ function useLobbyLook(ref, display, hidden) {
       el.style.setProperty('--lobby-tilt', l.tilt + 'deg');
       el.style.setProperty('--lobby-spacing', String(l.spacing));
       el.style.setProperty('--lobby-bob', l.bob + 'px');
+      extra?.(el, display);
     };
     apply();
     const raf = el.ownerDocument.defaultView?.requestAnimationFrame;
@@ -29,14 +30,14 @@ function useLobbyLook(ref, display, hidden) {
     const tick = () => { apply(); id = raf(tick); };
     id = raf(tick);
     return () => el.ownerDocument.defaultView.cancelAnimationFrame(id);
-  }, [ref, display, hidden]);
+  }, [ref, display, hidden, extra]);
 }
 
 /**
  * The colour picker that opens from the player's own colour badge (owner, 2026-11-14). Closes on Escape, on a click
  * outside it, or from the badge again; focus moves into it on open and back to the badge on close.
  */
-function BadgePicker({ selected, taken, onPick, onClose, badge, closing }) {
+export function BadgePicker({ selected, taken, onPick, onClose, badge, closing, solo = false }) {
   const root = useRef(null);
   useEffect(() => {
     const el = root.current;
@@ -52,7 +53,7 @@ function BadgePicker({ selected, taken, onPick, onClose, badge, closing }) {
     <div ref={root} className={styles.picker + (closing ? ' ' + styles.closing : '')} role="dialog" aria-label="Your ball colour" data-ui="lobby-color-picker">
       <p className={styles.pickerTitle}>Your ball colour</p>
       <ColorPicker selected={selected} taken={taken} onPick={onPick} />
-      <p className={styles.pickerFoot}><span data-ui="colour-name">{PLAYER_COLOR_NAMES[selected] ?? ''}</span><span>✕ taken · Esc closes</span></p>
+      <p className={styles.pickerFoot}><span data-ui="colour-name">{PLAYER_COLOR_NAMES[selected] ?? ''}</span><span>{solo ? 'Esc closes' : '✕ taken · Esc closes'}</span></p>
     </div>
   );
 }
@@ -62,14 +63,15 @@ function BadgePicker({ selected, taken, onPick, onClose, badge, closing }) {
  * caption and a colour badge. Only the player's own badge is a button; it opens the colour picker, where colours other
  * players hold (or keep reserved while away) are crossed out. Names render as React text only.
  */
-export function LobbyPlane({ players = [], hidden = false, myColor = null, taken = {}, onPick }) {
-  const { display } = useUiContext();
-  const root = useRef(null);
+/**
+ * Open/close state of the badge colour picker, shared by the party plane and the Solo helicopter (one colour system). The
+ * picker closes with a short exit animation; `root` is the lobby element (for its window's timers).
+ */
+export function useBadgePicker(root, hidden) {
   const badge = useRef(null);
   const [open, setOpen] = useState(false);
   const [closing, setClosing] = useState(false);
   const timer = useRef(null);
-  useLobbyLook(root, display, hidden);
   const close = useRef(null);
   close.current = (refocus) => {
     if (!open || closing) return;
@@ -78,9 +80,17 @@ export function LobbyPlane({ players = [], hidden = false, myColor = null, taken
     timer.current = view.setTimeout(() => { setOpen(false); setClosing(false); if (refocus) badge.current?.focus(); }, PICKER_CLOSE_MS);
   };
   const [onClose] = useState(() => refocus => close.current(refocus));
-  useEffect(() => () => { if (timer.current !== null) (root.current?.ownerDocument.defaultView ?? globalThis).clearTimeout(timer.current); }, []);
+  useEffect(() => () => { if (timer.current !== null) (root.current?.ownerDocument.defaultView ?? globalThis).clearTimeout(timer.current); }, [root]);
   useEffect(() => { if (hidden) { setOpen(false); setClosing(false); } }, [hidden]);
   const toggle = () => { if (open) onClose(true); else setOpen(true); };
+  return { badge, open, closing, onClose, toggle };
+}
+
+export function LobbyPlane({ players = [], hidden = false, myColor = null, taken = {}, onPick }) {
+  const { display } = useUiContext();
+  const root = useRef(null);
+  useLobbyLook(root, display, hidden);
+  const { badge, open, closing, onClose, toggle } = useBadgePicker(root, hidden);
   return (
     <div ref={root} className={styles.wrap} data-ui="lobby-plane">
       <div className={styles.stage}>

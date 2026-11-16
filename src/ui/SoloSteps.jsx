@@ -4,7 +4,8 @@ import { GameModes } from '../shared/session.js';
 import { WORLDS } from '../shared/worlds.js';
 import { OFFWORLD_REGIONS } from '../shared/world-regions.js';
 import { UiCommands } from './commands.js';
-import { useUiContext } from './context.js';
+import { useUiContext, useView } from './context.js';
+import { LobbyHelicopter } from './LobbyHelicopter.jsx';
 import menu from './Landing.module.css';
 import { MenuIcon } from './MenuIcons.jsx';
 
@@ -40,11 +41,14 @@ const WORLD_BLURB = Object.freeze({ gaia: 'Home: six regions of courses', luna: 
 
 /**
  * Solo, one question per screen (owner, 2026-11-12, layout A): how to play (Casual, Tournament and its length, or the
- * smaller Practice button), then the destination, then name, colour and Play. Play opens the solo room and goes straight
- * to the level select with the chosen mode (no lobby). Back steps back; from the first step it leaves Solo.
+ * smaller Practice button), then the destination, then the Solo lobby (owner, 2026-11-16): a helicopter carrying the player's
+ * ball, whose colour badge opens the party lobby's colour picker, the name and Play. Play opens the solo room and goes straight
+ * to the level select with the chosen mode. Back steps back; from the first step it leaves Solo. `colorField` is no longer
+ * shown here (the helicopter badge replaces it); it stays accepted so Landing.jsx needs no change.
  */
 export function SoloSteps({ name, onName, colorField, connecting, send, onExit, overlay = null }) {
   const { stage } = useUiContext();
+  const color = useView(v => v.landing?.color ?? null);
   const [step, setStep] = useState('mode');
   const [focus, setFocus] = useState('gaia'); // the planet the destination view is showing
   const [pick, setPick] = useState(null); // 'tournament' | 'practice' while choosing a length or practice kind
@@ -129,8 +133,8 @@ export function SoloSteps({ name, onName, colorField, connecting, send, onExit, 
 
       {step === 'ready' && <>
         <p className={menu.summary} data-ui="solo-summary">{SOLO_MODES[mode]} on {WORLDS.find(w => w.id === world)?.name}</p>
+        <LobbyHelicopter name={name} color={color} onPick={c => send(UiCommands.SET_COLOR, { color: c })} />
         <label>Your name<input maxLength={14} autoComplete="off" value={name} onChange={e => onName(e.target.value)} /></label>
-        {colorField}
         <button type="button" className={menu.go} disabled={connecting} onClick={() => send(UiCommands.PLAY_SOLO, { name, mode, world })}>Play solo</button>
       </>}
 

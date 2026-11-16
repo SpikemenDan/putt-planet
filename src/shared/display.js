@@ -8,7 +8,8 @@
  * Units: distances in world units (the ball radius is 5). Opacity is 0..1; scale is a multiplier. The `loading` group
  * (loading screen, src/render/planet-scene.js) uses degrees, seconds, CSS px and a screen-height fraction as listed per field;
  * the `menu` group (main menu, src/ui/Landing.jsx) uses a multiplier, seconds, CSS px and degrees; the `lobby` group (the party
- * lobby's plane of balls, src/ui/LobbyPlane.jsx) uses CSS px, degrees and a multiplier; the `space` group (the Solo
+ * lobby's plane of balls, src/ui/LobbyPlane.jsx) uses CSS px, degrees and a multiplier, and its ball size and bob also apply to
+ * the Solo lobby helicopter, whose own `helicopter` group (src/ui/LobbyHelicopter.jsx) uses seconds and CSS px; the `space` group (the Solo
  * destination view in src/render/planet-scene.js) uses seconds, fractions and a multiplier. The `environment` group (VIS-E
  * world atmosphere, src/render/atmosphere.js) holds multipliers for the Ares and Luna scenery.
  */
@@ -53,6 +54,8 @@ export const DISPLAY_FIELDS = Object.freeze([
   ['lobby.tilt', 0, 70, 'Party lobby: how far the plane under the balls leans back, in degrees (0 faces the player flat on).'],
   ['lobby.spacing', 0.6, 2, 'Party lobby: gap between the balls as a multiplier of the ball size.'],
   ['lobby.bob', 0, 12, 'Party lobby: how far each ball bobs while it waits, in CSS px (0 holds them still). Off under reduced motion.'],
+  ['helicopter.rotorSeconds', 0, 2, 'Solo lobby: seconds for one beat of the helicopter\'s main rotor (the tail rotor turns a little faster; 0 holds both still). Off under reduced motion.'],
+  ['helicopter.hover', 0, 16, 'Solo lobby: how far the helicopter rises and sinks while it hovers, in CSS px (0 holds it still). Off under reduced motion.'],
   ['environment.aresWind', 0, 2, 'Ares courses: strength of the wind scenery: speed and opacity of the wind streaks and blown dust, and the rust haze (0 hides it). Visual only.'],
   ['environment.aresWindDensity', 0, 2, 'Ares courses: how many wind streaks and dust grains fill the air, as a multiplier of 1100 streaks and 2400 grains (plus 140 and 360 close around the camera). Visual only.'],
   ['environment.lunaDust', 0, 2, 'Luna courses: brightness of the floating dust motes (0 hides them). Visual only.'],
@@ -68,6 +71,7 @@ export const DEFAULT_DISPLAY = {
   space: { orbitSeconds: 120, travelSeconds: 1.8, aresZoom: 0.5, nebula: 0.6, distance: 1 },
   menu: { buttonScale: 1, stagger: 0.07, bob: 2, tilt: 1.5, shineSeconds: 5, cardTint: 0.22 },
   lobby: { ballSize: 56, tilt: 52, spacing: 1, bob: 3 },
+  helicopter: { rotorSeconds: 0.35, hover: 5 },
   environment: { aresWind: 1, aresWindDensity: 1, lunaDust: 1, lunaDustDensity: 1, lunaSolar: 1 },
 };
 

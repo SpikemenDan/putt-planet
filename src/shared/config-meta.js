@@ -97,6 +97,8 @@ export const DISPLAY_UNITS = Object.freeze({
   'lobby.tilt': 'degrees',
   'lobby.spacing': 'multiplier',
   'lobby.bob': 'CSS px',
+  'helicopter.rotorSeconds': 'seconds',
+  'helicopter.hover': 'CSS px',
   'environment.aresWind': 'multiplier',
   'environment.aresWindDensity': 'multiplier of the base count',
   'environment.lunaDust': 'multiplier',

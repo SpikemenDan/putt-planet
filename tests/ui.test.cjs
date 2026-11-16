@@ -352,6 +352,49 @@ function fakeClock() {
     await t.teardown();
   });
 
+  await scenario('solo lobby helicopter (owner, 2026-11-16): one ball in your colour, the badge opens the party picker with nothing crossed out, picking sends set-color, display reaches the craft', async () => {
+    const { createDisplay } = await import('../src/shared/display.js');
+    const live = structuredClone(createDisplay());
+    live.helicopter.rotorSeconds = 0; live.helicopter.hover = 9; live.lobby.ballSize = 40;
+    const t = await setup({ mountProps: { display: live } });
+    await act(async () => t.store.setLocal({ active: false, connecting: false, colorPref: 4 }));
+    const steps = () => $('[data-ui=solo-steps]');
+    const inSteps = label => [...steps().querySelectorAll('button')].find(b => (b.getAttribute('aria-label') ?? b.textContent).startsWith(label));
+    await click(t.within('[data-ui=landing]').querySelector('[data-menu=solo]'));
+    await click(inSteps('Casual'));
+    await click(steps().querySelector('[data-ui=world-choose]'));
+    assert.equal(steps().dataset.step, 'ready');
+    const heli = steps().querySelector('[data-ui=lobby-helicopter]');
+    assert.ok(heli, 'the ready step is the helicopter lobby');
+    assert.equal(heli.querySelectorAll('[data-color]').length, 1, 'it carries one ball');
+    assert.equal(heli.querySelector('[data-color]').dataset.color, '4', 'in the saved colour');
+    assert.equal(steps().querySelectorAll('[data-ui=color-picker]').length, 0, 'no inline palette: the badge opens it');
+    assert.equal(heli.style.getPropertyValue('--heli-rotor-state'), 'paused', 'display.helicopter.rotorSeconds 0 holds the rotors');
+    assert.equal(heli.style.getPropertyValue('--heli-hover'), '9px', 'display.helicopter.hover reaches the craft');
+    assert.equal(heli.style.getPropertyValue('--lobby-ball'), '40px', 'display.lobby.ballSize sizes the craft too');
+    live.helicopter.rotorSeconds = 0.5;
+    await act(async () => { await new Promise(r => setTimeout(r, 40)); });
+    assert.equal(heli.style.getPropertyValue('--heli-rotor'), '0.5s', 'live from the development tuner');
+    assert.equal(heli.style.getPropertyValue('--heli-rotor-state'), 'running');
+    const name = steps().querySelector('input');
+    await act(async () => { const set = Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype, 'value').set; set.call(name, 'Ana'); name.dispatchEvent(new dom.window.Event('input', { bubbles: true })); });
+    assert.equal(heli.querySelector('[data-ui=my-color-badge]').parentElement.textContent, 'Ana', 'the caption shows the name as typed');
+    await click(heli.querySelector('[data-ui=my-color-badge]'));
+    const picker = heli.querySelector('[data-ui=lobby-color-picker]');
+    assert.ok(picker, 'the badge opens the party colour picker');
+    const swatches = [...picker.querySelectorAll('[data-color]')];
+    assert.equal(swatches.length, 12, 'the same 12-colour palette');
+    assert.equal(swatches.filter(b => b.disabled).length, 0, 'alone: nothing is crossed out');
+    assert.equal(picker.querySelector('[aria-checked=true]').dataset.color, '4');
+    t.commands.length = 0;
+    await click(swatches[7]);
+    assert.deepEqual(t.commands, [{ type: 'set-color', color: 7 }], 'the same SET_COLOR command as the party lobby, saved the same way');
+    t.commands.length = 0;
+    await click(button('Play solo'));
+    assert.deepEqual(t.commands, [{ type: 'play-solo', name: 'Ana', mode: 'standard', world: 'gaia' }], 'Play starts the chosen mode and world');
+    await t.teardown();
+  });
+
   await scenario('custom rules (VIS-U): values shown, per-rule and full reset, draft remembered, Play solo and Host party carry the rules', async () => {
     const { DEFAULT_RULES } = await import('../src/shared/rules.js');
     dom.window.localStorage.removeItem('puttplanet.customRules');
