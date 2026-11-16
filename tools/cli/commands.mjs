@@ -7,7 +7,7 @@ import { solvePar } from './par-solver.mjs';
 
 import { SimulationEngine } from '../../src/simulation/index.js';
 import { FIXED_TIMESTEP, STARTER_COURSE_INDICES } from '../../src/shared/constants.js';
-import { WORLD_IDS, courseWorld, isWorldId, worldGravity } from '../../src/shared/worlds.js';
+import { DEFAULT_WORLD, WORLD_IDS, courseWorld, isWorldId, worldGravity } from '../../src/shared/worlds.js';
 import { buildCourseCatalog, detectStaleCourses, detectStaleHashes, generateArena, validateCourseDefinitions, createCourseDocument, validateCourseDocument } from '../../src/courses/index.js';
 
 /** Simulation ticks per second, from the one fixed timestep (240 Hz). */
@@ -86,8 +86,8 @@ export function runShot(holes, mapArg, puttArg, degArg, powerArg) {
  * SV1: shortest robust multi-stroke route for one putt (hole-in-one optional).
  * Exit 0 when a robust route within 6 strokes exists; 1 otherwise (never weakened to pass).
  */
-export function runSolve(holes, mapArg, puttArg, flag, { world: worldArg } = {}) {
-  if (worldArg !== undefined && !isWorldId(worldArg)) return fail(`unknown world "${worldArg}"; use ${WORLD_IDS.join(', ')}`);
+export function runSolve(holes, mapArg, puttArg, flag, { world = DEFAULT_WORLD } = {}) {
+  if (!isWorldId(world)) return fail(`unknown world "${world}"; use ${WORLD_IDS.join(', ')}`);
   if ([mapArg, puttArg].some(value => value == null || String(value).trim() === '')) return fail('solve requires map and putt');
   const map = Number(mapArg);
   const putt = Number(puttArg);
@@ -95,7 +95,6 @@ export function runSolve(holes, mapArg, puttArg, flag, { world: worldArg } = {})
   const count = holes[map].putts?.length ?? 1;
   if (!Number.isInteger(putt) || putt < 0 || putt >= count) return fail(`putt must be an integer 0..${count - 1} for map ${map}`);
   if (flag != null && flag !== '--full') return fail('only --full is supported after map and putt');
-  const world = worldArg ?? courseWorld(holes[map]); // default: the world the map is on (VIS-G)
   const result = { world, ...solvePar(holes[map], putt, { full: flag === '--full', gravity: worldGravity(world) }) };
   return { code: result.status === 'route' ? 0 : 1, result, lines: [JSON.stringify({ map, putt, ...result })] };
 }
@@ -154,6 +153,6 @@ export const USAGE = [
   '  checks [--since <ref>] [--json] [paths...]  recommend which verification commands to run for the changed paths, and why',
   '  arena <name>                  print generated arena JSON; quote names containing spaces',
   '  validate                      schema + stale-metadata check (exit 1 on any problem)',
-  '  solve <map> <putt> [--full] [--world <id>]  shortest robust route within par 2..6 (putt is 0-based; --full = finer waypoint grid, larger budget; --world gaia|ares|luna solves at that world gravity, default: the world the map is on)',
+  '  solve <map> <putt> [--full] [--world <id>]  shortest robust route within par 2..6 (putt is 0-based; --full = finer waypoint grid, larger budget; --world gaia|ares|luna solves at that world gravity, default the course world, Gaia unless its data names one)',
   '  shot <map> <putt> <deg> <pwr> run one headless shot (putt is 0-based, power 0..1)',
 ];
