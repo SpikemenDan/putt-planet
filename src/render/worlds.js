@@ -64,20 +64,64 @@ export function buildAresTexture(random) {
   return rgb;
 }
 
-/** Luna texture: pale highlands, dark maria with soft edges, and many overlapping craters. */
+/** A small seeded generator, so the extra Luna detail draws one number from the shared stream instead of hundreds. */
+function seeded(seed) {
+  let a = Math.floor(seed * 4294967296) >>> 0;
+  return () => { a = (a + 0x6d2b79f5) >>> 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+
+/** Bright ray systems from a few young craters: thin streaks fanning out over the surface, strongest near the crater. */
+function stampRays(tone, random, count) {
+  for (let n = 0; n < count; n++) {
+    const cx = random() * WORLD_TEX_W, cy = (0.25 + random() * 0.5) * WORLD_TEX_H, reach = 40 + random() * 50, spokes = 9 + Math.floor(random() * 6);
+    const angles = Array.from({ length: spokes }, () => random() * Math.PI * 2), widths = angles.map(() => 0.04 + random() * 0.05);
+    for (let dy = -reach; dy <= reach; dy++) {
+      const y = Math.round(cy + dy);
+      if (y < 0 || y >= WORLD_TEX_H) continue;
+      const stretch = 1 / Math.max(0.3, Math.cos((y / WORLD_TEX_H - 0.5) * Math.PI));
+      for (let dx = -Math.ceil(reach * stretch); dx <= Math.ceil(reach * stretch); dx++) {
+        const d = Math.hypot(dx / stretch, dy);
+        if (d < 3 || d > reach) continue;
+        const a = Math.atan2(dy, dx / stretch);
+        let ray = 0;
+        angles.forEach((b, k) => { const off = Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b))); ray = Math.max(ray, 1 - smooth(0, widths[k], off)); });
+        const x = (((Math.round(cx) + dx) % WORLD_TEX_W) + WORLD_TEX_W) % WORLD_TEX_W;
+        tone[y * WORLD_TEX_W + x] *= 1 + 0.2 * ray * (1 - d / reach) + 0.12 * (1 - smooth(3, 9, d));
+      }
+    }
+  }
+}
+
+/**
+ * Luna texture: pale highlands in faintly warm and cool tones, dark maria with soft edges, a great ringed basin, many overlapping craters,
+ * a few young craters throwing bright rays, and thin winding rilles.
+ */
 export function buildLunaTexture(random) {
   const base = makeFbm(random, 6, 3, 5), maria = makeFbm(random, 3, 2, 4), fine = makeNoise(random, 64, 32), life = makeFbm(random, 7, 4, 3);
+  const extra = seeded(random()), hue = makeFbm(extra, 4, 2, 4), wind = makeNoise(extra, 8, 4);
   const tone = new Float32Array(WORLD_TEX_W * WORLD_TEX_H).fill(1);
   stampCraters(tone, random, 90, 2.5, 12);
   stampCraters(tone, random, 14, 12, 26);
+  stampCraters(tone, extra, 160, 1.2, 3.2, { rim: 0.22 }); // a fine scatter of small pits
+  stampRays(tone, extra, 4);
+  const basin = { u: 0.3 + extra() * 0.4, v: 0.42 + extra() * 0.16, r: 0.11 }; // one great basin: a dark floor inside two mountain rings
+  const rilles = Array.from({ length: 3 }, () => ({ u: extra(), v: 0.3 + extra() * 0.4, len: 0.08 + extra() * 0.1, tilt: (extra() - 0.5) * 1.6 }));
   const rgb = new Uint8Array(WORLD_TEX_W * WORLD_TEX_H * 3);
   for (let y = 0; y < WORLD_TEX_H; y++) {
     const v = (y + 0.5) / WORLD_TEX_H;
     for (let x = 0; x < WORLD_TEX_W; x++) {
-      const u = x / WORLD_TEX_W, i = y * WORLD_TEX_W + x, h = base(u, v), m = smooth(0.5, 0.6, maria(u, v));
+      const u = x / WORLD_TEX_W, i = y * WORLD_TEX_W + x, h = base(u, v);
+      const bu = Math.abs(u - basin.u), bd = Math.hypot(Math.min(bu, 1 - bu) * 2, v - basin.v) / basin.r;
+      const floor = 1 - smooth(0.7, 0.95, bd), rings = Math.exp(-(((bd - 1) / 0.07) ** 2)) + 0.6 * Math.exp(-(((bd - 1.45) / 0.06) ** 2));
+      const m = Math.max(smooth(0.5, 0.6, maria(u, v)), floor * 0.9);
+      let g = tone[i] * (1 + 0.16 * rings * (0.6 + 0.8 * wind(u, v)));
+      for (const r of rilles) { // a narrow winding channel
+        const du = ((u - r.u + 1.5) % 1) - 0.5, along = du * Math.cos(r.tilt) + (v - r.v) * Math.sin(r.tilt), across = -du * Math.sin(r.tilt) + (v - r.v) * Math.cos(r.tilt) + (wind(u, v) - 0.5) * 0.02;
+        if (Math.abs(along) < r.len) g *= 1 - 0.28 * (1 - smooth(0.001, 0.004, Math.abs(across))) * smooth(r.len, r.len * 0.6, Math.abs(along));
+      }
       const light = 186 + (h - 0.5) * 70 + (fine(u, v) - 0.5) * 14;
-      const g = tone[i], dark = mix(1, 0.52, m); // maria: darker, a little warmer
-      let c = [light * dark * g * 1.02, light * dark * g, light * dark * g * (1.06 - m * 0.08)];
+      const dark = mix(1, 0.52, m), warm = (hue(u, v) - 0.5) * 0.12; // highlands drift between faintly warm and faintly cool grey
+      let c = [light * dark * g * (1.02 + warm), light * dark * g * (1 + warm * 0.3), light * dark * g * (1.06 - m * 0.08 - warm)];
       const lat = Math.abs(0.5 - v) * 180, ice = smooth(68, 78, lat + (h - 0.5) * 14), teal = smooth(0.64, 0.7, life(u, v)) * smooth(0.5, 0.2, m) * smooth(70, 50, lat);
       c = c.map((q, k) => mix(q, [88, 190, 160][k] * g, teal * 0.7)); // something growing in the deep craters
       c = c.map((q, k) => mix(q, [240, 248, 255][k], ice));
