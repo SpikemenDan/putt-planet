@@ -462,7 +462,7 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
       for (const [x, y, r, rgb, a] of blobs) {
         const grad = g.createRadialGradient(x * w, y * h, 0, x * w, y * h, r * w);
         grad.addColorStop(0, 'rgba(' + rgb + ',' + a + ')'); grad.addColorStop(1, 'rgba(' + rgb + ',0)');
-        g.fillStyle = grad; g.fillRect(0, 0, w, h);
+        g.fillStyle = grad; g.fillRect(x * w - r * w, y * h - r * w, 2 * r * w, 2 * r * w); // only the puff's own square: outside it the gradient is clear
       }
       return c;
     };

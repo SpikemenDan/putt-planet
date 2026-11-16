@@ -70,26 +70,33 @@ function seeded(seed) {
   return () => { a = (a + 0x6d2b79f5) >>> 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 }
 
-/** Bright ray systems from a few young craters: thin streaks fanning out over the surface, strongest near the crater. */
+/** Bright ray systems from a few young craters: thin streaks fanning out over the surface, strongest near the crater. Each streak is
+ * walked along its length (not tested at every pixel), so it costs little to build. */
 function stampRays(tone, random, count) {
+  const lit = new Float32Array(tone.length);
   for (let n = 0; n < count; n++) {
     const cx = random() * WORLD_TEX_W, cy = (0.25 + random() * 0.5) * WORLD_TEX_H, reach = 40 + random() * 50, spokes = 9 + Math.floor(random() * 6);
-    const angles = Array.from({ length: spokes }, () => random() * Math.PI * 2), widths = angles.map(() => 0.04 + random() * 0.05);
-    for (let dy = -reach; dy <= reach; dy++) {
-      const y = Math.round(cy + dy);
-      if (y < 0 || y >= WORLD_TEX_H) continue;
-      const stretch = 1 / Math.max(0.3, Math.cos((y / WORLD_TEX_H - 0.5) * Math.PI));
-      for (let dx = -Math.ceil(reach * stretch); dx <= Math.ceil(reach * stretch); dx++) {
-        const d = Math.hypot(dx / stretch, dy);
-        if (d < 3 || d > reach) continue;
-        const a = Math.atan2(dy, dx / stretch);
-        let ray = 0;
-        angles.forEach((b, k) => { const off = Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b))); ray = Math.max(ray, 1 - smooth(0, widths[k], off)); });
-        const x = (((Math.round(cx) + dx) % WORLD_TEX_W) + WORLD_TEX_W) % WORLD_TEX_W;
-        tone[y * WORLD_TEX_W + x] *= 1 + 0.2 * ray * (1 - d / reach) + 0.12 * (1 - smooth(3, 9, d));
+    for (let k = 0; k < spokes; k++) {
+      const a = random() * Math.PI * 2, half = 1 + random() * 1.6, ca = Math.cos(a), sa = Math.sin(a);
+      for (let d = 3; d < reach; d += 0.7) {
+        const width = half * (0.6 + d / reach), fade = 0.2 * (1 - d / reach);
+        for (let w = -Math.ceil(width); w <= Math.ceil(width); w++) {
+          const y = Math.round(cy + sa * d + ca * w);
+          if (y < 0 || y >= WORLD_TEX_H) continue;
+          const stretch = 1 / Math.max(0.3, Math.cos((y / WORLD_TEX_H - 0.5) * Math.PI));
+          const x = (((Math.round(cx + (ca * d - sa * w) * stretch)) % WORLD_TEX_W) + WORLD_TEX_W) % WORLD_TEX_W, i = y * WORLD_TEX_W + x;
+          lit[i] = Math.max(lit[i], fade * (1 - Math.abs(w) / (width + 1)));
+        }
       }
     }
+    for (let dy = -9; dy <= 9; dy++) for (let dx = -9; dx <= 9; dx++) { // a bright splash round the crater itself
+      const y = Math.round(cy + dy), d = Math.hypot(dx, dy);
+      if (y < 0 || y >= WORLD_TEX_H || d > 9) continue;
+      const i = y * WORLD_TEX_W + (((Math.round(cx) + dx) % WORLD_TEX_W) + WORLD_TEX_W) % WORLD_TEX_W;
+      lit[i] = Math.max(lit[i], 0.12 * (1 - smooth(3, 9, d)));
+    }
   }
+  for (let i = 0; i < tone.length; i++) tone[i] *= 1 + lit[i];
 }
 
 /**
@@ -98,11 +105,11 @@ function stampRays(tone, random, count) {
  */
 export function buildLunaTexture(random) {
   const base = makeFbm(random, 6, 3, 5), maria = makeFbm(random, 3, 2, 4), fine = makeNoise(random, 64, 32), life = makeFbm(random, 7, 4, 3);
-  const extra = seeded(random()), hue = makeFbm(extra, 4, 2, 4), wind = makeNoise(extra, 8, 4);
+  const extra = seeded(random()), hue = makeFbm(extra, 4, 2, 2), wind = makeNoise(extra, 8, 4);
   const tone = new Float32Array(WORLD_TEX_W * WORLD_TEX_H).fill(1);
   stampCraters(tone, random, 90, 2.5, 12);
   stampCraters(tone, random, 14, 12, 26);
-  stampCraters(tone, extra, 160, 1.2, 3.2, { rim: 0.22 }); // a fine scatter of small pits
+  stampCraters(tone, extra, 100, 1.4, 3.2, { rim: 0.22 }); // a fine scatter of small pits
   stampRays(tone, extra, 4);
   const basin = { u: 0.3 + extra() * 0.4, v: 0.42 + extra() * 0.16, r: 0.11 }; // one great basin: a dark floor inside two mountain rings
   const rilles = Array.from({ length: 3 }, () => ({ u: extra(), v: 0.3 + extra() * 0.4, len: 0.08 + extra() * 0.1, tilt: (extra() - 0.5) * 1.6 }));
@@ -112,10 +119,11 @@ export function buildLunaTexture(random) {
     for (let x = 0; x < WORLD_TEX_W; x++) {
       const u = x / WORLD_TEX_W, i = y * WORLD_TEX_W + x, h = base(u, v);
       const bu = Math.abs(u - basin.u), bd = Math.hypot(Math.min(bu, 1 - bu) * 2, v - basin.v) / basin.r;
-      const floor = 1 - smooth(0.7, 0.95, bd), rings = Math.exp(-(((bd - 1) / 0.07) ** 2)) + 0.6 * Math.exp(-(((bd - 1.45) / 0.06) ** 2));
+      const near = bd < 1.7, floor = near ? 1 - smooth(0.7, 0.95, bd) : 0, rings = near ? Math.exp(-(((bd - 1) / 0.07) ** 2)) + 0.6 * Math.exp(-(((bd - 1.45) / 0.06) ** 2)) : 0;
       const m = Math.max(smooth(0.5, 0.6, maria(u, v)), floor * 0.9);
-      let g = tone[i] * (1 + 0.16 * rings * (0.6 + 0.8 * wind(u, v)));
+      let g = rings > 0.001 ? tone[i] * (1 + 0.16 * rings * (0.6 + 0.8 * wind(u, v))) : tone[i];
       for (const r of rilles) { // a narrow winding channel
+        if (Math.abs(v - r.v) > r.len) continue;
         const du = ((u - r.u + 1.5) % 1) - 0.5, along = du * Math.cos(r.tilt) + (v - r.v) * Math.sin(r.tilt), across = -du * Math.sin(r.tilt) + (v - r.v) * Math.cos(r.tilt) + (wind(u, v) - 0.5) * 0.02;
         if (Math.abs(along) < r.len) g *= 1 - 0.28 * (1 - smooth(0.001, 0.004, Math.abs(across))) * smooth(r.len, r.len * 0.6, Math.abs(along));
       }
