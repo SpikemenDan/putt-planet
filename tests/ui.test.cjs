@@ -106,7 +106,15 @@ function fakeClock() {
     const rows = [...t.within('[data-ui=scoreboard]').children].map(r => [...r.children].map(c => c.textContent));
     assert.deepEqual(rows, legacyRows);
     const dots = [...t.within('[data-ui=scoreboard]').children].slice(1).map(r => r.querySelector('i').style.background);
-    assert.deepEqual(dots, legacyDots, 'player colours');
+    // The legacy recording used the original eight colours; since the 2026-11-14 palette pruning (VIS-M3) the same palette
+    // indexes draw the new colours. Map each recorded colour to its index and expect the current colour at that index.
+    const ORIGINAL_EIGHT = ['#ff4fb8', '#3e8ef7', '#f5a623', '#8e4ec6', '#12a594', '#e5484d', '#99d52a', '#e8e8e8'];
+    const toHex = css => '#' + css.match(/\d+/g).map(n => (+n).toString(16).padStart(2, '0')).join('');
+    const toCss = hex => 'rgb(' + [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)).join(', ') + ')';
+    const { PLAYER_COLORS } = await import('../src/shared/colors.js');
+    const indexes = legacyDots.map(css => ORIGINAL_EIGHT.indexOf(toHex(css)));
+    assert.ok(indexes.every(i => i >= 0), 'every recorded dot is one of the original eight colours');
+    assert.deepEqual(dots, indexes.map(i => toCss(PLAYER_COLORS[i])), 'player colours: the same palette indexes as legacy');
 
     await act(async () => t.store.openCard());
     const kind = c => ({ lv: 'lv', hio: 'hio', u: 'u', o: 'o' }[c] || '');
@@ -854,38 +862,56 @@ function fakeClock() {
     await t.teardown();
   });
 
-  await scenario('colour step (VIS-M3): after Create the host sees the code, picks a free colour, then enters the plane lobby', async () => {
+  await scenario('lobby colour badge (owner, 2026-11-14): only my own badge opens the picker; taken colours are crossed out and update live; Escape and an outside click close it', async () => {
     const t = await setup();
-    await act(async () => t.store.setLocal({ colorStep: true, createdParty: true }));
-    assert.equal(t.within('[data-ui=room-lobby]'), null, 'the lobby waits for the colour pick');
-    const step = t.within('[data-ui=party-colour]');
-    assert.ok(step && shown(step));
-    assert.equal(step.querySelector('h1').textContent, 'Party created');
-    assert.equal(step.querySelector('[data-ui=party-code] strong').textContent, 'ABCD', 'the code appears once the party exists');
+    assert.equal(t.within('[data-ui=party-colour]'), null, 'no colour step on the way in');
+    const lobby = t.within('[data-ui=room-lobby]');
+    assert.ok(shown(lobby));
+    assert.equal(lobby.querySelector('[data-ui=lobby-color-picker]'), null, 'the picker starts closed');
     await t.send({ type: 'JOIN_ROOM', playerId: 'g1', name: 'Ben', color: 3 });
-    const swatches = [...step.querySelectorAll('[data-ui=color-picker] button')];
-    assert.equal(swatches[3].disabled, true, "Ben's colour is taken");
-    assert.match(swatches[3].getAttribute('aria-label'), /taken by Ben/);
+    const items = [...lobby.querySelectorAll('[data-ui=lobby-plane] [role=listitem]')];
+    assert.equal(items.length, 2);
+    assert.equal(items[0].querySelectorAll('button').length, 1, 'my badge is a button');
+    assert.equal(items[1].querySelectorAll('button').length, 0, "another player's badge is not");
+    const badge = lobby.querySelector('[data-ui=my-color-badge]');
+    assert.equal(badge.getAttribute('aria-haspopup'), 'dialog');
+    assert.equal(badge.getAttribute('aria-expanded'), 'false');
+    await click(badge);
+    const picker = () => lobby.querySelector('[data-ui=lobby-color-picker]');
+    assert.ok(picker(), 'clicking my badge opens the picker');
+    assert.equal(picker().getAttribute('role'), 'dialog');
+    assert.equal(badge.getAttribute('aria-expanded'), 'true');
+    const swatches = () => [...picker().querySelectorAll('[data-ui=color-picker] button')];
+    assert.equal(swatches().length, (await import('../src/shared/colors.js')).PLAYER_COLOR_COUNT, 'one swatch per palette colour');
+    const me = () => t.session.getSnapshot().players.host.color;
+    assert.equal(swatches()[me()].getAttribute('aria-checked'), 'true', 'my colour is checked');
+    assert.equal(dom.window.document.activeElement, swatches()[me()], 'focus moves into the picker, on my colour');
+    assert.equal(swatches()[3].disabled, true, "Ben's colour is crossed out");
+    assert.match(swatches()[3].className, /taken/);
+    assert.match(swatches()[3].getAttribute('aria-label'), /taken by Ben/);
+    // Live: Ben switches colour; his old colour frees up and the new one is crossed out at once.
+    await t.send({ type: 'SET_COLOR', playerId: 'g1', color: 9 });
+    assert.equal(swatches()[3].disabled, false, 'a colour another player leaves is free again');
+    assert.equal(swatches()[9].disabled, true, 'the colour they moved to is crossed out');
     t.commands.length = 0;
-    await click(swatches[5]);
-    assert.deepEqual(t.commands, [{ type: ui.UiCommands.SET_COLOR, color: 5 }]);
-    await click(swatches[3]);
+    await click(swatches()[6]);
+    assert.deepEqual(t.commands, [{ type: ui.UiCommands.SET_COLOR, color: 6 }]);
+    await click(swatches()[9]);
     assert.equal(t.commands.length, 1, 'a taken colour sends nothing');
-    t.commands.length = 0;
-    await click(button('Enter lobby'));
-    assert.deepEqual(t.commands, [{ type: ui.UiCommands.ENTER_LOBBY }]);
-    await act(async () => t.store.setLocal({ colorStep: false }));
-    assert.equal(t.within('[data-ui=party-colour]'), null);
-    assert.ok(shown(t.within('[data-ui=room-lobby]')));
+    // Escape closes and returns focus to the badge (after the short exit animation).
+    await act(async () => { dom.window.document.activeElement.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); });
+    await act(async () => { await new Promise(r => setTimeout(r, 200)); });
+    assert.equal(picker(), null, 'Escape closes it');
+    assert.equal(dom.window.document.activeElement, badge, 'focus returns to my badge');
+    // An outside click closes it too; a click inside does not.
+    await click(badge);
+    await act(async () => { picker().dispatchEvent(new dom.window.Event('pointerdown', { bubbles: true })); });
+    await act(async () => { await new Promise(r => setTimeout(r, 200)); });
+    assert.ok(picker(), 'a click inside keeps it open');
+    await act(async () => { lobby.querySelector('h1').dispatchEvent(new dom.window.Event('pointerdown', { bubbles: true })); });
+    await act(async () => { await new Promise(r => setTimeout(r, 200)); });
+    assert.equal(picker(), null, 'an outside click closes it');
     await t.teardown();
-    // A joiner's step names the party instead; the step never shows outside the lobby phase or in solo.
-    const g = await setup({ localId: 'host', isHost: false });
-    await act(async () => g.store.setLocal({ colorStep: true }));
-    assert.equal(g.within('[data-ui=party-colour] h1').textContent, 'Joined the party');
-    assert.equal(g.within('[data-ui=party-colour] [data-ui=party-code]'), null, 'the joiner already knows the code');
-    await act(async () => g.store.setLocal({ roomCode: '' }));
-    assert.equal(g.within('[data-ui=party-colour]'), null, 'solo rooms have no colour step');
-    await g.teardown();
   });
 
   await scenario('lobby: roster, host-only controls, solo-only modes disable for two players, Start sends SET_MODE then START_VOTING', async () => {
@@ -909,25 +935,6 @@ function fakeClock() {
       assert.deepEqual(plane.map(b => [b.textContent, Number(b.dataset.color)]), [['Ana (you)', players.host.color], ['Ben', players.g1.color]], 'both balls stand on the plane in their own colours');
     }
     assert.ok(button('Copy invite'));
-    // Ball colour picker (#161): the room's colours, taken ones disabled with the holder's name, picks sent as a command.
-    {
-      const picker = lobby.querySelector('[data-ui=color-picker]');
-      assert.ok(picker, 'the lobby shows a colour picker');
-      const swatches = [...picker.querySelectorAll('button')];
-      assert.equal(swatches.length, 30, 'one swatch per palette colour');
-      const players = t.session.getSnapshot().players;
-      assert.notEqual(players.host.color, players.g1.color, 'room colours are unique');
-      assert.equal(swatches[players.host.color].getAttribute('aria-checked'), 'true', 'my colour is marked selected');
-      assert.equal(swatches[players.g1.color].disabled, true, "another player's colour is unavailable");
-      assert.match(swatches[players.g1.color].getAttribute('aria-label'), /taken by Ben/);
-      assert.equal(swatches.filter(b => b.disabled).length, 1, 'only colours held by other players are disabled');
-      const pick = swatches.findIndex((b, i) => !b.disabled && i !== players.host.color);
-      t.commands.length = 0;
-      await click(swatches[pick]);
-      assert.deepEqual(t.commands, [{ type: ui.UiCommands.SET_COLOR, color: pick }], 'clicking a free swatch asks for that colour');
-      await click(swatches[players.g1.color]);
-      assert.equal(t.commands.length, 1, 'a taken swatch sends nothing');
-    }
     await setMode('tournament_3');
     t.commands.length = 0;
     await click(button('Start Game'));

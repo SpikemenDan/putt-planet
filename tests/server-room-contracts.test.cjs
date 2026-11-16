@@ -17,7 +17,7 @@ const assert = require('node:assert/strict');
   });
   await test('server authority separate from controller; versions 4 (peer) and 5 (server room) carry global hazards',async()=>{
     assert.equal((await import('../src/shared/constants.js')).PROTOCOL_VERSION,6);
-    assert.equal(c.SERVER_ROOM_VERSION,9);assert.ok(c.validRoomSnapshot(snapshot));
+    assert.equal(c.SERVER_ROOM_VERSION,10);assert.ok(c.validRoomSnapshot(snapshot));
     const invalid=copy(snapshot);invalid.session.context.hostId='p1';assert.equal(c.validRoomSnapshot(invalid),false);
     assert.equal(c.authorizeRoomFrame(command(),binding,snapshot,snapshot.serverTime),null);
     assert.equal(c.authorizeRoomFrame({...command(),connectionId:'socket_p2'},{...binding,playerId:'p2',connectionId:'socket_p2'},snapshot,snapshot.serverTime),'unauthorized');

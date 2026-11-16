@@ -111,9 +111,8 @@ export function createApp({ worldPreview = null, soloHazards = false, root, THRE
       if (opened.identity) resume.write(opened.roomCode, { ...opened.identity, name: request.name });
       room = opened; leaving = false;
       remoteSeen.clear(); presence = {}; activeRound = null; lastPhase = null; carriedInventory = [];
-      // VIS-M3: a party opens on the colour step (the host's code shows there first); a room already past its lobby skips it.
-      const colorStep = multi && room.snapshot?.phase === SessionPhases.LOBBY;
-      setLocal({ active: true, connecting: false, connected: true, id: room.localId, isHost: room.isHost, serverOwned: !!room.serverOwned, roomCode: room.roomCode, mode: 'lobby', strokes: 0, inventory: [], name: request.name, colorStep, createdParty: multi && create });
+      // VIS-M3: no colour step on the way in (owner, 2026-11-14): the room gives a free colour and the lobby picker changes it.
+      setLocal({ active: true, connecting: false, connected: true, id: room.localId, isHost: room.isHost, serverOwned: !!room.serverOwned, roomCode: room.roomCode, mode: 'lobby', strokes: 0, inventory: [], name: request.name });
       roomStops.push(room.onSnapshot(onSnapshot), room.onPresence(onPresence), room.onStatus(onStatus));
       if (room.isHost) publish(true);
       if (start && !multi) { room.command({ type: 'SET_MODE', mode: start }); room.command({ type: 'START_VOTING' }); }
@@ -137,7 +136,7 @@ export function createApp({ worldPreview = null, soloHazards = false, root, THRE
     endPutt(); carriedInventory = [];
     activeRound = null; lastPhase = null; presence = {}; remoteSeen.clear(); smooth.clear();
     audio.resetSession();
-    setLocal({ active: false, connecting: false, connected: true, reconnecting: false, mode: 'lobby', strokes: 0, inventory: [], colorStep: false, createdParty: false });
+    setLocal({ active: false, connecting: false, connected: true, reconnecting: false, mode: 'lobby', strokes: 0, inventory: [] });
   }
 
   function onStatus({ state, reason }) {
@@ -166,8 +165,7 @@ export function createApp({ worldPreview = null, soloHazards = false, root, THRE
 
   function onSnapshot(s) {
     if (!room) return;
-    // Once the party moves on from its lobby (the controller started), nobody is held on the colour step.
-    setLocal(s.phase === SessionPhases.LOBBY ? { isHost: room.isHost } : { isHost: room.isHost, colorStep: false });
+    setLocal({ isHost: room.isHost });
     store.setRoom(uiSnapshot(s), room.now());
     syncRound(s);
   }
@@ -515,7 +513,6 @@ export function createApp({ worldPreview = null, soloHazards = false, root, THRE
         toast(r.label);
         break;
       }
-      case UiCommands.ENTER_LOBBY: setLocal({ colorStep: false }); break;
       case UiCommands.SET_COLOR:
         if (!isColorIndex(command.color)) break;
         colorPref = command.color;

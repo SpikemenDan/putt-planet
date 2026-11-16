@@ -1,10 +1,10 @@
 // VIS-M3 (#175) party flow in two real browser contexts over the local room Worker: the Party menu makes no room, Create
-// gets a server-generated code, a wrong code fails clearly, each player picks a colour before the lobby, and the lobby shows
-// both balls on one plane in their colours.
+// gets a server-generated code, a wrong code fails clearly, players arrive with a free colour, and the plane lobby lets each
+// player change colour from their own badge, with colours other players hold crossed out live (owner, 2026-11-14).
 const { test, expect } = require('@playwright/test');
 const { openApp } = require('./support/app.cjs');
 
-test('party flow: Create shows the code afterwards, Join by code, colour before lobby, plane lobby', async ({ browser }, testInfo) => {
+test('party flow: Create shows the code afterwards, Join by code, plane lobby with a colour picker on my own badge', async ({ browser }, testInfo) => {
   const contexts = await Promise.all([0, 1].map(() => browser.newContext({ baseURL: testInfo.project.use.baseURL, viewport: { width: 1100, height: 900 } })));
   try {
     const [ana, ben] = await Promise.all(contexts.map(async (c, i) => openApp(await c.newPage(), ['Ana', 'Ben'][i])));
@@ -12,24 +12,23 @@ test('party flow: Create shows the code afterwards, Join by code, colour before 
     ana.page.on('websocket', ws => sockets.ana.push(ws.url()));
     ben.page.on('websocket', ws => sockets.ben.push(ws.url()));
 
-    // Opening Party creates nothing and shows no code.
+    // Opening Party creates nothing, shows no code and asks for no colour.
     await ana.menu('party');
     await expect(ana.button('Create party')).toBeVisible();
     await expect(ana.ui('landing').getByLabel('Party code')).toHaveValue('');
     await expect(ana.ui('party-code')).toHaveCount(0);
+    await expect(ana.ui('landing').locator('[data-ui=color-picker]')).toHaveCount(0);
     expect(sockets.ana, 'the Party menu opens no room socket').toEqual([]);
 
-    // Create: the room service generates the code, shown on the colour step.
+    // Create: the room service generates the code; the host lands straight in the plane lobby.
     await ana.ui('landing').getByLabel('Your name').fill('Ana');
     await ana.button('Create party').click();
-    await expect(ana.ui('party-colour')).toBeVisible({ timeout: 30_000 });
+    await expect(ana.ui('room-lobby')).toBeVisible({ timeout: 30_000 });
     await ana.loaded();
     expect(sockets.ana.every(url => url.endsWith('/api/rooms/_new/socket')), 'Create asks the Worker for a new code').toBe(true);
     const code = await ana.page.evaluate(() => window.__ppApp.room.roomCode);
     expect(code).toMatch(/^[a-hj-km-np-z2-9]{8}$/);
-    await expect(ana.ui('party-colour').locator('[data-ui=party-code] strong')).toHaveText(code.toUpperCase());
-    await expect(ana.ui('room-lobby')).toHaveCount(0);
-    await ana.page.screenshot({ path: testInfo.outputPath('1-host-colour-step.png') });
+    await expect(ana.ui('room-lobby').locator('[data-ui=party-code] strong')).toHaveText(code.toUpperCase());
 
     // A wrong code fails on the Party menu and creates nothing.
     await ben.menu('party');
@@ -40,32 +39,48 @@ test('party flow: Create shows the code afterwards, Join by code, colour before 
     await expect(ben.ui('landing')).toBeVisible();
     expect(await ben.page.evaluate(() => window.__ppApp.room)).toBeNull();
 
-    // Join by code: Ana's colour is taken on Ben's colour step; his pick reaches the room before he enters.
-    const anaColor = await ana.page.evaluate(() => { const r = window.__ppApp.room; return r.snapshot.players[r.localId].color; });
+    // Join by code: Ben arrives with a free colour, straight in the lobby.
     await ben.ui('landing').getByLabel('Party code').fill(code.toUpperCase());
     await ben.button('Join').click();
-    await expect(ben.ui('party-colour')).toBeVisible({ timeout: 30_000 });
+    await expect(ben.ui('room-lobby')).toBeVisible({ timeout: 30_000 });
     await ben.loaded();
-    await expect(ben.ui('party-colour').locator('h1')).toHaveText('Joined the party');
-    await expect(ben.ui('party-colour').locator(`[data-ui=color-picker] button[data-color="${anaColor}"]`)).toBeDisabled();
-    const pick = anaColor === 12 ? 13 : 12;
-    await ben.ui('party-colour').locator(`[data-ui=color-picker] button[data-color="${pick}"]`).click();
-    await expect(ben.ui('party-colour').locator(`[data-ui=color-picker] button[data-color="${pick}"]`)).toHaveAttribute('aria-checked', 'true');
-    await expect(ana.ui('party-colour').locator(`[data-ui=color-picker] button[data-color="${pick}"]`)).toBeDisabled();
-    await ben.page.screenshot({ path: testInfo.outputPath('2-joiner-colour-step.png') });
-    await ben.button('Enter lobby').click();
-    await ana.button('Enter lobby').click();
+    const colors = async p => p.page.evaluate(() => Object.fromEntries(Object.values(window.__ppApp.room.snapshot.players).map(v => [v.name, v.color])));
+    await expect.poll(async () => Object.keys(await colors(ana)).length).toBe(2);
+    const start = await colors(ana);
+    expect(start.Ana).not.toBe(start.Ben);
 
-    // The plane lobby: both balls, in their colours, for both players; Putt Pong is offered with exactly two.
+    // Only my own badge opens the picker; others' colours are crossed out; Escape closes it.
+    for (const p of [ana, ben]) await expect(p.ui('lobby-plane').locator('[role=listitem] button')).toHaveCount(1);
+    const benBadge = ben.ui('my-color-badge');
+    await benBadge.click();
+    const benPicker = ben.ui('lobby-color-picker');
+    await expect(benPicker).toBeVisible();
+    await expect(benPicker.locator(`button[data-color="${start.Ana}"]`)).toBeDisabled();
+    await ana.ui('my-color-badge').click();
+    const anaPicker = ana.ui('lobby-color-picker');
+    await expect(anaPicker.locator(`button[data-color="${start.Ben}"]`)).toBeDisabled();
+    const pick = [0, 1, 2, 3, 4, 5].find(i => i !== start.Ana && i !== start.Ben);
+    await benPicker.locator(`button[data-color="${pick}"]`).click();
+    await expect(benPicker.locator(`button[data-color="${pick}"]`)).toHaveAttribute('aria-checked', 'true');
+    // Live on Ana's open picker: Ben's new colour is crossed out and his old one is free again.
+    await expect(anaPicker.locator(`button[data-color="${pick}"]`)).toBeDisabled();
+    await expect(anaPicker.locator(`button[data-color="${start.Ben}"]`)).toBeEnabled();
+    await ana.page.screenshot({ path: testInfo.outputPath('lobby-picker.png') });
+    await ben.page.keyboard.press('Escape');
+    await expect(benPicker).toHaveCount(0);
+    await expect(benBadge).toBeFocused();
+    await ana.ui('room-lobby').locator('h1').click();
+    await expect(anaPicker).toHaveCount(0);
+
+    // The plane lobby: both balls in their colours for both players; Putt Pong is offered with exactly two.
     for (const p of [ana, ben]) {
       const balls = p.ui('lobby-plane').locator('[role=listitem]');
       await expect(balls).toHaveCount(2);
-      expect((await balls.evaluateAll(els => els.map(e => Number(e.dataset.color)))).sort((a, b) => a - b)).toEqual([anaColor, pick].sort((a, b) => a - b));
-      await expect(p.ui('room-lobby').locator('[data-ui=party-code] strong')).toHaveText(code.toUpperCase());
+      await expect.poll(async () => (await balls.evaluateAll(els => els.map(e => Number(e.dataset.color)))).sort((a, b) => a - b))
+        .toEqual([start.Ana, pick].sort((a, b) => a - b));
     }
     await expect(ana.ui('room-lobby').locator('select option[value=pong]')).toHaveCount(1);
     await expect(ana.ui('room-lobby').locator('[data-ui=no-powerups]')).toHaveCount(0);
-    await ana.page.screenshot({ path: testInfo.outputPath('3-plane-lobby.png') });
     expect(sockets.ben.filter(url => url.includes('/api/rooms/_new/')), 'joining never creates').toEqual([]);
     for (const p of [ana, ben]) expect(p.errors, p.name + ': no page or console errors').toEqual([]);
   } finally {

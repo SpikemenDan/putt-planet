@@ -67,7 +67,8 @@ export function takenColors(room, local) {
   const taken = {};
   for (const [id, p] of Object.entries(room?.players || {})) {
     if (id === local?.id || !isColorIndex(p.color)) continue;
-    if (p.connected || (room.roster || []).includes(id)) taken[p.color] = p.name;
+    // Connected players, the roster and seats the room holds for a disconnected player's return (`reserved`, online rooms).
+    if (p.connected || (room.roster || []).includes(id) || (room.reserved || []).includes(id)) taken[p.color] = p.name;
   }
   return taken;
 }
@@ -125,10 +126,8 @@ export function lobbyView(room, local, now, courses) {
   return {
     label: roomLabel(room, local),
     roster: players.map(p => ({ id: p.id, name: p.name + (p.id === local.id ? ' (you)' : ''), color: colorOf(room, local, p.id), you: p.id === local.id })),
-    // VIS-M3: the party code (shown only once a party exists), and the colour step every player passes before the lobby.
+    // VIS-M3: the party code, shown only once a party exists.
     code: local.roomCode ? local.roomCode.toUpperCase() : '',
-    created: !!local.createdParty,
-    colorStep: !!local.roomCode && !!local.colorStep && room.phase === SessionPhases.LOBBY,
     myColor: colorOf(room, local, local.id),
     takenColors: takenColors(room, local),
     showModes: !!local.isHost,

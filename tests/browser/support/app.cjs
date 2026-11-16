@@ -84,7 +84,7 @@ async function openApp(page, name) {
     async loaded() {
       await expect(page.locator('[data-ui=loading]')).toHaveCount(0, { timeout: 60_000 });
     },
-    /** Party menu (VIS-M3): Create, then pick nothing new on the colour step and enter the lobby. Returns the party code. */
+    /** Party menu (VIS-M3): Create; the party opens straight on the lobby. Returns the party code. */
     async create() {
       await p.menu('party');
       await visible('landing').getByLabel('Your name').fill(name);
@@ -92,7 +92,7 @@ async function openApp(page, name) {
       await p.enter();
       return page.evaluate(() => window.__ppApp.room.roomCode);
     },
-    /** Party menu (VIS-M3): type the code in the Join box, Join, then the colour step (while the party is in its lobby). */
+    /** Party menu (VIS-M3): type the code in the Join box and Join. */
     async joinCode(code) {
       await p.menu('party');
       await visible('landing').getByLabel('Your name').fill(name);
@@ -100,12 +100,10 @@ async function openApp(page, name) {
       await p.button('Join').click();
       await p.enter();
     },
-    /** Waits for the colour step (or a party already past its lobby), then enters the lobby. */
+    /** Waits for the lobby (or a party already past it: voting or play). */
     async enter() {
-      await explained(log, name + ' join', () => expect(page.locator('[data-ui=party-colour], [data-ui=map-select], [data-ui=game]').locator('visible=true').first()).toBeVisible());
+      await explained(log, name + ' join', () => expect(page.locator('[data-ui=room-lobby], [data-ui=map-select], [data-ui=game]').locator('visible=true').first()).toBeVisible());
       await p.loaded();
-      if (await visible('party-colour').isVisible()) await p.button('Enter lobby').click();
-      await explained(log, name + ' lobby', () => expect(page.locator('[data-ui=room-lobby], [data-ui=map-select], [data-ui=game]').locator('visible=true').first()).toBeVisible());
     },
     /**
      * A named party (`label`, any text a spec chooses): the first player to ask creates it and later players join it by

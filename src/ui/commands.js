@@ -19,8 +19,6 @@ export const UiCommands = Object.freeze({
   LEAVE: 'leave',
   /** { type } — Invite / Copy invite. */
   INVITE: 'invite',
-  /** { type } — Leave the colour step for the party lobby (VIS-M3): every player, host included, picks a colour first. */
-  ENTER_LOBBY: 'enter-lobby',
   /** { type, color } — Choose a ball colour (palette index). Saved locally; in a lobby it also asks the room for it. */
   SET_COLOR: 'set-color',
   /** { type, kind, id } — Choose a cosmetic (kind: ball, trail or celebration; id from the cosmetics catalog). */

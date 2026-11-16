@@ -1,7 +1,11 @@
-import { useEffect, useRef } from 'react';
-import { colorHex } from '../shared/colors.js';
+import { useEffect, useRef, useState } from 'react';
+import { colorHex, PLAYER_COLOR_NAMES } from '../shared/colors.js';
 import { useUiContext } from './context.js';
+import { ColorPicker } from './ColorPicker.jsx';
 import styles from './LobbyPlane.module.css';
+
+/** How long the picker takes to close (its exit animation), in ms. Matches `.closing` in LobbyPlane.module.css. */
+export const PICKER_CLOSE_MS = 140;
 
 /**
  * Copies `display.lobby` onto the plane as CSS variables. The shipped DISPLAY is frozen, so that is done once; the development
@@ -29,25 +33,74 @@ function useLobbyLook(ref, display, hidden) {
 }
 
 /**
- * The party lobby (VIS-M3 #175): every player's ball together on one plane, drawn in the colour they chose, with their
- * name on a caption under it. Names render as React text only.
+ * The colour picker that opens from the player's own colour badge (owner, 2026-11-14). Closes on Escape, on a click
+ * outside it, or from the badge again; focus moves into it on open and back to the badge on close.
  */
-export function LobbyPlane({ players = [], hidden = false }) {
+function BadgePicker({ selected, taken, onPick, onClose, badge, closing }) {
+  const root = useRef(null);
+  useEffect(() => {
+    const el = root.current;
+    el?.querySelector('[aria-checked=true]:not(:disabled), button:not(:disabled)')?.focus();
+    const doc = el?.ownerDocument;
+    const outside = e => { if (!el.contains(e.target) && !badge.current?.contains(e.target)) onClose(false); };
+    const key = e => { if (e.key === 'Escape') { e.stopPropagation(); onClose(true); } };
+    doc?.addEventListener('pointerdown', outside, true);
+    doc?.addEventListener('keydown', key, true);
+    return () => { doc?.removeEventListener('pointerdown', outside, true); doc?.removeEventListener('keydown', key, true); };
+  }, [onClose, badge]);
+  return (
+    <div ref={root} className={styles.picker + (closing ? ' ' + styles.closing : '')} role="dialog" aria-label="Your ball colour" data-ui="lobby-color-picker">
+      <p className={styles.pickerTitle}>Your ball colour</p>
+      <ColorPicker selected={selected} taken={taken} onPick={onPick} />
+      <p className={styles.pickerFoot}><span data-ui="colour-name">{PLAYER_COLOR_NAMES[selected] ?? ''}</span><span>✕ taken · Esc closes</span></p>
+    </div>
+  );
+}
+
+/**
+ * The party lobby (VIS-M3 #175): every player's ball together on one plane, drawn in their colour, with their name on a
+ * caption and a colour badge. Only the player's own badge is a button; it opens the colour picker, where colours other
+ * players hold (or keep reserved while away) are crossed out. Names render as React text only.
+ */
+export function LobbyPlane({ players = [], hidden = false, myColor = null, taken = {}, onPick }) {
   const { display } = useUiContext();
   const root = useRef(null);
+  const badge = useRef(null);
+  const [open, setOpen] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const timer = useRef(null);
   useLobbyLook(root, display, hidden);
+  const close = useRef(null);
+  close.current = (refocus) => {
+    if (!open || closing) return;
+    setClosing(true);
+    const view = root.current?.ownerDocument.defaultView ?? globalThis;
+    timer.current = view.setTimeout(() => { setOpen(false); setClosing(false); if (refocus) badge.current?.focus(); }, PICKER_CLOSE_MS);
+  };
+  const [onClose] = useState(() => refocus => close.current(refocus));
+  useEffect(() => () => { if (timer.current !== null) (root.current?.ownerDocument.defaultView ?? globalThis).clearTimeout(timer.current); }, []);
+  useEffect(() => { if (hidden) { setOpen(false); setClosing(false); } }, [hidden]);
+  const toggle = () => { if (open) onClose(true); else setOpen(true); };
   return (
-    <div ref={root} className={styles.stage} data-ui="lobby-plane" aria-label="Players in the party" role="list">
+    <div ref={root} className={styles.wrap} data-ui="lobby-plane">
+      <div className={styles.stage}>
       <div className={styles.plane} aria-hidden="true" />
-      <div className={styles.balls}>
+      <div className={styles.balls} role="list" aria-label="Players in the party">
         {players.map((p, i) => (
           <div key={p.id} className={styles.player + (p.you ? ' ' + styles.you : '')} role="listitem" data-color={p.color} style={{ '--ball': colorHex(p.color), '--delay': (i * 0.37) + 's' }}>
             <span className={styles.ball} />
             <span className={styles.shadow} aria-hidden="true" />
-            <span className={styles.name}>{p.name}</span>
+            <span className={styles.name}>
+              {p.you
+                ? <button ref={badge} type="button" className={styles.badge + ' ' + styles.mine} aria-label={'Change your ball colour (now ' + (PLAYER_COLOR_NAMES[p.color] ?? '') + ')'} aria-haspopup="dialog" aria-expanded={open && !closing} onClick={toggle} data-ui="my-color-badge" />
+                : <span className={styles.badge} aria-hidden="true" />}
+              <span className={styles.label}>{p.name}</span>
+            </span>
           </div>
         ))}
       </div>
+      </div>
+      {open && <BadgePicker selected={myColor} taken={taken} onPick={onPick} onClose={onClose} badge={badge} closing={closing} />}
     </div>
   );
 }

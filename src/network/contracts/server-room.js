@@ -15,7 +15,8 @@ import { MAP_COUNT } from '../../shared/map-count.js';
 // 8: map indices run to MAP_COUNT (24) with the VIS-G maps.
 // 9: hello states its intent (VIS-M3): 'create' opens a new room under a server-generated code (roomCode null, the only
 //    hello that may carry rules); 'join' needs an existing room. New errors room-not-found and room-exists.
-export const SERVER_ROOM_VERSION = 9;
+// 10: the ball palette is pruned to 12 easy-to-tell-apart colours (owner, 2026-11-14), so colour indices change meaning.
+export const SERVER_ROOM_VERSION = 10;
 /** Hello intents (VIS-M3): only the host's Create makes a room; a Join never does. */
 export const HELLO_INTENTS = Object.freeze(['create', 'join']);
 /** Socket path that asks the Worker for a new room under a code it generates (VIS-M3). Never a valid room code (`_`). */

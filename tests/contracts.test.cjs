@@ -223,18 +223,43 @@ async function run() {
     const { PLAYER_COLORS, PLAYER_COLOR_NAMES, PLAYER_COLOR_COUNT, isColorIndex, colorHex } = shared;
     assert.equal(PLAYER_COLORS.length, PLAYER_COLOR_COUNT);
     assert.equal(PLAYER_COLOR_NAMES.length, PLAYER_COLOR_COUNT);
-    assert.ok(PLAYER_COLOR_COUNT >= 21 + 4, 'at least 21 rainbow shades plus white, black, gray and brown');
+    // Owner, 2026-11-14 (VIS-M3): a smaller palette that is easy to tell apart, with room for the 8-player cap plus spares.
+    const { MAX_PLAYERS } = await import('../src/shared/constants.js');
+    assert.ok(PLAYER_COLOR_COUNT >= MAX_PLAYERS + 2, 'every player can still change colour in a full room');
     assert.equal(new Set(PLAYER_COLORS).size, PLAYER_COLOR_COUNT, 'every colour is distinct');
     assert.equal(new Set(PLAYER_COLOR_NAMES).size, PLAYER_COLOR_COUNT, 'every colour has its own name');
     assert.ok(PLAYER_COLORS.every(c => /^#[0-9a-f]{6}$/.test(c)));
-    for (const hue of ['red', 'orange', 'yellow', 'green', 'blue', 'indigo', 'violet']) {
-      for (const name of [hue, 'light ' + hue, 'dark ' + hue]) {
-        assert.ok(PLAYER_COLOR_NAMES.some(n => n.toLowerCase() === name), 'palette has ' + name);
+    for (const extra of ['white', 'black', 'gray', 'brown']) assert.ok(PLAYER_COLOR_NAMES.some(n => n.toLowerCase() === extra), 'palette has ' + extra);
+    // Independent CIEDE2000 (Sharma et al. 2005) on sRGB/D65, and Machado 2009 full-severity colour-vision simulation.
+    const lin = c => (c /= 255) <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+    const rgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+    const lab = h => { const [r, g, b] = rgb(h).map(lin); const f = t => t > 216 / 24389 ? Math.cbrt(t) : (24389 / 27 * t + 16) / 116;
+      const X = (0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.95047, Y = 0.2126 * r + 0.7152 * g + 0.0722 * b, Z = (0.0193 * r + 0.1192 * g + 0.9505 * b) / 1.08883;
+      return [116 * f(Y) - 16, 500 * (f(X) - f(Y)), 200 * (f(Y) - f(Z))]; };
+    const de2000 = ([L1, a1, b1], [L2, a2, b2]) => { const d = Math.PI / 180, C1 = Math.hypot(a1, b1), C2 = Math.hypot(a2, b2), Cb = (C1 + C2) / 2, G = 0.5 * (1 - Math.sqrt(Cb ** 7 / (Cb ** 7 + 25 ** 7)));
+      const a1p = (1 + G) * a1, a2p = (1 + G) * a2, C1p = Math.hypot(a1p, b1), C2p = Math.hypot(a2p, b2), hp = (a, b) => { const h = Math.atan2(b, a) / d; return h < 0 ? h + 360 : h; };
+      const h1 = hp(a1p, b1), h2 = hp(a2p, b2); let dh = h2 - h1; if (C1p * C2p === 0) dh = 0; else if (dh > 180) dh -= 360; else if (dh < -180) dh += 360;
+      const dL = L2 - L1, dC = C2p - C1p, dH = 2 * Math.sqrt(C1p * C2p) * Math.sin(dh * d / 2), Lb = (L1 + L2) / 2, Cbp = (C1p + C2p) / 2;
+      let hb = h1 + h2; if (C1p * C2p !== 0) hb = Math.abs(h1 - h2) > 180 ? (h1 + h2 + (h1 + h2 < 360 ? 360 : -360)) / 2 : (h1 + h2) / 2;
+      const T = 1 - 0.17 * Math.cos((hb - 30) * d) + 0.24 * Math.cos(2 * hb * d) + 0.32 * Math.cos((3 * hb + 6) * d) - 0.2 * Math.cos((4 * hb - 63) * d);
+      const Rc = 2 * Math.sqrt(Cbp ** 7 / (Cbp ** 7 + 25 ** 7)), Sl = 1 + 0.015 * (Lb - 50) ** 2 / Math.sqrt(20 + (Lb - 50) ** 2), Sc = 1 + 0.045 * Cbp, Sh = 1 + 0.015 * Cbp * T;
+      const Rt = -Math.sin(2 * 30 * Math.exp(-(((hb - 275) / 25) ** 2)) * d) * Rc;
+      return Math.sqrt((dL / Sl) ** 2 + (dC / Sc) ** 2 + (dH / Sh) ** 2 + Rt * (dC / Sc) * (dH / Sh)); };
+    // Reference pair from Sharma et al. (2005), table 1, row 1.
+    assert.equal(+de2000([50, 2.6772, -79.7751], [50, 0, -82.7485]).toFixed(4), 2.0425);
+    const enc = c => Math.round(255 * Math.min(1, Math.max(0, c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055)));
+    const simulate = m => h => { const l = rgb(h).map(lin); return '#' + m.map(r => enc(r[0] * l[0] + r[1] * l[1] + r[2] * l[2]).toString(16).padStart(2, '0')).join(''); };
+    const vision = { normal: h => h,
+      deuteranopia: simulate([[0.367322, 0.860646, -0.227968], [0.280085, 0.672501, 0.047413], [-0.011820, 0.042940, 0.968881]]),
+      protanopia: simulate([[0.152286, 1.052583, -0.204868], [0.114503, 0.786281, 0.099216], [-0.003882, -0.048116, 1.051998]]),
+      tritanopia: simulate([[1.255528, -0.076749, -0.178779], [-0.078411, 0.930809, 0.147602], [0.004733, 0.691367, 0.303900]]) };
+    for (const [kind, see] of Object.entries(vision)) {
+      const floor = kind === 'normal' ? 20 : 6;
+      for (let i = 0; i < PLAYER_COLOR_COUNT; i++) for (let j = i + 1; j < PLAYER_COLOR_COUNT; j++) {
+        const delta = de2000(lab(see(PLAYER_COLORS[i])), lab(see(PLAYER_COLORS[j])));
+        assert.ok(delta >= floor, `${kind}: ${PLAYER_COLOR_NAMES[i]} and ${PLAYER_COLOR_NAMES[j]} are too alike (ΔE2000 ${delta.toFixed(1)} < ${floor})`);
       }
     }
-    for (const extra of ['white', 'black', 'gray', 'brown']) assert.ok(PLAYER_COLOR_NAMES.some(n => n.toLowerCase() === extra), 'palette has ' + extra);
-    assert.deepEqual(Array.from(PLAYER_COLORS.slice(0, 8)),
-      ['#ff4fb8', '#3e8ef7', '#f5a623', '#8e4ec6', '#12a594', '#e5484d', '#99d52a', '#e8e8e8'], 'the original eight colours keep their indexes');
     assert.equal(isColorIndex(0), true);
     assert.equal(isColorIndex(PLAYER_COLOR_COUNT - 1), true);
     for (const bad of [-1, PLAYER_COLOR_COUNT, 1.5, '1', null, undefined, NaN]) assert.equal(isColorIndex(bad), false, String(bad));
