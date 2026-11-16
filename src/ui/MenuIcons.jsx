@@ -44,13 +44,45 @@ const PATHS = {
     <path d="M4 15h24" {...line} strokeWidth="2.2" />
     <circle cx="16" cy="7" r="4" fill="#fff" stroke={INK} strokeWidth="2.2" />
   </>,
-  /** Solo (main menu): a ball on a tee in front of a flag. */
+  /** Solo (main menu, owner 2026-11-16): one clean golf ball, a soft shade on its lower right, a glint and six tidy dimples. */
   solo: <>
-    <path d="M22 28V4" {...line} />
-    <path d="M22 4l8 3-8 3.2z" fill="#ffd23f" stroke={INK} strokeWidth="2.2" strokeLinejoin="round" />
-    <path d="M10 24l1.5 5h1l1.5-5z" fill="#fff8e4" stroke={INK} strokeWidth="2" strokeLinejoin="round" />
-    <circle cx="12" cy="17" r="7" fill="#fff" stroke={INK} strokeWidth="2.4" />
-    <circle cx="10" cy="15" r="1.1" fill={INK} opacity=".35" /><circle cx="14" cy="15.5" r="1.1" fill={INK} opacity=".35" /><circle cx="12" cy="19" r="1.1" fill={INK} opacity=".35" />
+    <circle cx="16" cy="16" r="12" fill="#fff" />
+    <path d="M25.5 9.5A12 12 0 0 1 9.5 26.1 10.5 10.5 0 0 0 25.5 9.5z" fill="#d9d4ea" />
+    <circle cx="16" cy="16" r="12" fill="none" stroke={INK} strokeWidth="2.4" />
+    <g fill="#bdb6d6"><circle cx="13" cy="12" r="1.3" /><circle cx="18" cy="11" r="1.3" /><circle cx="21.5" cy="15" r="1.3" /><circle cx="11" cy="17" r="1.3" /><circle cx="16" cy="16.5" r="1.3" /><circle cx="19.5" cy="20" r="1.3" /><circle cx="14" cy="21.5" r="1.3" /></g>
+    <ellipse cx="11" cy="9.5" rx="2.6" ry="1.5" fill="#fff" transform="rotate(-35 11 9.5)" />
+  </>,
+  /** Party (main menu): two friends' balls side by side, each in its own colour, with a little burst above. */
+  party: <>
+    <circle cx="11" cy="19" r="8" fill="#ffd23f" stroke={INK} strokeWidth="2.4" />
+    <circle cx="21.5" cy="20" r="7.5" fill="#ff3d8b" stroke={INK} strokeWidth="2.4" />
+    <circle cx="8.5" cy="16.5" r="2" fill="#fff" opacity=".8" /><circle cx="19.2" cy="17.6" r="1.8" fill="#fff" opacity=".8" />
+    <path d="M16 3.5v4M10 5.5l1.8 3M22 5.5l-1.8 3" {...line} strokeWidth="2.2" />
+  </>,
+  /** Custom (main menu): three rule sliders, each knob at a different setting. */
+  custom: <>
+    <rect x="4" y="4" width="24" height="24" rx="6" fill="#fff8e4" stroke={INK} strokeWidth="2.4" />
+    <path d="M9 11h14M9 16h14M9 21h14" {...line} strokeWidth="2.2" />
+    <circle cx="19" cy="11" r="2.8" fill="#ff3d8b" stroke={INK} strokeWidth="2" />
+    <circle cx="12" cy="16" r="2.8" fill="#2f7cf0" stroke={INK} strokeWidth="2" />
+    <circle cx="17" cy="21" r="2.8" fill="#2fbf5b" stroke={INK} strokeWidth="2" />
+  </>,
+  /** Settings (main menu): a rounded gear. */
+  settings: <>
+    <path d="M14 3h4l.8 3.4 2.4 1 3-1.8 2.8 2.8-1.8 3 1 2.4L29 14v4l-3.4.8-1 2.4 1.8 3-2.8 2.8-3-1.8-2.4 1L18 29h-4l-.8-3.4-2.4-1-3 1.8-2.8-2.8 1.8-3-1-2.4L3 18v-4l3.4-.8 1-2.4-1.8-3 2.8-2.8 3 1.8 2.4-1z" fill="#ffd23f" stroke={INK} strokeWidth="2.2" strokeLinejoin="round" />
+    <circle cx="16" cy="16" r="4.5" fill="#fff" stroke={INK} strokeWidth="2.2" />
+  </>,
+  /** Settings sub-menu, "Your style": a paint palette. */
+  palette: <>
+    <path d="M16 4C9 4 4 9 4 15.5S9 28 15 28c2.5 0 3-1.6 2.2-3.2-.8-1.6 0-3.3 2-3.3H23c3 0 5-2 5-5C28 9.5 22.6 4 16 4z" fill="#fff8e4" stroke={INK} strokeWidth="2.4" strokeLinejoin="round" />
+    <circle cx="10" cy="15" r="2.3" fill="#ff3d8b" stroke={INK} strokeWidth="1.6" /><circle cx="13" cy="9.5" r="2.3" fill="#ffd23f" stroke={INK} strokeWidth="1.6" />
+    <circle cx="19.5" cy="9.5" r="2.3" fill="#2f7cf0" stroke={INK} strokeWidth="1.6" /><circle cx="23" cy="14.5" r="2.3" fill="#2fbf5b" stroke={INK} strokeWidth="1.6" />
+  </>,
+  /** Settings sub-menu, "How to play": a speech bubble with a question mark. */
+  help: <>
+    <path d="M6 5h20a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H14l-6 5v-5H6a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3z" fill="#fff" stroke={INK} strokeWidth="2.4" strokeLinejoin="round" />
+    <path d="M12.5 11a3.5 3.5 0 1 1 5 3.2c-1 .5-1.5 1.2-1.5 2.3" {...line} strokeWidth="2.4" />
+    <circle cx="16" cy="19.6" r="1.4" fill={INK} />
   </>,
 };
 

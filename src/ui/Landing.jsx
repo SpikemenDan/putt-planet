@@ -100,15 +100,15 @@ export function Landing({ hidden, initialName = '', initialRoomCode = '', initia
       {view === 'home' ? (
         <nav className={menu.stack} aria-label="Main menu">
           {homeButton('solo', 'Solo', 'Practice and play alone', menu.solo, 'solo')}
-          {homeButton('party', 'Party', 'Play with friends', menu.party)}
-          {homeButton('custom', 'Custom', 'Make your own rules', menu.custom)}
-          <button type="button" ref={el => { homeButtons.current.settings = el; }} className={menu.settings} onClick={() => open('settings')} data-menu="settings">Settings</button>
+          {homeButton('party', 'Party', 'Play with friends', menu.party, 'party')}
+          {homeButton('custom', 'Custom', 'Make your own rules', menu.custom, 'custom')}
+          <button type="button" ref={el => { homeButtons.current.settings = el; }} className={menu.settings} onClick={() => open('settings')} data-menu="settings"><MenuIcon name="settings" className={menu.settingsIcon} />Settings</button>
         </nav>
       ) : (
         <section className={menu.panel} data-menu-view={view} aria-label={view[0].toUpperCase() + view.slice(1)} onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); back(); } }}>
           {view === 'solo' && <SoloSteps name={name} onName={setName} colorField={colorField} connecting={connecting} send={send} onExit={back} overlay={root.current} />}
           {view === 'party' && <>
-            <h2 className={menu.heading}>Party</h2>
+            <h2 className={menu.heading}><MenuIcon name="party" className={menu.headingIcon} />Party</h2>
             {nameField}
             {/* VIS-M3 #175: Host creates the party and only then gets its code; opening this menu makes no room and no code. */}
             <div className={menu.partyPart} data-ui="party-host">
@@ -125,14 +125,14 @@ export function Landing({ hidden, initialName = '', initialRoomCode = '', initia
             </form>
           </>}
           {view === 'custom' && <>
-            <h2 className={menu.heading}>Custom</h2>
+            <h2 className={menu.heading}><MenuIcon name="custom" className={menu.headingIcon} />Custom</h2>
             <CustomRules rules={rules} onChange={editRules} busy={connecting}
               onPlaySolo={() => send(UiCommands.PLAY_SOLO, { name, rules })}
               onHostParty={() => { setHostRules(rules); setView('party'); }} />
           </>}
           {view === 'settings' && <>
-            <h2 className={menu.heading}>Settings</h2>
-            <details data-ui="cosmetics" open><summary>Your style</summary>
+            <h2 className={menu.heading}><MenuIcon name="settings" className={menu.headingIcon} />Settings</h2>
+            <details className={menu.card} data-tone="style" data-ui="cosmetics" open><summary><MenuIcon name="palette" className={menu.cardIcon} />Your style</summary>
               <div className={menu.style}>
                 {COSMETIC_FIELDS.map(([kind, label, records]) => (
                   <label key={kind}>{label}
@@ -143,9 +143,9 @@ export function Landing({ hidden, initialName = '', initialRoomCode = '', initia
                 ))}
               </div>
             </details>
-            <details><summary>How to play</summary>
-              <p>3D party mini golf. Everyone plays the same hole at once, and the next hole starts when all players finish. Ride ramps, jump pads and teleporters, dodge fans and water, and mess with your friends.</p>
-              <p className={app.small}>Drag backward anywhere on the course, then release to putt. Longer pulls add power and widen a sine sway; release as the arrow crosses center for a perfectly straight shot. Escape cancels. Keys 1–3 use power-ups. Right-drag rotates the ball camera.</p>
+            <details className={menu.card} data-tone="help"><summary><MenuIcon name="help" className={menu.cardIcon} />How to play</summary>
+              <p className={menu.cardText}>3D party mini golf. Everyone plays the same hole at once, and the next hole starts when all players finish. Ride ramps, jump pads and teleporters, dodge fans and water, and mess with your friends.</p>
+              <p className={menu.cardText + ' ' + app.small}>Drag backward anywhere on the course, then release to putt. Longer pulls add power and widen a sine sway; release as the arrow crosses center for a perfectly straight shot. Escape cancels. Keys 1–3 use power-ups. Right-drag rotates the ball camera.</p>
             </details>
           </>}
           <p className={app.status} role="status" data-ui="connect-error" hidden={!error}>{error}</p>
