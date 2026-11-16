@@ -472,7 +472,7 @@ Luna (gravity 315) has eight six-putt maps in two regions, Hushed Mare (32–35)
 - **Mechanics:** six moondust (sand) patches, three pads and two craters.
 - **Par:** 2, 2, 2, 2, 3, 2 (13). R 1/1/1/1/2/1.
 - **Problems:**
-  - Putts 2, 4 and 6 are pad-over-crater min-power aces. Two of the recorded routes are taps *away* from the cup (179.75° and 179.5°, power 0.3) that rebound off the wall behind the tee onto the pad. Tees 24–44 units in front of a wall with a pad just ahead make the backward tap the most forgiving shot, which says the pad does all the work.
+  - Putts 2, 4 and 6 are pad-over-crater min-power aces. All three recorded routes are taps *away* from the cup (power 0.3) that rebound off the wall behind the tee onto the pad. Tees 24–44 units in front of a wall with a pad just ahead make the backward tap the most forgiving shot, which says the pad does all the work.
   - The description promises that "rolling putts drag in the dust", but moondust is ordinary sand.
   - Putt 1 is a straight ace over a sand patch (146,66 80×88).
   - Putt 5 (a long sand strip, 106,326 230×60, beside a wall) is the only putt that needs a plan.
@@ -487,7 +487,7 @@ Luna (gravity 315) has eight six-putt maps in two regions, Hushed Mare (32–35)
 - **Mechanics:** six ramps and five raised plateaus (z 18–22); two craters.
 - **Par:** 2, 3, 2, 3, 2, 2 (14). R 1/2/1/2/1/1.
 - **Problems:**
-  - It is Caldera Climb on Luna: 8 of 9 wall rectangles are identical, and putts 1, 3 and 6 match Caldera's ramp-to-mesa shots.
+  - It is Caldera Climb on Luna: 8 of 9 wall rectangles are identical, and putts 1, 3 and 6 repeat Caldera's ramp-to-mesa shots (Caldera putts 1, 4 and 5).
   - Unlike Caldera, it does feel lunar: five of six routes fail at Gaia gravity. Putt 4 (a ramp onto an 80×98 mesa at 120,356 between craters 46,376 and 224,376) needs two strokes and is a good use of float.
   - Putt 5 (a bank between two walls) ignores the theme.
 - **Scores:** fun 3 · clarity 3 · fairness 4 · variety 3.
@@ -500,7 +500,7 @@ Luna (gravity 315) has eight six-putt maps in two regions, Hushed Mare (32–35)
 - **Mechanics:** seven pads and eight craters.
 - **Par:** 2, 2, 2, 2, 2, 3 (13). R 1/1/1/1/1/2.
 - **Problems:**
-  - Every putt is "tap into the pad, float over the crater". All five aces are min-power (0.3) taps, and four of them go *away* from the cup into the wall behind the tee (179.5°, 179.75°, 171° and 188.75°). It fully depends on Luna gravity (all six routes fail at 700), but the pad does the shot.
+  - Every putt is "tap into the pad, float over the crater". All five aces are min-power (0.3) taps, and all five go *away* from the cup into the wall behind the tee. It fully depends on Luna gravity (no route sinks at 700), but the pad does the shot.
   - Its tee/cup positions are identical to Moondust Mile's.
   - Putt 6 has two pads (466,356 and 466,424) and is the only putt with a choice.
 - **Scores:** fun 2 · clarity 5 · fairness 4 · variety 1.
@@ -514,7 +514,7 @@ Luna (gravity 315) has eight six-putt maps in two regions, Hushed Mare (32–35)
 - **Par:** 2 on all six (12). R 1/1/1/1/1/1.
 - **Problems:**
   - It is a set of bank shots that play the same on Gaia: only putt 3 (a ramp over a crater, again the Obsidian Spiral 3 / Sandstorm Spire 2 shot) needs Luna gravity.
-  - Putt 5's pad (356,355) is beside a wall (376,282 14×138) that the route simply banks under.
+  - Putt 5's pad (356,355) is beside a wall (396,286 14×138) that the route simply banks under.
   - The theme ("under the rising blue face of Gaia") is skybox only.
   - Putt 6's two small craters (586,316 and 656,376) in an open chamber make a nice diamond bank.
 - **Scores:** fun 2 · clarity 4 · fairness 4 · variety 2.
@@ -541,7 +541,7 @@ Luna (gravity 315) has eight six-putt maps in two regions, Hushed Mare (32–35)
 - **Problems:**
   - It is Canyon Leap's layout (all six tee/cup pairs and 7 of 8 wall rectangles are the same) with craters for canyons.
   - Putt 2 is a straight ace along a 28-unit rim between craters (506,46 and 506,124). That is a real "rim walk" and a good idea, but at power 0.4 it is not demanding.
-  - Putt 5 squeezes a 22-unit gap between craters (136,326 and 136,400), then a thin crater bar (266,366 128×24). It takes 3 strokes, and par is 4.
+  - Putt 5 squeezes a 20-unit gap between craters (136,326 and 136,400), then a thin crater bar (266,366 128×24). It takes 3 strokes, and par is 4.
   - Putts 1, 3, 4 and 6 are ramp-over-crater lanes, the same as Canyon Leap.
 - **Scores:** fun 2 · clarity 4 · fairness 3 · variety 2.
 - **Verdict:** **rework**. Keep the rim-walking putts (2 and 5) and drop the Canyon Leap copies.
@@ -555,7 +555,7 @@ Luna (gravity 315) has eight six-putt maps in two regions, Hushed Mare (32–35)
 - **Problems:**
   - **No route needs Luna gravity.** It is a flat ice-and-portal map.
   - Putt 1 is a min-power straight tap across an ice sheet (106,86 120×118), and putt 6 a min-power diagonal across the ice band (526,316 228×80).
-  - Putts 2 and 5 use their portals well: the portal is the route through a dividing wall.
+  - Putts 2 and 5 use their portals well: the portal is the way past a dividing wall (putt 2) or a central crater bar, 346,316 110×30 (putt 5).
   - The "dim basin" theme is visual only.
 - **Scores:** fun 2 · clarity 3 · fairness 4 · variety 3.
 - **Verdict:** **rework**. Keep the two portal putts, and add slopes into the basin so the ice and the low gravity combine (long, curving slides).
