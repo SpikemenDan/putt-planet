@@ -1,0 +1,5 @@
+/* Party lobby (VIS-M3 #175): the party code in a caption box. */
+.code{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:8px 0 4px;padding:8px 12px;background:var(--yellow);border:var(--line) solid var(--ink);border-radius:10px;box-shadow:var(--shadow)}
+.codeLabel{font:900 13px var(--font);letter-spacing:.6px;text-transform:uppercase;color:var(--ink)}
+.codeValue{flex:1;font:400 30px/1 var(--font);letter-spacing:4px;color:var(--ink);user-select:all}
+.code button{margin:0}

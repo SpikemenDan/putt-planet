@@ -7,7 +7,7 @@ import { solvePar } from './par-solver.mjs';
 
 import { SimulationEngine } from '../../src/simulation/index.js';
 import { FIXED_TIMESTEP, STARTER_COURSE_INDICES } from '../../src/shared/constants.js';
-import { DEFAULT_WORLD, WORLD_IDS, isWorldId, worldGravity } from '../../src/shared/worlds.js';
+import { DEFAULT_WORLD, WORLD_IDS, courseWorld, isWorldId, worldGravity } from '../../src/shared/worlds.js';
 import { buildCourseCatalog, detectStaleCourses, detectStaleHashes, generateArena, validateCourseDefinitions, createCourseDocument, validateCourseDocument } from '../../src/courses/index.js';
 
 /** Simulation ticks per second, from the one fixed timestep (240 Hz). */
@@ -31,7 +31,7 @@ export function runList(raw) {
 export function runValidate({ raw, inventory, hashes, courseHashes }) {
   // Starters are checked against the maps actually supplied, so the 22-map legacy reference is valid on its own.
   const catalog = buildCourseCatalog(raw, STARTER_COURSE_INDICES.filter(index => index < raw.length));
-  // The inventory records the legacy export only. Maps added after it (VIS-G placeholders from index 22) are not stale
+  // The inventory records the legacy export only. Maps added after it (the VIS-G maps from index 22) are not stale
   // metadata; every recorded map must still match exactly, and a missing legacy map still fails.
   const recorded = inventory.courses;
   const stale = detectStaleCourses(raw.slice(0, recorded.length), recorded);
@@ -63,7 +63,7 @@ export function runShot(holes, mapArg, puttArg, degArg, powerArg) {
   if (!Number.isFinite(deg)) return fail('deg must be a number (0 = +x, increasing toward +y)');
   if (!Number.isFinite(power) || power <= 0 || power > 1) return fail('power must be a number above 0 and at most 1');
 
-  const engine = new SimulationEngine(holes[map], putt, { hazardTime: 0 });
+  const engine = new SimulationEngine(holes[map], putt, { hazardTime: 0, gravity: worldGravity(courseWorld(holes[map])) }); // the map's own world
   const player = engine.addPlayer('cli', 'CLI', 0);
   engine.launch('cli', (deg * Math.PI) / 180, power);
   let ticks = 0;
@@ -153,6 +153,6 @@ export const USAGE = [
   '  checks [--since <ref>] [--json] [paths...]  recommend which verification commands to run for the changed paths, and why',
   '  arena <name>                  print generated arena JSON; quote names containing spaces',
   '  validate                      schema + stale-metadata check (exit 1 on any problem)',
-  '  solve <map> <putt> [--full] [--world <id>]  shortest robust route within par 2..6 (putt is 0-based; --full = finer waypoint grid, larger budget; --world gaia|ares|luna solves at that world gravity, default gaia)',
+  '  solve <map> <putt> [--full] [--world <id>]  shortest robust route within par 2..6 (putt is 0-based; --full = finer waypoint grid, larger budget; --world gaia|ares|luna solves at that world gravity, default the course world, Gaia unless its data names one)',
   '  shot <map> <putt> <deg> <pwr> run one headless shot (putt is 0-based, power 0..1)',
 ];

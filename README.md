@@ -74,7 +74,7 @@ Commands are listed as they exist in `package.json`; keep this table in sync whe
 | `npm run test:input` | Desktop input and camera transition checks |
 | `npm run test:ui` | React screens, UI store and cleanup |
 | `npm run test:app` | Composed app flows, four clients and cleanup |
-| `npm run test:courses` | Validate all 22 courses and detect stale inventory metadata |
+| `npm run test:courses` | Validate all 24 courses and detect stale inventory metadata |
 | `npm run test:cli` | Course, solver and arena commands, file inputs and failure paths |
 | `npm run test:physics` | Surface friction, cup radius and mechanic-chamber checks on the shared simulation; may take around a minute |
 | `npm run test:integration` | Integration checks such as out-of-bounds handling |
@@ -88,8 +88,9 @@ Commands are listed as they exist in `package.json`; keep this table in sync whe
 | `npm run rooms:dev` | Run the local Worker room runtime (see [Cloudflare setup](docs/networking/CLOUDFLARE_SETUP.md)) |
 | `npm run config:report` | Every DISPLAY and TUNING setting with default, range, units, restart rule and the files that read it; flags settings nothing reads (see [docs/DISPLAY.md](docs/DISPLAY.md)) |
 | `npm run checks` | Recommend which of the commands above to run for your changed paths, and why; unknown paths fall back to the full suite (details in [docs/GITHUB_WORKFLOW.md](docs/GITHUB_WORKFLOW.md)) |
-| `npm run solve -- 0 0` | Find a robust shot for map 0, putt 0; add `--full` for an exhaustive search |
-| `npm run rank` | Print recorded difficulty counts; these are stale and do not certify current difficulty |
+| `npm run solve -- 0 0` | Shortest robust route within par for map 0, putt 0, at the course's world gravity; `--full` for a finer search, `--world <id>` to override |
+| `npm run measure:par -- --out routes.json` | Par-route sweep over every putt (parallel); feed the report to `check --routes` and `rank --routes` ([Q1 record](docs/reviews/Q1_RELEASE.md)) |
+| `npm run rank -- --routes routes.json` | Rank starter maps by measured par-route difficulty; exit 2 when the report is missing or stale |
 | `npm run gemini:handoff -- --task ... --expect ... --file ...` | Bounded, read-only Gemini Pro handoff for routine drafts and summaries; refuses credentials and oversize input (see [docs/AGENT_ROUTING.md](docs/AGENT_ROUTING.md)) |
 | `npm run test:gemini` | Gemini handoff limits, refusals and fallback, with a fake Gemini (nothing is sent) |
 | `npm run overnight:backup` | Create and verify a local recovery backup (see [Overnight sessions](#overnight-sessions)) |
@@ -103,7 +104,7 @@ jsdom suites stub WebGL, canvas and audio and use fake networks. They do not pro
 | --- | --- | --- |
 | Develop with hot reload | `npm run dev` | Solo play. The Display tuning panel is only here |
 | Check the production build | `npm run build`, then `npm run preview` | Preview serves `dist/` at `http://127.0.0.1:4173/` |
-| Online rooms on your machine | `npm run rooms:dev` | Builds, then runs the Worker and room objects at `http://127.0.0.1:8787`. Open two browser tabs with the same room code. No Cloudflare account or login needed |
+| Online rooms on your machine | `npm run rooms:dev` | Builds, then runs the Worker and room objects at `http://127.0.0.1:8787`. Create a party in one tab (Party, Create party), then type its code in the other tab's Join box. No Cloudflare account or login needed |
 | Verify the room runtime | `npm run test:rooms:local` | Runs a real local Worker. On the Windows machine used so far, Wrangler exited early; if it does the same for you, rely on CI for this check |
 | Real-browser checks | `npm run test:browser` | Playwright. `npx playwright test --project=chromium` runs Chromium only |
 | Everything else | `npm test` | Several minutes. Run focused suites (`npm run test:render`, and so on) while you work |
@@ -250,3 +251,4 @@ Credentials (`.env*`, keys, tokens) are never backed up. On a recovery you must 
 - [docs/DISPLAY.md](docs/DISPLAY.md) and [docs/TUNING.md](docs/TUNING.md): presentation and simulation settings.
 - [docs/OVERNIGHT.md](docs/OVERNIGHT.md): overnight backup and session tooling in depth.
 - [docs/networking/CLOUDFLARE_SETUP.md](docs/networking/CLOUDFLARE_SETUP.md) and [docs/networking/CLOUDFLARE_DEPLOY.md](docs/networking/CLOUDFLARE_DEPLOY.md): local runtime, hosted preview preparation, deployment record and rollback.
+- [docs/reviews/Q1_RELEASE.md](docs/reviews/Q1_RELEASE.md): release-readiness evidence, par-route sweep and re-run step, rollback pointer and the owner playtest checklist.

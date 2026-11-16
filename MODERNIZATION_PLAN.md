@@ -13,7 +13,7 @@ Putt Planet is a colourful, fast, high-energy 3D multiplayer mini-golf game for 
 - **Loading screen.** The Putt Planet title and loading text over the curved horizon of a planet; golf balls occasionally fly across the sky. The planet shows recognisable regions, cities and landmarks (on Gaia: snowy poles, desert and tropical bands near the middle, other biomes between).
 - **Main menu.** Three primary buttons: **Solo**, **Party** and **Custom**. A smaller but noticeable **Settings** button stays easy to find. The game version is shown bottom-left. Playful, polished and animated without making menus hard to navigate.
 - **Solo.** Choose **Casual** (one map) or **Tournament** (**3, 5 or 7 maps**, cumulative scoring), then a destination (**Gaia, Ares or Luna**), then the opening region and map. In a tournament the player picks the next map after each finished map until the series length is reached.
-- **Party.** **Host** creates a party; **Join** takes a party code in a text box with a Join button beside it. Players choose their ball colour before entering the lobby, the host included. A party code exists **only after the host creates the lobby**; opening the Party menu alone creates no room and no code. The lobby shows everyone's balls together in a plane, with their chosen colours.
+- **Party.** **Host** creates a party; **Join** takes a party code in a text box with a Join button beside it. A party code exists **only after the host creates the lobby**; opening the Party menu alone creates no room and no code. Players arrive with a free colour and change it inside the lobby, which shows everyone's balls together in a plane, with their chosen colours (see "Decided 2026-11-14").
 - **Custom.** An attractive, interactive gameplay-rules editor. After adjusting settings the player chooses **Play Solo** or **Host Party** using those rules. See "Custom rules".
 - **Launch and arrival.** After the destination and map are settled, a launch countdown runs. In Solo one golf ball jumps from the plane; in Party the group jumps together. The skydive transitions into a cloud loading sequence (clouds whizzing past the camera) that continues while the map loads. When loading finishes: the camera emerges from the clouds, a wide establishing shot reveals the whole map and its surroundings, the camera moves toward the opening hole, then zooms smoothly into the player's ball camera. The gameplay countdown begins only after every active player has finished the arrival sequence. The same arrival introduces every newly selected map, repeat maps included. Loading and cinematic time never consume the hole's gameplay timer.
 
@@ -88,7 +88,7 @@ Maps are 3D, with ramps and other obstacles that lift the ball, and the Chip In 
 
 Collectible ball skins and trail skins (speed lines, elemental auras, comic sparks), plus custom hole-in-one celebrations with banners, fanfare and screen effects.
 
-**Ball colours.** At least **21 rainbow colours**: light, standard and dark variations of red, orange, yellow, green, blue, indigo and violet. Further colours: white, black, gray and brown, with room for pink, cyan, gold and silver. The picker shows the real ball appearance and makes the selection obvious. Colours are **unique within a party**; occupied colours are marked unavailable, and a disconnected player's colour stays reserved for their return. Today's palette has 8 colours, so this changes the shared player and protocol contracts (VIS-C).
+**Ball colours.** Originally at least 21 rainbow colours (light, standard and dark of seven hues plus extras); since 2026-11-14 a smaller palette that is easy to tell apart (see "Decided 2026-11-14"). The picker shows the real ball appearance and makes the selection obvious. Colours are **unique within a party**; occupied colours are marked unavailable, and a disconnected player's colour stays reserved for their return. Today's palette has 8 colours, so this changes the shared player and protocol contracts (VIS-C).
 
 ### Voting and match flow (owner, 2026-11-03)
 
@@ -176,6 +176,21 @@ The owner accepted these from the decision brief on 2026-11-11.
 - **Content volume (VIS-G #165).** All 22 current maps are kept and re-homed into Gaia's six regions by theme, plus 2 new maps, giving four maps per region (24). Ares and Luna each start with two regions of four maps (8 each), designed and solved after their gravity is confirmed.
 - **Menu homes (VIS-M #174-#176).** The main menu keeps Solo, Party and Custom. Practice is a choice inside Solo beside Casual and Tournament, and includes Putt Pong practice. Putt Pong is a format in the Party vote, offered only when exactly two players are in the party. No Power-Ups becomes a Custom rule (the GM1 flag); today's lobby toggle stays until the Custom editor (VIS-U #168) exists.
 - **Weather power-up on Ares and Luna (VIS-E #166).** Superseded on 2026-11-12: the owner now wants Precipitation on every world with the same effect, shown per place (Rain on warm Gaia maps, Snow on cold ones, Dust Storm on Ares, Solar Wind on Luna), and Lightning shown as a Solar Bolt on Luna. The 2026-11-11 rule left it out of the Ares and Luna pools. Ares wind and Luna dust and solar activity stay visual-only scenery.
+
+### Decided 2026-11-14
+
+The owner settled the three defaults left open in VIS-E #166 (PR #221); all three stay as shipped.
+
+- **Off-Gaia slipperiness.** Dust Storm and Solar Wind use Rain's strength, for visual consistency. It matters little for play: weather belongs to the putt it was cast on and clears when the next putt starts (today it can also end sooner, after `globalHazards.durationSeconds`, 20 s).
+- **How often Precipitation appears.** One Precipitation item in boxes on every world and map, as often as Rain or Snow each appeared before (half of the two together).
+- **Cold maps.** Only Frost Hollow counts as cold for now; more cold maps will be tagged with a course `climate` as they are added.
+
+The owner decided these for VIS-M3 (#175) on 2026-11-14. They replace "colour pick before the lobby" in #175 and the 2026-11-11 notes.
+
+- **No colour choice on the way into a party.** Creating or joining asks for no colour: each player gets a free colour on arrival, keeping VIS-C uniqueness, reservation for disconnected players and boundary validation.
+- **Colour choice inside the plane lobby.** Clicking your own colour badge beside your name on the plane opens a picker there (only your own badge is clickable). It shows the real ball look with hover, press and a clear selected state, opens and closes smoothly, closes on an outside click or Escape and works from the keyboard. Colours other players hold, or keep reserved while disconnected, are crossed out with an X and update live.
+- **A smaller, distinguishable palette.** Near-duplicate colours are removed even below the earlier 21-colour minimum; enough colours remain for the 8-player cap with spares. The palette is 12 colours (Pink, Blue, Yellow, Violet, Cyan, Red, Lime, White, Green, Brown, Gray, Black): every pair is at least CIEDE2000 20 apart, and at least 6 apart under simulated deuteranopia, protanopia and tritanopia. Palette indexes changed meaning, so `SERVER_ROOM_VERSION` is 10 (the legacy peer `PROTOCOL_VERSION`, used only by the test transport, stays 6 because it sits inside the simulation fingerprint; it still validates colours at the boundary).
+- **Accepted 2026-11-16.** The owner tried the badge picker and the 12-colour palette in a local two-window preview (`npm run rooms:dev`) and accepted them.
 
 ## Technology
 
