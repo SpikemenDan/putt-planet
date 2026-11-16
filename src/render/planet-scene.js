@@ -378,12 +378,12 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
   baseOn(luna, [-0.45, 0.42, 0.79], 0.034, 0x8fe6ff); // on the side facing Gaia: barely visible
   baseOn(ares, [-0.3, 0.3, 0.9], 0.012, 0xa8ffcc); // far tinier still
 
-  // ---- The destination view (VIS-M4): the camera pulls back from the horizon into space, where Gaia hangs with Luna slowly orbiting it
+  // ---- The destination view (VIS-M4): the camera pulls back from the horizon into space, where Gaia hangs with Luna slowly orbiting it (framed on Gaia alone: Luna shows only when its orbit brings it into view)
   // and Ares stands far off. Sizes and distances are staged for the view, not real. `setView` picks the planet; the camera flies between
   // them, and the long trips to and from Ares widen the lens and then zoom in. Reads the live `display.space` settings.
   const spaceSettings = () => display.space ?? { orbitSeconds: 120, travelSeconds: 1.8, aresZoom: 0.5, nebula: 0.6, distance: 1 };
   const SPACE_LUNA = { orbit: 520, radius: 34, lean: 0.12 }, SPACE_ARES = { position: new THREE.Vector3(-4200, 700, -3600), radius: 62 };
-  const SPACE_FRAME = { gaia: 1500, luna: 240, ares: 400 }; // camera distance from each planet's centre, before `space.distance`
+  const SPACE_FRAME = { gaia: 700, luna: 240, ares: 400 }; // camera distance from each planet's centre, before `space.distance`: each about 7 radii, so every planet fills the view alike
   const SPACE_VIEW_DIR = new THREE.Vector3(0.42, 0.16, 1).normalize(); // seen a little from the right and above: the sun lights the near side
   const space = { goal: 0, t: 0, from: 'gaia', to: 'gaia', travel: 1, orbit: 0.96 };
   const home = { luna: { position: new THREE.Vector3(), scale: 1 }, ares: { position: new THREE.Vector3(), scale: 1 } };
@@ -541,8 +541,7 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
   /** Where the camera stands to show planet `id` in space, and the point it looks at. */
   function spaceCamera(id, pos, look) {
     bodyCentre(id, look);
-    pos.copy(look).addScaledVector(SPACE_VIEW_DIR, SPACE_FRAME[id] * spaceSettings().distance);
-    if (id === 'gaia') look.x -= 170; // Gaia sits right of centre, clear of the menu panel on the left
+    pos.copy(look).addScaledVector(SPACE_VIEW_DIR, SPACE_FRAME[id] * spaceSettings().distance); // the planet sits centred, like Luna and Ares
   }
   /** The lens on a long trip: wider through the middle of the flight, then a short zoom in on arrival. */
   function tripFov(e) {
