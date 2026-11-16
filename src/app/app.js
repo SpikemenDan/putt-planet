@@ -90,8 +90,9 @@ export function createApp({ worldPreview = null, soloHazards = false, root, THRE
 
   // ---------------------------------------------------------------- rooms
   /** `start`: a solo mode from the Solo steps (VIS-M4); the room opens straight onto the level select in that mode. */
-  async function join({ multi, name, roomCode, start = null, rules = null }) {
-    const request = parseJoinRequest({ multi, name, roomCode });
+  /** `create` (VIS-M3): open a new party (the server picks the code); otherwise a multi join needs an existing party's code. */
+  async function join({ multi, create = false, name, roomCode, start = null, rules = null }) {
+    const request = parseJoinRequest({ multi, create, name, roomCode });
     if (!request.ok) { alert(request.message); return; }
     // Custom rules (VIS-U) from the menu are validated here, at the UI boundary; null plays standard rules.
     if (rules !== null && !validRules(rules)) { alert('Those custom rules are not valid. Reset them and try again.'); return; }
@@ -102,14 +103,15 @@ export function createApp({ worldPreview = null, soloHazards = false, root, THRE
     joining = controller;
     setLocal({ connecting: true, connectError: '' });
     try {
-      const stored = multi ? resume.read(request.roomCode) : null;
-      const opened = await openRoom({ multi, name: request.name, color: colorPref, roomCode: request.roomCode, rules: rules === null ? null : validateRules(rules), clock, random, createTransport, identity: stored, soloHazards, floorAt: (map, puttIndex, x, y) => placementFloor(resolveRenderCourse(data.definitions[map], puttIndex), x, y), endpoint: serverEndpoint, location: win.location, WebSocket, crypto: win.crypto, signal: controller.signal });
+      const stored = multi && !create ? resume.read(request.roomCode) : null;
+      const opened = await openRoom({ multi, create: multi && create, name: request.name, color: colorPref, roomCode: request.roomCode, rules: rules === null ? null : validateRules(rules), clock, random, createTransport, identity: stored, soloHazards, floorAt: (map, puttIndex, x, y) => placementFloor(resolveRenderCourse(data.definitions[map], puttIndex), x, y), endpoint: serverEndpoint, location: win.location, WebSocket, crypto: win.crypto, signal: controller.signal });
       if (disposed || controller.signal.aborted || generation !== joinGeneration) { opened.close({ leave: true }); return; }
       joining = null;
       reloadRecovery = !!opened.resumed;
-      if (opened.identity) resume.write(request.roomCode, { ...opened.identity, name: request.name });
+      if (opened.identity) resume.write(opened.roomCode, { ...opened.identity, name: request.name });
       room = opened; leaving = false;
       remoteSeen.clear(); presence = {}; activeRound = null; lastPhase = null; carriedInventory = [];
+      // VIS-M3: no colour step on the way in (owner, 2026-11-14): the room gives a free colour and the lobby picker changes it.
       setLocal({ active: true, connecting: false, connected: true, id: room.localId, isHost: room.isHost, serverOwned: !!room.serverOwned, roomCode: room.roomCode, mode: 'lobby', strokes: 0, inventory: [], name: request.name });
       roomStops.push(room.onSnapshot(onSnapshot), room.onPresence(onPresence), room.onStatus(onStatus));
       if (room.isHost) publish(true);
@@ -117,7 +119,7 @@ export function createApp({ worldPreview = null, soloHazards = false, root, THRE
     } catch (error) {
       if (disposed || controller.signal.aborted || generation !== joinGeneration) return;
       joining = null;
-      if (multi && error?.message === 'session-expired') resume.forget(request.roomCode);
+      if (multi && !create && ['session-expired', 'room-not-found'].includes(error?.message)) resume.forget(request.roomCode);
       setLocal({ connecting: false, connectError: connectErrorMessage(error?.message) });
     }
   }
@@ -475,7 +477,8 @@ export function createApp({ worldPreview = null, soloHazards = false, root, THRE
   // ---------------------------------------------------------------- commands
   function handle(command) {
     switch (command.type) {
-      case UiCommands.JOIN: join({ multi: true, name: command.name, roomCode: command.roomCode, iceText: command.iceText, rules: command.rules ?? null }); break;
+      case UiCommands.CREATE_PARTY: join({ multi: true, create: true, name: command.name, rules: command.rules ?? null }); break;
+      case UiCommands.JOIN: join({ multi: true, name: command.name, roomCode: command.roomCode }); break;
       case UiCommands.PLAY_SOLO: join({ multi: false, name: command.name, start: SOLO_START_MODES.includes(command.mode) ? command.mode : null, rules: command.rules ?? null }); break;
       case UiCommands.LEAVE: leave(true); break;
       case UiCommands.SESSION: room?.command(command.event); break;
@@ -617,7 +620,7 @@ export function createApp({ worldPreview = null, soloHazards = false, root, THRE
     frameId = win.requestAnimationFrame(frame);
   }
 
-  const startCode = initialRoomCode(win.location?.hash || '', random);
+  const startCode = initialRoomCode(win.location?.hash || '');
   const inviteLink = /(^#|&)room=[^&]/.test(win.location?.hash || ''); // a #room= link opens the menu on Party
   // Menu feedback (M1d): a soft tick when the pointer enters an enabled button and a click cue when one is pressed.
   let hovered = null;

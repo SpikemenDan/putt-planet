@@ -67,7 +67,8 @@ export function takenColors(room, local) {
   const taken = {};
   for (const [id, p] of Object.entries(room?.players || {})) {
     if (id === local?.id || !isColorIndex(p.color)) continue;
-    if (p.connected || (room.roster || []).includes(id)) taken[p.color] = p.name;
+    // Connected players, the roster and seats the room holds for a disconnected player's return (`reserved`, online rooms).
+    if (p.connected || (room.roster || []).includes(id) || (room.reserved || []).includes(id)) taken[p.color] = p.name;
   }
   return taken;
 }
@@ -124,14 +125,18 @@ export function lobbyView(room, local, now, courses) {
   }
   return {
     label: roomLabel(room, local),
-    roster: players.map(p => ({ id: p.id, name: p.name + (p.id === local.id ? ' (you)' : ''), color: colorOf(room, local, p.id) })),
+    roster: players.map(p => ({ id: p.id, name: p.name + (p.id === local.id ? ' (you)' : ''), color: colorOf(room, local, p.id), you: p.id === local.id })),
+    // VIS-M3: the party code, shown only once a party exists.
+    code: local.roomCode ? local.roomCode.toUpperCase() : '',
     myColor: colorOf(room, local, local.id),
     takenColors: takenColors(room, local),
     showModes: !!local.isHost,
     powerups: room.powerups !== false,
     showStart: !!local.isHost && room.phase === SessionPhases.LOBBY,
     showInvite: !!local.roomCode,
-    modes: MODE_OPTIONS.map(o => ({ value: o.value, label: o.label, disabled: o.soloOnly && n > 1 })),
+    // Putt Pong is 1v1: a party offers it only with exactly two players (owner, 2026-11-11); solo keeps it as practice.
+    modes: MODE_OPTIONS.filter(o => o.value !== GameModes.PONG || !local.roomCode || n === 2)
+      .map(o => ({ value: o.value, label: o.label, disabled: o.soloOnly && n > 1 })),
     multiplayer: n > 1,
     status,
     tie,
