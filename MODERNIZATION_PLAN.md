@@ -190,6 +190,7 @@ The owner decided these for VIS-M3 (#175) on 2026-11-14. They replace "colour pi
 - **No colour choice on the way into a party.** Creating or joining asks for no colour: each player gets a free colour on arrival, keeping VIS-C uniqueness, reservation for disconnected players and boundary validation.
 - **Colour choice inside the plane lobby.** Clicking your own colour badge beside your name on the plane opens a picker there (only your own badge is clickable). It shows the real ball look with hover, press and a clear selected state, opens and closes smoothly, closes on an outside click or Escape and works from the keyboard. Colours other players hold, or keep reserved while disconnected, are crossed out with an X and update live.
 - **A smaller, distinguishable palette.** Near-duplicate colours are removed even below the earlier 21-colour minimum; enough colours remain for the 8-player cap with spares. The palette is 12 colours (Pink, Blue, Yellow, Violet, Cyan, Red, Lime, White, Green, Brown, Gray, Black): every pair is at least CIEDE2000 20 apart, and at least 6 apart under simulated deuteranopia, protanopia and tritanopia. Palette indexes changed meaning, so `SERVER_ROOM_VERSION` is 10 (the legacy peer `PROTOCOL_VERSION`, used only by the test transport, stays 6 because it sits inside the simulation fingerprint; it still validates colours at the boundary).
+- **Accepted 2026-11-16.** The owner tried the badge picker and the 12-colour palette in a local two-window preview (`npm run rooms:dev`) and accepted them.
 
 ## Technology
 
