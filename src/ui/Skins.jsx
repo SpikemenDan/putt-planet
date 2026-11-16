@@ -30,7 +30,7 @@ function looks(kind, record, ball) {
 
 function Swatch({ kind, record, ball }) {
   return (
-    <span className={css.swatch} data-kind={kind} data-id={record.id} style={{ '--ball': ball, ...looks(kind, record, ball) }} aria-hidden="true">
+    <span className={css.swatch} data-kind={kind} style={{ '--ball': ball, ...looks(kind, record, ball) }} aria-hidden="true">
       {kind === 'celebration' && Array.from({ length: 8 }, (_, i) => <i key={i} style={{ '--i': i }} />)}
       <b />
     </span>

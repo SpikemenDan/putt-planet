@@ -3,17 +3,20 @@
    Each tab has its own colour (--cat), like the Custom rules cards. Everything is CSS: no images. */
 .skins{--cat:var(--pink);display:flex;flex-direction:column;gap:10px}
 
-/* Preview: the ball rolls back and forth along the green with its trail; the burst plays when a celebration is picked. */
-.stage{position:relative;height:96px;overflow:hidden;border:var(--line) solid var(--ink);border-radius:14px;box-shadow:4px 4px 0 var(--ink);
+/* Preview: the ball rolls in along the green with its trail and rests in the middle, where the burst plays when a
+   celebration is picked. The stage is a size container so the rest spot is its centre (cqw). */
+.stage{position:relative;container-type:inline-size;height:96px;overflow:hidden;border:var(--line) solid var(--ink);border-radius:14px;box-shadow:4px 4px 0 var(--ink);
   background:radial-gradient(rgba(255,255,255,.35) 1.5px,transparent 2px) 0 0/14px 14px,linear-gradient(#8fd0ff,#5fb0ff)}
 .green{position:absolute;left:-10%;right:-10%;bottom:-38px;height:70px;border-top:var(--line) solid var(--ink);border-radius:50% 50% 0 0;background:linear-gradient(#4fd97a,var(--green))}
-.ball,.trail{position:absolute;bottom:26px;left:0;animation:roll 3.4s cubic-bezier(.25,.6,.35,1) infinite}
+.ball,.trail{position:absolute;bottom:26px;left:0;animation:roll 4s linear infinite}
+.trail{animation-name:rollTrail}
 .ball{width:30px;height:30px;box-sizing:border-box;border:3px solid var(--ink);border-radius:50%;
   background:radial-gradient(circle at 34% 30%,rgba(255,255,255,.9) 0 13%,transparent 14%),radial-gradient(circle at 62% 70%,rgba(0,0,0,.18),transparent 60%),var(--ball);
   box-shadow:2px 2px 0 var(--ink),0 0 calc(30px * var(--glow-k,0)) calc(10px * var(--glow-k,0)) var(--glow,transparent)}
 .trail{bottom:calc(26px + 15px - 6px * var(--trail-size,1));width:110px;height:calc(12px * var(--trail-size,1));margin-left:-96px;border-radius:999px;background:var(--trail);opacity:.9}
-@keyframes roll{0%{translate:-30px 0;opacity:0}8%{opacity:1}80%{translate:calc(min(92vw,440px) - 110px) 0;opacity:1}100%{translate:calc(min(92vw,440px) - 110px) 0;opacity:0}}
-.burst{position:absolute;left:50%;top:44%;width:0;height:0}
+@keyframes roll{0%{translate:-34px 0;opacity:1;animation-timing-function:cubic-bezier(.2,.7,.35,1)}40%,92%{translate:calc(50cqw - 15px) 0;opacity:1}100%{translate:calc(50cqw - 15px) 0;opacity:0}}
+@keyframes rollTrail{0%{translate:-34px 0;opacity:.9;animation-timing-function:cubic-bezier(.2,.7,.35,1)}30%{opacity:.9}40%{translate:calc(50cqw - 15px) 0;opacity:.25}50%,100%{translate:calc(50cqw - 15px) 0;opacity:0}}
+.burst{position:absolute;left:50%;bottom:41px;width:0;height:0}
 .burst i,.swatch i{position:absolute;left:-4px;top:-4px;width:8px;height:8px;border:1.5px solid var(--ink);border-radius:2px;background:var(--c0);rotate:calc(var(--i) * 45deg)}
 .burst i:nth-child(2),.swatch i:nth-child(2){background:var(--c1)}.burst i:nth-child(3),.swatch i:nth-child(3){background:var(--c2)}.burst i:nth-child(4),.swatch i:nth-child(4){background:var(--c3)}
 .burst i:nth-child(5),.swatch i:nth-child(5){background:var(--c4)}.burst i:nth-child(6),.swatch i:nth-child(6){background:var(--c5)}.burst i:nth-child(7),.swatch i:nth-child(7){background:var(--c6)}.burst i:nth-child(8),.swatch i:nth-child(8){background:var(--c7)}
@@ -57,4 +60,4 @@
 .colour [data-ui=color-picker]{margin:8px 0 2px;grid-template-columns:repeat(auto-fill,minmax(24px,1fr));gap:6px}
 
 @media (max-width:480px){.grid{grid-template-columns:repeat(2,1fr)}}
-@media (prefers-reduced-motion:reduce){.ball,.trail,.burst i,.card .swatch i{animation:none!important}.ball,.trail{translate:40% 0}.card{transition:none}}
+@media (prefers-reduced-motion:reduce){.ball,.trail,.burst i,.card .swatch i{animation:none!important}.ball,.trail{translate:calc(50cqw - 15px) 0}.card{transition:none}}
