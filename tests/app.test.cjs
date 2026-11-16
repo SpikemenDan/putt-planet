@@ -255,8 +255,8 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
     const colorOf = id => ana.snapshot.players[id].color;
     assert.notEqual(colorOf(anaId), colorOf(benId), 'arrivals get distinct colours');
     // Ben opens the picker from his own badge: Ana's colour is crossed out; his pick reaches the room and Ana's picker live.
-    const badges = c => [...c.doc.querySelectorAll('[data-ui=lobby-plane] [role=listitem] button')];
-    assert.equal(badges(ben).length, 1, 'only my own badge is a button');
+    const badges = c => [...c.doc.querySelectorAll('[data-ui=room-lobby] [data-ui=my-color-badge]')];
+    assert.equal(badges(ben).length, 1, 'only my own badge, on my ticket, is a button');
     await ben.click(ben.$('[data-ui=my-color-badge]'));
     const swatch = (c, i) => c.$(`[data-ui=lobby-color-picker] [data-ui=color-picker] button[data-color="${i}"]`);
     assert.equal(swatch(ben, colorOf(anaId)).disabled, true, "Ana's colour is crossed out");
@@ -268,7 +268,7 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
     await W.until(() => swatch(ana, pick)?.disabled === true, 3000, "Ana's open picker crosses out Ben's new colour");
     assert.equal(swatch(ana, before).disabled, false, "Ben's old colour is free again for Ana");
     for (const c of [ana, ben]) {
-      const balls = [...c.doc.querySelectorAll('[data-ui=lobby-plane] [role=listitem]')].map(b => Number(b.dataset.color));
+      const balls = [...c.doc.querySelectorAll('[data-ui=lobby-passengers] [role=listitem]')].map(b => Number(b.dataset.color));
       assert.deepEqual(balls.sort((a, b) => a - b), [colorOf(anaId), pick].sort((a, b) => a - b), c.name + ': both balls on the plane, in their colours');
     }
     assert.ok([...ana.doc.querySelectorAll('[data-ui=room-lobby] select option')].some(o => o.value === 'pong'), 'two players: Putt Pong is offered');

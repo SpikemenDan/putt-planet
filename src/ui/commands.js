@@ -86,9 +86,15 @@ export function sanitizeRoomCode(value) {
   return String(value ?? '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12);
 }
 
-/** Display name: trimmed, at most 14 characters, "Player" when empty (legacy). */
+/**
+ * Longest name a player can type (owner, 2026-11-16), so every name fits its tag in the lobby vehicles. The wire contracts still
+ * accept up to MAX_PLAYER_NAME_LENGTH (14) so older clients keep working; the lobby shortens any longer name it receives.
+ */
+export const NAME_LIMIT = Math.min(12, MAX_PLAYER_NAME_LENGTH);
+
+/** Display name: trimmed, at most NAME_LIMIT (12) characters, "Player" when empty. */
 export function sanitizeName(value) {
-  return String(value ?? '').trim().slice(0, MAX_PLAYER_NAME_LENGTH) || 'Player';
+  return String(value ?? '').trim().slice(0, NAME_LIMIT) || 'Player';
 }
 
 /**

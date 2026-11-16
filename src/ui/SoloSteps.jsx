@@ -3,9 +3,11 @@ import { createPortal } from 'react-dom';
 import { GameModes } from '../shared/session.js';
 import { WORLDS } from '../shared/worlds.js';
 import { OFFWORLD_REGIONS } from '../shared/world-regions.js';
-import { UiCommands } from './commands.js';
+import { NAME_LIMIT, UiCommands } from './commands.js';
 import { useUiContext, useView } from './context.js';
-import { LobbyHelicopter } from './LobbyHelicopter.jsx';
+import { LobbyTicket } from './LobbyTicket.jsx';
+import { LobbyVehicle } from './LobbyVehicle.jsx';
+import solo from './SoloLobby.module.css';
 import menu from './Landing.module.css';
 import { MenuIcon } from './MenuIcons.jsx';
 
@@ -41,10 +43,11 @@ const WORLD_BLURB = Object.freeze({ gaia: 'Home: six regions of courses', luna: 
 
 /**
  * Solo, one question per screen (owner, 2026-11-12, layout A): how to play (Casual, Tournament and its length, or the
- * smaller Practice button), then the destination, then the Solo lobby (owner, 2026-11-16): a helicopter carrying the player's
- * ball, whose colour badge opens the party lobby's colour picker, the name and Play. Play opens the solo room and goes straight
- * to the level select with the chosen mode. Back steps back; from the first step it leaves Solo. `colorField` is no longer
- * shown here (the helicopter badge replaces it); it stays accepted so Landing.jsx needs no change.
+ * smaller Practice button), then the destination, then the Solo lobby (owner, 2026-11-16): a 3D helicopter carrying the player's
+ * ball, and on the right a boarding pass with their name, the colour badge that opens the party lobby's colour picker, the flight
+ * and Play. The name is typed in the menu card. Play opens the solo room and goes straight to the level select with the chosen
+ * mode. Back steps back; from the first step it leaves Solo. `colorField` is no longer shown here (the ticket's badge replaces it);
+ * it stays accepted so Landing.jsx needs no change.
  */
 export function SoloSteps({ name, onName, colorField, connecting, send, onExit, overlay = null }) {
   const { stage } = useUiContext();
@@ -131,12 +134,24 @@ export function SoloSteps({ name, onName, colorField, connecting, send, onExit, 
         </>;
       })()}
 
-      {step === 'ready' && <>
-        <p className={menu.summary} data-ui="solo-summary">{SOLO_MODES[mode]} on {WORLDS.find(w => w.id === world)?.name}</p>
-        <LobbyHelicopter name={name} color={color} onPick={c => send(UiCommands.SET_COLOR, { color: c })} />
-        <label>Your name<input maxLength={14} autoComplete="off" value={name} onChange={e => onName(e.target.value)} /></label>
-        <button type="button" className={menu.go} disabled={connecting} onClick={() => send(UiCommands.PLAY_SOLO, { name, mode, world })}>Play solo</button>
-      </>}
+      {step === 'ready' && (() => {
+        const [kind, plan] = SOLO_MODES[mode].split(' · ');
+        const stage = (
+          <div className={solo.stage} data-ui="solo-lobby">
+            <div className={solo.vehicle}><LobbyVehicle vehicle="helicopter" passengers={[{ id: 'you', name: name.trim() || 'Player', color: color ?? 0, you: true }]} /></div>
+            <LobbyTicket vehicle="helicopter" solo name={name} color={color} onPick={c => send(UiCommands.SET_COLOR, { color: c })} destination={world}
+              details={[['Mode', kind], ['Plan', plan], ['Seat', '01']]}>
+              <button type="button" className={solo.go} disabled={connecting} onClick={() => send(UiCommands.PLAY_SOLO, { name, mode, world })}>Play solo</button>
+            </LobbyTicket>
+          </div>
+        );
+        return <>
+          <p className={menu.summary} data-ui="solo-summary">{SOLO_MODES[mode]} on {WORLDS.find(w => w.id === world)?.name}</p>
+          <label>Your name<input maxLength={NAME_LIMIT} autoComplete="off" value={name} onChange={e => onName(e.target.value)} /></label>
+          <p className={menu.hint}>Your boarding pass is on the right. Tap your colour on it to change it.</p>
+          {overlay ? createPortal(stage, overlay) : stage}
+        </>;
+      })()}
 
       <button type="button" className={menu.back} onClick={back} data-ui="menu-back">Back</button>
     </div>

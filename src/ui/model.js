@@ -14,7 +14,7 @@ import { STARTER_COURSE_INDICES } from '../shared/constants.js';
 import { CUSTOM_RULES, changedRules, ruleValueText, seriesMaps, validRules } from '../shared/rules.js';
 import { PLAYER_COLOR_COUNT, isColorIndex } from '../shared/colors.js';
 import { GameModes, SessionPhases } from '../shared/session.js';
-import { courseWorld } from '../shared/worlds.js';
+import { courseWorld, isWorldId } from '../shared/worlds.js';
 import { MODE_OPTIONS, VOTE_SECONDS } from './commands.js';
 
 /** HUD names by power-up id, from the gameplay catalog. */
@@ -125,9 +125,12 @@ export function lobbyView(room, local, now, courses) {
   }
   return {
     label: roomLabel(room, local),
-    roster: players.map(p => ({ id: p.id, name: p.name + (p.id === local.id ? ' (you)' : ''), color: colorOf(room, local, p.id), you: p.id === local.id })),
+    roster: players.map(p => ({ id: p.id, name: p.name, color: colorOf(room, local, p.id), you: p.id === local.id })), // the lobby marks you with a YOU chip
     // VIS-M3: the party code, shown only once a party exists.
     code: local.roomCode ? local.roomCode.toUpperCase() : '',
+    // The party's planet (owner, 2026-11-16): the host picks it on the ticket; the lobby shows a plane for Gaia, a rocket for Ares and Luna.
+    destination: isWorldId(room.destination) ? room.destination : 'gaia',
+    canPickDestination: !!local.isHost && !!local.roomCode && room.phase === SessionPhases.LOBBY,
     myColor: colorOf(room, local, local.id),
     takenColors: takenColors(room, local),
     showModes: !!local.isHost,
@@ -161,7 +164,8 @@ export function votingView(room, local, now, courses) {
   const pickable = room.mode === GameModes.PUTT_PRACTICE && Number.isInteger(mine) && STARTER_COURSE_INDICES.includes(mine);
   return {
     status,
-    destination: local.destination ?? 'gaia', // the planet the level select opens on: Solo's chosen destination (VIS-G), Gaia otherwise
+    // The planet the level select opens on: Solo's chosen destination (VIS-G), or the party's, picked by the host on the lobby ticket.
+    destination: (local.roomCode && isWorldId(room.destination) ? room.destination : local.destination) ?? 'gaia',
     cards: STARTER_COURSE_INDICES.map((index, k) => {
       const c = courses[index];
       return { index, number: pad2(k + 1), name: c.name, desc: c.desc, par: c.par, world: c.world, votes: tally[index] || 0, selected: mine === index, preview: c.preview };

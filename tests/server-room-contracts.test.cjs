@@ -17,7 +17,14 @@ const assert = require('node:assert/strict');
   });
   await test('server authority separate from controller; versions 4 (peer) and 5 (server room) carry global hazards',async()=>{
     assert.equal((await import('../src/shared/constants.js')).PROTOCOL_VERSION,7);
-    assert.equal(c.SERVER_ROOM_VERSION,11);assert.ok(c.validRoomSnapshot(snapshot));
+    assert.equal(c.SERVER_ROOM_VERSION,12);assert.ok(c.validRoomSnapshot(snapshot));
+    // Version 12 (owner, 2026-11-16): the controller's SET_DESTINATION, and an optional destination in the context.
+    assert.ok(c.CONTROLLER_COMMANDS.includes('SET_DESTINATION'));
+    assert.ok(c.validServerCommand({type:'SET_DESTINATION',world:'ares'}));
+    assert.equal(c.validServerCommand({type:'SET_DESTINATION',world:'mars'}),false);
+    assert.equal(c.validServerCommand({type:'SET_DESTINATION',world:'luna',extra:1}),false);
+    const bound=copy(snapshot);bound.session.context.destination='luna';assert.ok(c.validRoomSnapshot(bound),'a snapshot may name the destination');
+    bound.session.context.destination='pluto';assert.equal(c.validRoomSnapshot(bound),false,'an unknown destination is refused');
     const invalid=copy(snapshot);invalid.session.context.hostId='p1';assert.equal(c.validRoomSnapshot(invalid),false);
     assert.equal(c.authorizeRoomFrame(command(),binding,snapshot,snapshot.serverTime),null);
     assert.equal(c.authorizeRoomFrame({...command(),connectionId:'socket_p2'},{...binding,playerId:'p2',connectionId:'socket_p2'},snapshot,snapshot.serverTime),'unauthorized');

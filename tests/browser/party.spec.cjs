@@ -50,7 +50,8 @@ test('party flow: Create shows the code afterwards, Join by code, plane lobby wi
     expect(start.Ana).not.toBe(start.Ben);
 
     // Only my own badge opens the picker; others' colours are crossed out; Escape closes it.
-    for (const p of [ana, ben]) await expect(p.ui('lobby-plane').locator('[role=listitem] button')).toHaveCount(1);
+    for (const p of [ana, ben]) await expect(p.ui('room-lobby').locator('[data-ui=my-color-badge]')).toHaveCount(1);
+    for (const p of [ana, ben]) await expect(p.ui('lobby-passengers').locator('button')).toHaveCount(0);
     const benBadge = ben.ui('my-color-badge');
     await benBadge.click();
     const benPicker = ben.ui('lobby-color-picker');
@@ -72,9 +73,9 @@ test('party flow: Create shows the code afterwards, Join by code, plane lobby wi
     await ana.ui('room-lobby').locator('h1').click();
     await expect(anaPicker).toHaveCount(0);
 
-    // The plane lobby: both balls in their colours for both players; Putt Pong is offered with exactly two.
+    // The plane lobby (owner, 2026-11-16: a 3D plane for Gaia): both balls in their colours for both players; Putt Pong is offered with exactly two.
     for (const p of [ana, ben]) {
-      const balls = p.ui('lobby-plane').locator('[role=listitem]');
+      const balls = p.ui('lobby-passengers').locator('[role=listitem]');
       await expect(balls).toHaveCount(2);
       await expect.poll(async () => (await balls.evaluateAll(els => els.map(e => Number(e.dataset.color)))).sort((a, b) => a - b))
         .toEqual([start.Ana, pick].sort((a, b) => a - b));

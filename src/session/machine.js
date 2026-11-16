@@ -8,6 +8,7 @@ import { TUNING } from '../shared/tuning.js';
 import { DEFAULT_RULES, holeLimitSeconds, seriesMaps, validateRules } from '../shared/rules.js';
 import { createCourseDocument, validateCourseDocument } from '../courses/document.js';
 import { createPongSession } from './pong.js';
+import { isWorldId } from '../shared/worlds.js';
 
 export const SessionEvents = Object.freeze({ ...SessionCommands, UPDATE_STROKES: 'UPDATE_STROKES', REPORT_SCORE: 'REPORT_SCORE', PRACTICE_STEP: 'PRACTICE_STEP', PRACTICE_MAPS: 'PRACTICE_MAPS' });
 const eventTypes = new Set(Object.values(SessionEvents));
@@ -156,6 +157,7 @@ export function createRoomSession({ hostId, controllerId = hostId, hostName = 'H
       powerups: ({ context: c, event: e }) => !serverOwned && host(c, e) && typeof e.enabled === 'boolean',
       // Putt Pong is 1v1 (solo plays it as practice): it never starts with more than two players.
       canStartVoting: ({ context: c, event: e }) => host(c, e) && (c.mode !== GameModes.PONG || ids(c).length <= 2),
+      destination: ({ context: c, event: e }) => host(c, e) && isWorldId(e.world),
       mode: ({ context: c, event: e }) => host(c, e) && modes.includes(e.mode) && (![GameModes.PRACTICE, GameModes.PUTT_PRACTICE].includes(e.mode) || ids(c).length === 1),
       vote: ({ context: c, event: e }) => validVote(c, e),
       practice: ({ context: c }) => c.mode === GameModes.PRACTICE,
@@ -246,6 +248,7 @@ export function createRoomSession({ hostId, controllerId = hostId, hostName = 'H
       setColor: assign(({ context: c, event: e }) => ({ players: { ...c.players, [e.playerId]: { ...c.players[e.playerId], color: e.color } } })),
       leave: assign(({ context: c, event: e }) => ({ players: { ...c.players, [e.playerId]: { ...c.players[e.playerId], connected: false } }, votes: Object.fromEntries(Object.entries(c.votes).filter(([id]) => id !== e.playerId)) })),
       mode: assign(({ event: e }) => ({ mode: e.mode })),
+      destination: assign(({ event: e }) => ({ destination: e.world })),
       powerups: assign(({ context: c, event: e }) => ({ powerups: e.enabled, rules: { ...c.rules, powerups: e.enabled } })),
       clearSeries: assign(({ context: c }) => clearSeries(c)),
       clearVotes: assign({ votes: () => ({}), votingDeadline: 0, tie: null }),
@@ -311,7 +314,7 @@ export function createRoomSession({ hostId, controllerId = hostId, hostName = 'H
       } : {}),
     },
     states: {
-      lobby: { on: { SET_COLOR: { guard: 'canSetColor', actions: 'setColor' }, SET_MODE: { guard: 'mode', actions: 'mode' }, SET_POWERUPS: { guard: 'powerups', actions: 'powerups' }, START_VOTING: { guard: 'canStartVoting', target: 'select', actions: 'clearSeries' } } },
+      lobby: { on: { SET_COLOR: { guard: 'canSetColor', actions: 'setColor' }, SET_MODE: { guard: 'mode', actions: 'mode' }, SET_POWERUPS: { guard: 'powerups', actions: 'powerups' }, SET_DESTINATION: { guard: 'destination', actions: 'destination' }, START_VOTING: { guard: 'canStartVoting', target: 'select', actions: 'clearSeries' } } },
       select: {
         initial: 'waiting',
         states: {

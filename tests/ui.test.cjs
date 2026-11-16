@@ -352,11 +352,10 @@ function fakeClock() {
     await t.teardown();
   });
 
-  await scenario('solo lobby helicopter (owner, 2026-11-16): one ball in your colour, the badge opens the party picker with nothing crossed out, picking sends set-color, display reaches the craft', async () => {
-    const { createDisplay } = await import('../src/shared/display.js');
-    const live = structuredClone(createDisplay());
-    live.helicopter.rotorSeconds = 0; live.helicopter.hover = 9; live.lobby.ballSize = 40;
-    const t = await setup({ mountProps: { display: live } });
+  await scenario('solo lobby (owner, 2026-11-16): the 3D helicopter carries one ball in your colour; the ticket on the right has your name, the colour badge with the party picker (nothing crossed out) and Play', async () => {
+    const scenes = [];
+    const createLobbyScene = opts => { const sc = { opts, vehicle: opts.vehicle, colors: null, stats: { webgl: true }, setVehicle(k) { sc.vehicle = k; }, setPassengers(c) { sc.colors = c; }, onAnchors(fn) { sc.emit = fn; }, start() {}, dispose() { sc.disposed = true; } }; scenes.push(sc); return sc; };
+    const t = await setup({ mountProps: { createLobbyScene } });
     await act(async () => t.store.setLocal({ active: false, connecting: false, colorPref: 4 }));
     const steps = () => $('[data-ui=solo-steps]');
     const inSteps = label => [...steps().querySelectorAll('button')].find(b => (b.getAttribute('aria-label') ?? b.textContent).startsWith(label));
@@ -364,25 +363,34 @@ function fakeClock() {
     await click(inSteps('Casual'));
     await click(steps().querySelector('[data-ui=world-choose]'));
     assert.equal(steps().dataset.step, 'ready');
-    const heli = steps().querySelector('[data-ui=lobby-helicopter]');
-    assert.ok(heli, 'the ready step is the helicopter lobby');
-    assert.equal(heli.querySelectorAll('[data-color]').length, 1, 'it carries one ball');
-    assert.equal(heli.querySelector('[data-color]').dataset.color, '4', 'in the saved colour');
-    assert.equal(steps().querySelectorAll('[data-ui=color-picker]').length, 0, 'no inline palette: the badge opens it');
-    assert.equal(heli.style.getPropertyValue('--heli-rotor-state'), 'paused', 'display.helicopter.rotorSeconds 0 holds the rotors');
-    assert.equal(heli.style.getPropertyValue('--heli-hover'), '9px', 'display.helicopter.hover reaches the craft');
-    assert.equal(heli.style.getPropertyValue('--lobby-ball'), '40px', 'display.lobby.ballSize sizes the craft too');
-    live.helicopter.rotorSeconds = 0.5;
-    await act(async () => { await new Promise(r => setTimeout(r, 40)); });
-    assert.equal(heli.style.getPropertyValue('--heli-rotor'), '0.5s', 'live from the development tuner');
-    assert.equal(heli.style.getPropertyValue('--heli-rotor-state'), 'running');
+    const stage = $('[data-ui=solo-lobby]');
+    assert.ok(stage, 'the ready step shows the Solo lobby');
+    const live = scenes.filter(sc => !sc.disposed);
+    assert.equal(live.length, 1, 'one live 3D scene');
+    const heli = live[0];
+    assert.equal(heli.opts.vehicle, 'helicopter', 'Solo flies the helicopter');
+    assert.deepEqual(heli.colors, ['#25d1e6'], 'it carries one ball, in the saved colour (Cyan)');
+    const vehicle = stage.querySelector('[data-ui=lobby-vehicle]');
+    assert.equal(vehicle.dataset.mode, '3d');
+    const ticket = stage.querySelector('[data-ui=lobby-ticket]');
+    assert.ok(ticket, 'the boarding pass');
+    assert.equal(ticket.querySelector('[data-ui=ticket-destination]').textContent, 'Gaia');
+    assert.equal(ticket.querySelector('[data-ui=destination-pick]'), null, 'Solo chose its planet already');
+    assert.equal($$('[data-ui=color-picker]').length, 0, 'no inline palette: the badge opens it');
     const name = steps().querySelector('input');
+    assert.equal(name.maxLength, 12, 'names take at most 12 characters');
     await act(async () => { const set = Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype, 'value').set; set.call(name, 'Ana'); name.dispatchEvent(new dom.window.Event('input', { bubbles: true })); });
-    assert.equal(heli.querySelector('[data-ui=my-color-badge]').parentElement.textContent, 'Ana', 'the caption shows the name as typed');
-    await click(heli.querySelector('[data-ui=my-color-badge]'));
-    const picker = heli.querySelector('[data-ui=lobby-color-picker]');
+    assert.equal(ticket.querySelector('[data-ui=ticket-name]').textContent, 'Ana', 'the ticket shows the name as typed');
+    const tag = vehicle.querySelector('[data-ui=lobby-passengers] [role=listitem]');
+    assert.equal(tag.textContent, 'Anayou', 'the ball carries a name tag');
+    await act(async () => heli.emit([{ seat: 0, x: 120, y: 80, r: 12 }], { width: 400, height: 300 }));
+    assert.match(tag.style.transform, /translate\(120\.0px, 62\.0px\)/, 'the tag sits just above its ball');
+    const badge = ticket.querySelector('[data-ui=my-color-badge]');
+    assert.equal(badge.dataset.color, '4');
+    await click(badge);
+    const picker = ticket.querySelector('[data-ui=lobby-color-picker]');
     assert.ok(picker, 'the badge opens the party colour picker');
-    const swatches = [...picker.querySelectorAll('[data-color]')];
+    const swatches = [...picker.querySelectorAll('[data-ui=color-picker] [data-color]')];
     assert.equal(swatches.length, 12, 'the same 12-colour palette');
     assert.equal(swatches.filter(b => b.disabled).length, 0, 'alone: nothing is crossed out');
     assert.equal(picker.querySelector('[aria-checked=true]').dataset.color, '4');
@@ -392,6 +400,9 @@ function fakeClock() {
     t.commands.length = 0;
     await click(button('Play solo'));
     assert.deepEqual(t.commands, [{ type: 'play-solo', name: 'Ana', mode: 'standard', world: 'gaia' }], 'Play starts the chosen mode and world');
+    await click(steps().querySelector('[data-ui=menu-back]'));
+    assert.equal($('[data-ui=solo-lobby]'), null, 'Back leaves the lobby');
+    assert.equal(heli.disposed, true, 'and disposes the 3D scene');
     await t.teardown();
   });
 
@@ -888,7 +899,7 @@ function fakeClock() {
     assert.equal(landing.querySelectorAll('[data-ui=color-picker]').length, 0, 'the colour is picked after Create or Join, before the lobby');
     assert.equal(landing.querySelector('[data-ui=party-code]'), null, 'opening Party shows no code');
     const [nameInput, codeInput] = landing.querySelectorAll('input');
-    assert.equal(nameInput.maxLength, 14); assert.equal(codeInput.maxLength, 12);
+    assert.equal(nameInput.maxLength, 12, 'names take at most 12 characters (owner, 2026-11-16)'); assert.equal(codeInput.maxLength, 12);
     assert.equal(codeInput.value, '', 'the Join box starts empty: the menu never makes up a code');
     assert.equal(codeInput.closest('form').dataset.ui, 'party-join');
     const create = button('Create party');
@@ -929,7 +940,7 @@ function fakeClock() {
     assert.equal(ui.parseJoinRequest({ multi: false, name: '' }).name, 'Player');
     assert.equal(ui.initialRoomCode('#room=AB-cd9'), 'abcd9');
     assert.equal(ui.parseJoinRequest({ multi: true, roomCode: 'abcdefghijklmnop' }).roomCode, 'abcdefghijkl', 'room codes keep 12 characters');
-    assert.equal(ui.sanitizeName('abcdefghijklmnopq'), 'abcdefghijklmn', 'names keep 14 characters');
+    assert.equal(ui.sanitizeName('abcdefghijklmnopq'), 'abcdefghijkl', 'names keep 12 characters (owner, 2026-11-16)');
     assert.equal(ui.initialRoomCode(''), '', 'no invite link: no code');
     assert.match(ui.connectErrorMessage('room-not-found'), /No party has that code/);
     await t.teardown();
@@ -942,10 +953,11 @@ function fakeClock() {
     assert.ok(shown(lobby));
     assert.equal(lobby.querySelector('[data-ui=lobby-color-picker]'), null, 'the picker starts closed');
     await t.send({ type: 'JOIN_ROOM', playerId: 'g1', name: 'Ben', color: 3 });
-    const items = [...lobby.querySelectorAll('[data-ui=lobby-plane] [role=listitem]')];
+    const items = [...lobby.querySelectorAll('[data-ui=lobby-passengers] [role=listitem]')];
     assert.equal(items.length, 2);
-    assert.equal(items[0].querySelectorAll('button').length, 1, 'my badge is a button');
-    assert.equal(items[1].querySelectorAll('button').length, 0, "another player's badge is not");
+    assert.equal(lobby.querySelectorAll('[data-ui=lobby-passengers] button').length, 0, 'name tags are not buttons');
+    assert.equal(lobby.querySelectorAll('[data-ui=my-color-badge]').length, 1, 'my colour badge is on my ticket, the only one');
+    assert.ok(lobby.querySelector('[data-ui=lobby-ticket] [data-ui=my-color-badge]'));
     const badge = lobby.querySelector('[data-ui=my-color-badge]');
     assert.equal(badge.getAttribute('aria-haspopup'), 'dialog');
     assert.equal(badge.getAttribute('aria-expanded'), 'false');
@@ -992,7 +1004,8 @@ function fakeClock() {
     const lobby = t.within('[data-ui=room-lobby]');
     assert.ok(shown(lobby));
     assert.equal(lobby.querySelector('p').textContent, 'Room ABCD · 1 player · You are the host');
-    assert.deepEqual([...lobby.querySelectorAll('[data-ui=lobby-plane] [role=listitem]')].map(b => b.textContent), ['Ana (you)'], 'the lobby plane holds my ball');
+    assert.deepEqual([...lobby.querySelectorAll('[data-ui=lobby-passengers] [role=listitem]')].map(b => b.textContent), ['Anayou'], 'the lobby vehicle holds my ball, tagged as me');
+    assert.equal(lobby.querySelector('[data-ui=ticket-name]').textContent, 'Ana', 'my ticket names me');
     assert.equal(lobby.querySelector('[data-ui=party-code] strong').textContent, 'ABCD');
     const select = lobby.querySelector('select');
     const setMode = async v => { await act(async () => { select.value = v; select.dispatchEvent(new dom.window.Event('change', { bubbles: true })); }); };
@@ -1003,9 +1016,9 @@ function fakeClock() {
     assert.equal(select.value, 'standard', 'a second player resets a solo-only mode');
     assert.deepEqual([...select.options].filter(o => o.disabled).map(o => o.value), ['practice', 'putt_practice']);
     {
-      const plane = [...lobby.querySelectorAll('[data-ui=lobby-plane] [role=listitem]')];
+      const plane = [...lobby.querySelectorAll('[data-ui=lobby-passengers] [role=listitem]')];
       const players = t.session.getSnapshot().players;
-      assert.deepEqual(plane.map(b => [b.textContent, Number(b.dataset.color)]), [['Ana (you)', players.host.color], ['Ben', players.g1.color]], 'both balls stand on the plane in their own colours');
+      assert.deepEqual(plane.map(b => [b.textContent, Number(b.dataset.color), b.dataset.side]), [['Anayou', players.host.color, 'top'], ['Ben', players.g1.color, 'bottom']], 'both balls ride in their own colours; tags alternate top and bottom');
     }
     assert.ok(button('Copy invite'));
     await setMode('tournament_3');
@@ -1050,23 +1063,98 @@ function fakeClock() {
     await solo.teardown();
   });
 
-  await scenario('lobby plane (VIS-M3): display.lobby reaches the plane, live from the development tuner', async () => {
+  await scenario('lobby vehicle (owner, 2026-11-16): the plane for Gaia, the host switches the ticket to Ares and everyone gets the rocket; tags follow their balls, alternating top and bottom; names cut to 12', async () => {
+    const scenes = [];
+    const createLobbyScene = opts => { const sc = { opts, vehicle: opts.vehicle, colors: null, stats: { webgl: true }, setVehicle(k) { sc.vehicle = k; }, setPassengers(c) { sc.colors = c; }, onAnchors(fn) { sc.emit = fn; }, start() {}, dispose() { sc.disposed = true; } }; scenes.push(sc); return sc; };
     const { createDisplay } = await import('../src/shared/display.js');
     const live = structuredClone(createDisplay());
-    live.lobby.ballSize = 80; live.lobby.tilt = 30; live.lobby.spacing = 1.5; live.lobby.bob = 0;
-    const t = await setup({ mountProps: { display: live } });
-    const plane = t.within('[data-ui=lobby-plane]');
-    assert.equal(plane.style.getPropertyValue('--lobby-ball'), '80px');
-    assert.equal(plane.style.getPropertyValue('--lobby-tilt'), '30deg');
-    assert.equal(plane.style.getPropertyValue('--lobby-spacing'), '1.5');
-    assert.equal(plane.style.getPropertyValue('--lobby-bob'), '0px');
-    live.lobby.tilt = 10;
-    await act(async () => { await new Promise(r => setTimeout(r, 40)); });
-    assert.equal(plane.style.getPropertyValue('--lobby-tilt'), '10deg', 'a live display object updates the plane without a re-render');
+    const t = await setup({ mountProps: { createLobbyScene, display: live } });
+    const lobby = t.within('[data-ui=room-lobby]');
+    assert.equal(scenes.length, 1);
+    assert.equal(scenes[0].opts.display, live, 'the scene reads the live display (display.lobby)');
+    assert.equal(scenes[0].vehicle, 'plane', 'a party bound for Gaia takes the plane');
+    await t.send({ type: 'JOIN_ROOM', playerId: 'g1', name: 'Bartholomew-the-3rd'.slice(0, 14) });
+    const sc = scenes[0];
+    assert.equal(sc.colors.length, 8, 'eight seats');
+    assert.equal(sc.colors.filter(Boolean).length, 2, 'two balls aboard');
+    const tags = () => [...lobby.querySelectorAll('[data-ui=lobby-passengers] [role=listitem]')];
+    assert.equal(tags()[1].querySelector('span + span').textContent, 'Bartholomew-', 'a long name is cut to 12 characters');
+    await act(async () => sc.emit([{ seat: 0, x: 100, y: 120, r: 10 }, { seat: 1, x: 160, y: 120, r: 10 }], { width: 600, height: 300 }));
+    assert.match(tags()[0].style.transform, /translate\(100\.0px, 104\.0px\) translate\(-50%, -100%\)/, 'seat 1: the tag sits above its ball');
+    assert.match(tags()[1].style.transform, /translate\(160\.0px, 164\.0px\) translate\(-50%, 0\)/, 'seat 2: the tag hangs below the vehicle');
+    const ticket = lobby.querySelector('[data-ui=lobby-ticket]');
+    const worlds = [...ticket.querySelectorAll('[data-ui=destination-pick] button')];
+    assert.deepEqual(worlds.map(b => b.dataset.world), ['gaia', 'luna', 'ares'], 'the host can switch the destination on the ticket');
+    t.commands.length = 0;
+    await click(worlds[2]);
+    assert.deepEqual(t.commands, [{ type: 'session', event: { type: 'SET_DESTINATION', world: 'ares' } }]);
+    await t.send({ type: 'SET_DESTINATION', playerId: 'host', world: 'ares' });
+    assert.equal(t.session.getSnapshot().destination, 'ares');
+    assert.equal(sc.vehicle, 'rocket', 'Ares takes the rocket');
+    assert.equal(ticket.querySelector('[data-ui=ticket-destination]').textContent, 'Ares');
+    assert.equal(ticket.querySelector('[data-ui=ticket-vehicle]').textContent, 'Rocket');
+    assert.equal(lobby.querySelector('[data-ui=lobby-vehicle]').dataset.vehicle, 'rocket');
+    await t.send({ type: 'SET_DESTINATION', playerId: 'g1', world: 'luna' });
+    assert.equal(t.session.getSnapshot().destination, 'ares', 'a guest cannot switch it');
+    await t.send({ type: 'SET_DESTINATION', playerId: 'host', world: 'mars' });
+    assert.equal(t.session.getSnapshot().destination, 'ares', 'an unknown world is refused');
     await t.teardown();
-    const shipped = await setup();
-    assert.equal(shipped.within('[data-ui=lobby-plane]').style.getPropertyValue('--lobby-ball'), '56px', 'the shipped defaults apply');
-    await shipped.teardown();
+    assert.equal(sc.disposed, true, 'leaving disposes the scene');
+    const guest = await setup({ localId: 'g1', isHost: false });
+    assert.equal(guest.within('[data-ui=destination-pick]'), null, 'guests see the destination but cannot pick it');
+    await guest.teardown();
+  });
+
+  await scenario('lobby scene (owner, 2026-11-16): helicopter, plane and rocket models; balls only in occupied seats; anchors every frame; live display; disposal', async () => {
+    const THREE = await import('three');
+    const { createLobbyScene } = await import('../src/render/lobby-scene.js');
+    const { makeLobbyVehicle, lobbyVehicleFor, LOBBY_VEHICLES } = await import('../src/render/lobby-models.js');
+    const { createDisplay } = await import('../src/shared/display.js');
+    for (const kind of LOBBY_VEHICLES) {
+      const v = makeLobbyVehicle(THREE, kind);
+      assert.equal(v.seats.length, kind === 'helicopter' ? 1 : 8, kind + ' seats');
+      assert.ok(v.body.attributes.color.count === v.body.attributes.position.count && v.radius > 0, kind + ' is one vertex-coloured body');
+      const top = v.seats.map(p => p.y);
+      assert.ok(top.every(y => Math.abs(y - top[0]) < 1e-9), kind + ': every seat at one height');
+    }
+    assert.equal(makeLobbyVehicle(THREE, 'helicopter').spinners.length, 2, 'main and tail rotors');
+    assert.equal(makeLobbyVehicle(THREE, 'plane').spinners.length, 4, 'four propellers');
+    assert.ok(makeLobbyVehicle(THREE, 'rocket').flame, 'the rocket has a flame');
+    assert.deepEqual([lobbyVehicleFor({ solo: true, destination: 'ares' }), lobbyVehicleFor({ destination: 'gaia' }), lobbyVehicleFor({ destination: 'ares' }), lobbyVehicleFor({ destination: 'luna' }), lobbyVehicleFor({})], ['helicopter', 'plane', 'rocket', 'rocket', 'plane']);
+    const sd = new JSDOM('<canvas></canvas>', { pretendToBeVisual: true });
+    sd.window.HTMLCanvasElement.prototype.getContext = () => new Proxy({}, { get: (_, k) => (k === 'createRadialGradient' ? () => ({ addColorStop() {} }) : () => {}), set: () => true });
+    const canvas = sd.window.document.querySelector('canvas');
+    Object.defineProperty(canvas, 'clientWidth', { value: 600 }); Object.defineProperty(canvas, 'clientHeight', { value: 300 });
+    let frames = 0, disposed = 0;
+    const createWebGLRenderer = () => ({ render() { frames++; }, setPixelRatio() {}, setSize() {}, setClearColor() {}, dispose() { disposed++; }, capabilities: { getMaxAnisotropy: () => 1 } });
+    const display = structuredClone(createDisplay());
+    const lobby = createLobbyScene({ THREE, canvas, display, vehicle: 'plane', win: sd.window, createWebGLRenderer });
+    let anchors = null;
+    lobby.onAnchors(a => { anchors = a; });
+    lobby.setPassengers(['#ff4fb8', null, '#3e8ef7', null, null, null, null, null]);
+    assert.equal(lobby.stats.passengers, 2, 'balls only in occupied seats');
+    lobby.start();
+    await new Promise(r => setTimeout(r, 120));
+    assert.ok(frames > 1, 'it animates');
+    assert.deepEqual(anchors.map(a => a.seat), [0, 2], 'one anchor per ball, by seat');
+    assert.ok(anchors.every(a => a.x > 0 && a.x < 600 && a.y > 0 && a.y < 300 && a.r > 2), 'each ball lands inside the frame');
+    assert.ok(anchors[0].x < anchors[1].x, 'seats run left to right');
+    const near = anchors[0].r;
+    display.lobby.zoom = 1.6;
+    await new Promise(r => setTimeout(r, 60));
+    assert.ok(anchors[0].r > near * 1.3, 'display.lobby.zoom brings the vehicle closer, live');
+    lobby.setVehicle('rocket');
+    assert.equal(lobby.stats.vehicle, 'rocket');
+    assert.equal(lobby.stats.passengers, 2, 'the balls move to the new vehicle');
+    lobby.dispose();
+    const after = frames;
+    await new Promise(r => setTimeout(r, 60));
+    assert.equal(frames, after, 'no frames after dispose');
+    assert.equal(disposed, 1);
+    const none = createLobbyScene({ THREE, canvas, display, win: sd.window, createWebGLRenderer: () => { throw new Error('no WebGL'); } });
+    assert.equal(none.stats.webgl, false, 'without WebGL it stays inert');
+    none.setPassengers(['#fff']); none.start(); none.dispose();
+    sd.window.close();
   });
 
   await scenario('tournament: voting countdown, votes, start countdown, putt banners, HUD, hole in one, map results and the champion', async () => {
@@ -1348,7 +1436,7 @@ function fakeClock() {
     const t = await setup({ hostName: '<img src=x>' });
     await t.send({ type: 'JOIN_ROOM', playerId: 'g1', name: '<b>Ben</b>' });
     assert.equal(t.root.querySelectorAll('img, b b').length, 0);
-    assert.ok(t.within('[data-ui=room-lobby]').textContent.includes('<img src=x> (you)'));
+    assert.ok(t.within('[data-ui=room-lobby]').textContent.includes('<img src=x>'));
     assert.ok(t.within('[data-ui=room-lobby]').textContent.includes('<b>Ben</b>'));
     await t.teardown();
   });
