@@ -63,5 +63,39 @@ const assert = require('node:assert/strict');
   assert.equal(quick.transitioning, false);
   assert.ok(q <= 2, 'reduced motion ends at once');
 
+  // VIS-A (#167): arrival sequence establishing shot and swoop to opening tee
+  const arrivalRig = createCameraRig();
+  let at = settled(arrivalRig, 0);
+  const tee = [250, 10, 150];
+  arrivalRig.startArrival({ tee, now: at });
+  assert.equal(arrivalRig.transitioning, true);
+  assert.equal(arrivalRig.mode, 'arrival');
+
+  let arrivalFrames = 0, firstPhaseHigh = true;
+  let arrivalLast = null;
+  const arrivalStart = at;
+  while (arrivalRig.transitioning) {
+    at += frameMs;
+    arrivalLast = arrivalRig.update({ now: at, dt: frameMs / 1000, ball: tee, hole: [350, 0, 150] });
+    arrivalFrames++;
+    assert.ok(arrivalFrames < 300, 'arrival sequence finishes within finite frames');
+    if ((at - arrivalStart) < 800) {
+      if (arrivalLast.position[1] < 400) firstPhaseHigh = false;
+    }
+  }
+  assert.ok(firstPhaseHigh, 'camera maintains high wide establishing altitude in early arrival phase');
+  assert.ok(arrivalLast.events.includes('arrival-end'), 'arrival emits arrival-end event upon finish');
+  assert.equal(arrivalRig.transitioning, false);
+  assert.ok(dist(arrivalLast.position, arrivalRig.position) < 1e-4);
+
+  // Arrival reduced motion
+  const quickArrival = createCameraRig();
+  let qt = settled(quickArrival, 0);
+  quickArrival.startArrival({ tee, now: qt, reducedMotion: true });
+  let qq = 0;
+  while (quickArrival.transitioning && qq++ < 10) quickArrival.update({ now: qt += frameMs, dt: frameMs / 1000, ball: tee, hole: [350, 0, 150] });
+  assert.equal(quickArrival.transitioning, false);
+  assert.ok(qq <= 5, 'arrival reduced motion finishes quickly');
+
   console.log('ALL CAMERA TRANSITION TESTS PASSED');
 })().catch(error => { console.error('FAILED with error:', error); process.exitCode = 1; });

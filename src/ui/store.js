@@ -15,7 +15,7 @@
 
 import { SessionPhases } from '../shared/session.js';
 import { normalizeCosmetics } from '../cosmetics/catalog.js';
-import { hudView, lobbyView, resultsView, scorecardView, screensView, votingView } from './model.js';
+import { arrivalView, hudView, lobbyView, resultsView, scorecardView, screensView, votingView } from './model.js';
 
 export const TOAST_MS = 3000;
 export const BANNER_MS = 1900;
@@ -74,6 +74,7 @@ export function createUiStore({ courses, clock = globalThis }) {
       voting: reuse('voting', hasRoom && screens.voting ? votingView(room, local, now, courses) : null),
       hud: reuse('hud', hasRoom && screens.game ? hudView(room, local, now, courses) : null),
       cardOpen,
+      arrival: reuse('arrival', hasRoom && screens.arrival ? arrivalView(room, local, now, courses) : null),
       scorecard: reuse('scorecard', hasRoom && (cardOpen || screens.results) && room.phase !== SessionPhases.LOBBY && room.phase !== SessionPhases.SELECT ? scorecardView(room, local, courses) : null),
       results: reuse('results', hasRoom && screens.results ? resultsView(room, local, courses) : null),
       toast,

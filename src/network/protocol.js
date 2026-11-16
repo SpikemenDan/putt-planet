@@ -23,7 +23,7 @@ const keys = (o, allowed) => Object.keys(o).every(k => allowed.includes(k));
 const index = (n, max) => count(n) && n < max;
 const validState = s => s === 'lobby' || s === 'results' || (record(s) && Object.keys(s).length === 1
   && ((Object.hasOwn(s, 'select') && ['waiting', 'timing', 'choosingPutt'].includes(s.select))
-    || (Object.hasOwn(s, 'play') && (s.play === 'starting' || (record(s.play) && Object.keys(s.play).length === 1
+    || (Object.hasOwn(s, 'play') && (['starting', 'arrival'].includes(s.play) || (record(s.play) && Object.keys(s.play).length === 1
       && ['settling', 'running', 'replaying'].includes(s.play.active))))));
 const hostCommands = ['SET_MODE', 'SET_POWERUPS', 'START_VOTING', 'START_ROUND', 'RETURN_TO_LOBBY', 'PRACTICE_STEP', 'PRACTICE_MAPS'];
 export function validCommand(e, isHost) {
@@ -37,6 +37,7 @@ export function validCommand(e, isHost) {
     REPORT_SCORE: ['strokes', 'roundNumber', 'puttIndex', 'timedOut'],
     DEPLOY_OBJECT: ['kind', 'x', 'y'], DEPLOY_HIT: ['id'],
     ACTIVATE_HAZARD: ['kind', 'direction', 'targetId', 'x', 'y'],
+    ARRIVAL_READY: [],
   }[e.type];
   if (!Array.isArray(fields) || !keys(e, ['type', ...fields])) return false;
   switch (e.type) {
@@ -89,8 +90,10 @@ export function validSnapshot(s) {
         && index(h.par, 11) && h.par > 0 && index(h.penalty, 11) && (h.missed === undefined || typeof h.missed === 'boolean')))) return false;
   }
   if (!keys(s, ['phase', 'mode', 'powerups', 'hostId', 'mapIndex', 'puttIndex', 'roundNumber', 'roundLimitSeconds',
-    'roundStartTime', 'votingDeadline', 'votes', 'tie', 'roster', 'players', 'isHost', 'completedMaps', 'totals', 'last', 'state', 'presence', 'deployables', 'globalHazards', 'rules'])
+    'roundStartTime', 'votingDeadline', 'votes', 'tie', 'roster', 'players', 'isHost', 'completedMaps', 'totals', 'last', 'state', 'presence', 'deployables', 'globalHazards', 'rules', 'awaitingArrival', 'readyArrivals'])
     || !(s.powerups === undefined || typeof s.powerups === 'boolean')
+    || !(s.awaitingArrival === undefined || typeof s.awaitingArrival === 'boolean')
+    || !(s.readyArrivals === undefined || (record(s.readyArrivals) && Object.values(s.readyArrivals).every(v => typeof v === 'boolean')))
     || !(s.rules === undefined || validRules(s.rules))
     || !Number.isFinite(s.roundLimitSeconds) || s.roundLimitSeconds < 120 || s.roundLimitSeconds > 600
     || typeof s.isHost !== 'boolean' || !validState(s.state)
