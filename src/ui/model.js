@@ -86,11 +86,13 @@ const inCountdown = (room, now) => room.phase === SessionPhases.PLAY && room.put
 export function screensView(room, local, now) {
   const active = !!local.active && !!room;
   const play = active && room.phase === SessionPhases.PLAY;
+  const arrival = play && (!!room.awaitingArrival || inCountdown(room, now));
   return {
     landing: !local.active,
     lobby: active && (room.phase === SessionPhases.LOBBY || inCountdown(room, now)),
     voting: active && room.phase === SessionPhases.SELECT,
-    game: (play && !inCountdown(room, now)) || (active && room.phase === SessionPhases.RESULTS),
+    arrival,
+    game: (play && !inCountdown(room, now)) || (active && room.phase === SessionPhases.RESULTS) || (play && !!room.awaitingArrival),
     results: active && room.phase === SessionPhases.RESULTS,
     netNotice: !!local.active && local.connected === false,
     reconnecting: !!local.active && !!local.reconnecting,
@@ -235,6 +237,36 @@ export function pongHudView(room, local) {
     bonusAwarded: false,
     winner: null,
     isGameOver: false,
+  };
+}
+
+/** Arrival sequence view: skydive, cloud loading, crew ready state, and countdown (VIS-A #167). */
+export function arrivalView(room, local, now, courses) {
+  const course = courses[room.mapIndex];
+  const courseName = course?.name || 'Course ' + ((room.mapIndex | 0) + 1);
+  const players = connectedPlayers(room);
+  const ready = !!room.readyArrivals?.[local.id];
+  const waitingForOthers = ready && !!room.awaitingArrival;
+  const inStartCountdown = !room.awaitingArrival && inCountdown(room, now);
+  const countdownSec = inStartCountdown ? Math.max(0, Math.ceil((room.roundStartTime - now) / 1000)) : 0;
+  return {
+    courseName,
+    mapIndex: room.mapIndex,
+    puttIndex: room.puttIndex,
+    awaitingArrival: !!room.awaitingArrival,
+    ready,
+    waitingForOthers,
+    inStartCountdown,
+    countdownSec,
+    countdownLabel: inStartCountdown ? (countdownSec > 0 ? String(countdownSec) : 'PUTT!') : '',
+    solo: players.length <= 1,
+    players: players.map(p => ({
+      id: p.id,
+      name: p.name + (p.id === local.id ? ' (you)' : ''),
+      color: colorOf(room, local, p.id),
+      ready: !!room.readyArrivals?.[p.id],
+      you: p.id === local.id,
+    })),
   };
 }
 

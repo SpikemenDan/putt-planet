@@ -40,6 +40,7 @@ export const SessionCommands = Object.freeze({
   FINISH_ROUND: 'FINISH_ROUND',
   RETURN_TO_LOBBY: 'RETURN_TO_LOBBY',
   PONG_SHOT: 'PONG_SHOT', // Putt Pong turn-based shot (GM2b)
+  ARRIVAL_READY: 'ARRIVAL_READY', // Arrival presentation finished, ready for countdown (VIS-A #167)
 });
 
 /**

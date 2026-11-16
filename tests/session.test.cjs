@@ -18,6 +18,7 @@ const assert = require('node:assert/strict');
     f.send('SET_MODE', { mode }); f.send('START_VOTING');
     for (const id of Object.keys(f.state().players).filter(id => f.state().players[id].connected)) f.send('CAST_VOTE', { mapIndex: map }, id);
     if (mode === GameModes.PUTT_PRACTICE) f.send('START_ROUND', { puttIndex });
+    for (const id of Object.keys(f.state().players).filter(id => f.state().players[id].connected)) f.send('ARRIVAL_READY', {}, id);
     f.clock.increment(mode === GameModes.PUTT_PRACTICE ? 0 : 2500);
   };
   const score = (f, id = 'host', strokes = 1, timedOut = false) => {
@@ -81,6 +82,7 @@ const assert = require('node:assert/strict');
     assert.equal(f0.state().phase, 'play');
     assert.equal(f0.state().mapIndex, 0);
     assert.deepEqual(f0.state().tie, { options: [0, 8], winner: 0 });
+    f0.send('ARRIVAL_READY', {}, 'host'); f0.send('ARRIVAL_READY', {}, 'a');
     f0.clock.increment(2500);
     assert.equal(f0.state().tie, null, 'tie clears when hole active');
 
@@ -113,6 +115,7 @@ const assert = require('node:assert/strict');
     // Vote for map 0 AGAIN (repeat map)
     f.send('CAST_VOTE', { mapIndex: 0 }, 'host');
     f.send('CAST_VOTE', { mapIndex: 0 }, 'a');
+    f.send('ARRIVAL_READY', {}, 'host'); f.send('ARRIVAL_READY', {}, 'a');
     f.clock.increment(2500);
     assert.equal(f.state().phase, 'play');
     assert.equal(f.state().mapIndex, 0);
@@ -158,6 +161,7 @@ const assert = require('node:assert/strict');
   });
   run('round token, start delay, minimum play and monotonic strokes reject stale/early results', () => {
     const f = make(); f.send('START_VOTING'); f.send('CAST_VOTE', { mapIndex: 0 });
+    f.send('ARRIVAL_READY');
     assert.equal(score(f), false); f.clock.increment(2500);
     const s = f.state();
     assert.equal(f.send('REPORT_SCORE', { roundNumber: s.roundNumber - 1, puttIndex: 0, strokes: 1 }), false);
@@ -222,6 +226,8 @@ const assert = require('node:assert/strict');
     session.send({ type: 'START_VOTING', playerId: 'host' });
     session.send({ type: 'CAST_VOTE', playerId: 'host', mapIndex: 0 });
     session.send({ type: 'CAST_VOTE', playerId: 'b', mapIndex: 0 });
+    session.send({ type: 'ARRIVAL_READY', playerId: 'host' });
+    session.send({ type: 'ARRIVAL_READY', playerId: 'b' });
     clock.increment(2500); // start round
     clock.increment(1500); // min play
     assert.equal(session.send({ type: 'UPDATE_STROKES', playerId: 'b', roundNumber: 1, puttIndex: 0, strokes: 2 }), true);
@@ -269,7 +275,7 @@ const assert = require('node:assert/strict');
       for (let map = 0; map < maps; map++) {
         completeMap(f); assert.equal(f.state().totals.host.total, (map + 1) * 6);
         assert.equal(f.state().totals.host.wins, map + 1); f.send('RETURN_TO_LOBBY');
-        if (map < maps - 1) { assert.equal(f.state().phase, 'select'); f.send('CAST_VOTE', { mapIndex: 0 }); f.clock.increment(2500); }
+        if (map < maps - 1) { assert.equal(f.state().phase, 'select'); f.send('CAST_VOTE', { mapIndex: 0 }); f.send('ARRIVAL_READY'); f.clock.increment(2500); }
       }
       assert.equal(f.state().phase, 'lobby'); assert.deepEqual(f.state().totals, {});
     }
@@ -299,7 +305,9 @@ const assert = require('node:assert/strict');
     const clock = new SimulatedClock(); const session = createRoomSession({ hostId: '__proto__', clock, courses: edited });
     sessions.push(session);
     session.send({ type: 'START_VOTING', playerId: '__proto__' });
-    session.send({ type: 'CAST_VOTE', playerId: '__proto__', mapIndex: 0 }); clock.increment(2500); clock.increment(1500); clock.increment(122500);
+    session.send({ type: 'CAST_VOTE', playerId: '__proto__', mapIndex: 0 });
+    session.send({ type: 'ARRIVAL_READY', playerId: '__proto__' });
+    clock.increment(2500); clock.increment(1500); clock.increment(122500);
     assert.equal(session.getSnapshot().players.__proto__.scores[0].score, 2);
     const f = make(['constructor']); start(f); f.clock.increment(1500);
     score(f, 'constructor', 7); f.send('LEAVE_ROOM', {}, 'constructor');
@@ -472,6 +480,63 @@ const assert = require('node:assert/strict');
     reserved = false;
     session.send({ type: 'JOIN_ROOM', playerId: 'i', name: 'i', color: 7 });
     assert.equal(session.getSnapshot().players.i.color, 7, 'once the seat is released the colour is free again');
+  });
+  run('VIS-A: arrival sequence holds establishing shot, gates on all active players, resets roundStartTime, skips hole timer, and falls back on timeout (#167)', () => {
+    const f = make(['b']);
+    f.send('START_VOTING');
+    f.send('CAST_VOTE', { mapIndex: 0 }, 'host');
+    f.send('CAST_VOTE', { mapIndex: 0 }, 'b');
+    assert.equal(f.state().phase, 'play');
+    assert.deepEqual(f.state().state, { play: 'arrival' });
+    assert.equal(f.state().awaitingArrival, true);
+
+    // One player ready keeps machine in arrival
+    f.clock.increment(1200);
+    assert.equal(f.send('ARRIVAL_READY', {}, 'host'), true);
+    assert.deepEqual(f.state().state, { play: 'arrival' });
+    assert.equal(f.state().readyArrivals.host, true);
+    assert.equal(f.state().readyArrivals.b, undefined);
+
+    // Second player ready completes arrival gating and transitions to play.starting
+    f.clock.increment(1500);
+    const readyTime = f.clock.now();
+    assert.equal(f.send('ARRIVAL_READY', {}, 'b'), true);
+    assert.deepEqual(f.state().state, { play: 'starting' });
+    assert.equal(f.state().awaitingArrival, false);
+    // Hole timer isolation: roundStartTime is reset freshly to readyTime + SESSION_TIMING.start
+    assert.equal(f.state().roundStartTime, readyTime + 2500);
+
+    // Disconnected player gating test
+    const f2 = make(['c']);
+    f2.send('START_VOTING');
+    f2.send('CAST_VOTE', { mapIndex: 0 }, 'host');
+    f2.send('CAST_VOTE', { mapIndex: 0 }, 'c');
+    assert.deepEqual(f2.state().state, { play: 'arrival' });
+    f2.send('ARRIVAL_READY', {}, 'host');
+    assert.deepEqual(f2.state().state, { play: 'arrival' });
+    // Player c leaves while awaiting arrival; machine immediately transitions to starting
+    f2.send('LEAVE_ROOM', {}, 'c');
+    assert.deepEqual(f2.state().state, { play: 'starting' });
+    assert.equal(f2.state().awaitingArrival, false);
+
+    // Timeout fallback test: after 10000ms arrivalFallback, machine proceeds without ARRIVAL_READY
+    const f3 = make(['d']);
+    f3.send('START_VOTING');
+    f3.send('CAST_VOTE', { mapIndex: 0 }, 'host');
+    f3.send('CAST_VOTE', { mapIndex: 0 }, 'd');
+    assert.deepEqual(f3.state().state, { play: 'arrival' });
+    f3.clock.increment(10000);
+    assert.deepEqual(f3.state().state, { play: 'starting' });
+    assert.equal(f3.state().awaitingArrival, false);
+
+    // Hole progression does not trigger arrival
+    f3.clock.increment(2500); // enter active
+    f3.clock.increment(1500); // min play
+    score(f3, 'host', 2);
+    score(f3, 'd', 2);
+    assert.equal(f3.state().puttIndex, 1);
+    assert.deepEqual(f3.state().state, { play: 'starting' });
+    assert.equal(f3.state().awaitingArrival, false);
   });
   if (failed) process.exitCode = 1;
   else console.log('ALL SESSION LIFECYCLE TESTS PASSED');

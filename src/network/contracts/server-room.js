@@ -62,7 +62,7 @@ const validHash = v => typeof v === 'string' && /^[a-f0-9]{64}$/.test(v);
 const name = v => typeof v === 'string' && v.trim().length > 0 && v.length <= 14;
 const nullable = (v, validate) => v === null || validate(v);
 const modes = Object.values(GameModes);
-export const SESSION_NODES = Object.freeze(['lobby', 'select.waiting', 'select.timing', 'select.choosingPutt', 'play.starting', 'play.active.settling', 'play.active.running', 'play.active.replaying', 'results']);
+export const SESSION_NODES = Object.freeze(['lobby', 'select.waiting', 'select.timing', 'select.choosingPutt', 'play.arrival', 'play.starting', 'play.active.settling', 'play.active.running', 'play.active.replaying', 'results']);
 
 export function validRoomPolicy(p) {
   return exact(p, Object.keys(DEFAULT_ROOM_POLICY)) && count(p.reconnectGraceMs) && p.reconnectGraceMs >= 1000 && p.reconnectGraceMs <= 300000
@@ -86,7 +86,7 @@ export function validServerCommand(c) {
   }
   const fields = { LEAVE_ROOM: [], SET_COLOR: ['color'], SET_MODE: ['mode'], SET_POWERUPS: ['enabled'], START_VOTING: [], CAST_VOTE: ['mapIndex'], START_ROUND: ['puttIndex'],
     RETURN_TO_LOBBY: [], PRACTICE_STEP: ['step'], PRACTICE_MAPS: [], UPDATE_STROKES: ['strokes'], REPORT_SCORE: ['strokes', 'timedOut'],
-    DEPLOY_OBJECT: ['kind', 'x', 'y'], DEPLOY_HIT: ['id'], PONG_SHOT: ['hit', 'cupId', 'timedOut'] }[c.type];
+    DEPLOY_OBJECT: ['kind', 'x', 'y'], DEPLOY_HIT: ['id'], PONG_SHOT: ['hit', 'cupId', 'timedOut'], ARRIVAL_READY: [] }[c.type];
   if (!Array.isArray(fields) || !exact(c, ['type', ...fields])) return false;
   switch (c.type) {
     case 'SET_COLOR': return isColorIndex(c.color);
@@ -137,14 +137,20 @@ const CONTEXT_KEYS = ['mode','powerups','mapIndex','puttIndex','roundNumber','ro
 export function validSessionContext(c) {
   const hasPong = object(c) && Object.hasOwn(c, 'pong');
   const hasTie = object(c) && Object.hasOwn(c, 'tie');
+  const hasArrival = object(c) && Object.hasOwn(c, 'awaitingArrival');
+  const hasReadyArrivals = object(c) && Object.hasOwn(c, 'readyArrivals');
   const extraKeys = [];
   if (hasPong) extraKeys.push('pong');
   if (hasTie) extraKeys.push('tie');
+  if (hasArrival) extraKeys.push('awaitingArrival');
+  if (hasReadyArrivals) extraKeys.push('readyArrivals');
   if (hasPong) {
     if (!exact(c, [...CONTEXT_KEYS, ...extraKeys]) || c.mode !== GameModes.PONG || (c.pong !== null && !object(c.pong))) return false;
   } else {
     if (!exact(c, [...CONTEXT_KEYS, ...extraKeys])) return false;
   }
+  if (hasArrival && typeof c.awaitingArrival !== 'boolean') return false;
+  if (hasReadyArrivals && (c.readyArrivals === null || typeof c.readyArrivals !== 'object')) return false;
   if (hasTie && c.tie !== null) {
     if (!object(c.tie) || !exact(c.tie, ['options', 'winner'])) return false;
     if (!Array.isArray(c.tie.options) || c.tie.options.length < 2 || !c.tie.options.every(n => index(n, MAP_COUNT))) return false;

@@ -20,6 +20,7 @@ export const CAMERA_MAX_DISTANCE = 300;
 /** Orbit input sign: +1 is look-style (drag right turns the view right), as in legacy P30. */
 export const CAMERA_INVERT = 1;
 export const PUTT_TRANSITION_MS = 1500;
+export const ARRIVAL_TRANSITION_MS = 2800;
 
 const ELEVATION_MIN = 0.05, ELEVATION_MAX = Math.PI / 2 - 0.05;
 const clampElevation = el => Math.max(ELEVATION_MIN, Math.min(ELEVATION_MAX, el));
@@ -40,10 +41,46 @@ const out = v => [v.x, v.y, v.z];
 export function createCameraRig() {
   const position = vec(), look = vec(), velocity = vec(), lookVelocity = vec(), freePosition = vec();
   const state = { view: 0, azimuth: 0, elevation: Math.PI / 6, distance: 72, initialized: false, freeRoam: false, freeYaw: 0, freePitch: -0.5 };
-  let transition = null;
+  let transition = null, arrival = null;
 
   const resetVelocity = () => { velocity.x = velocity.y = velocity.z = 0; lookVelocity.x = lookVelocity.y = lookVelocity.z = 0; };
   const viewName = () => CAMERA_VIEWS[state.view];
+
+  function updateArrival(now) {
+    const A = arrival;
+    const k = Math.min(1, (now - A.startTime) / A.duration);
+    if (k <= 0.3) {
+      const t = k / 0.3;
+      const drift = Math.sin(t * Math.PI * 0.5);
+      position.x = A.startPosition.x + drift * 25;
+      position.y = A.startPosition.y - drift * 15;
+      position.z = A.startPosition.z + drift * 25;
+      copy(look, A.startLook);
+    } else {
+      const t = (k - 0.3) / 0.7;
+      const e = t * t * t * (t * (t * 6 - 15) + 10);
+      lerpVectors(position, A.startPosition, A.endPosition, e);
+      lerpVectors(look, A.startLook, A.endLook, e);
+    }
+    const done = k >= 1;
+    if (done) {
+      arrival = null;
+      state.initialized = true;
+      resetVelocity();
+      copy(position, A.endPosition);
+      copy(look, A.endLook);
+    }
+    return {
+      position: out(position),
+      look: out(look),
+      sunTarget: out(look),
+      ball: null,
+      fadeTarget: null,
+      mode: 'arrival',
+      transitioning: !done,
+      events: done ? ['arrival-end'] : [],
+    };
+  }
 
   function updateTransition(now) {
     const T = transition;
@@ -65,8 +102,8 @@ export function createCameraRig() {
 
   return {
     state,
-    get transitioning() { return !!transition; },
-    get mode() { return state.freeRoam ? FREE_ROAM : viewName(); },
+    get transitioning() { return !!transition || !!arrival; },
+    get mode() { return state.freeRoam ? FREE_ROAM : (arrival ? 'arrival' : viewName()); },
     get position() { return out(position); },
     get look() { return out(look); },
 
@@ -119,6 +156,43 @@ export function createCameraRig() {
     },
 
     /**
+     * Starts the arrival sequence: wide establishing shot emerging from the clouds,
+     * sweeping down into the opening tee follow camera (VIS-A).
+     * @param {object} options
+     * @param {number[]|object} options.tee World position of the opening tee
+     * @param {[number, number]} [options.origin=[0, 0]] Course origin
+     * @param {number} options.now Same clock as update({ now })
+     * @param {boolean} [options.reducedMotion=false]
+     * @param {number} [options.duration=ARRIVAL_TRANSITION_MS]
+     */
+    startArrival({ tee, origin = [0, 0], now, reducedMotion = false, duration = ARRIVAL_TRANSITION_MS }) {
+      const tp = toVec(tee);
+      const cx = origin[0] + 400, cz = origin[1] + 250;
+      const startPosition = vec(cx - 200, 520, cz + 450);
+      const startLook = vec(cx, 30, cz);
+      const dx = Math.cos(state.azimuth), dz = Math.sin(state.azimuth);
+      const endPosition = vec(
+        tp.x - dx * state.distance * Math.cos(state.elevation),
+        tp.y + state.distance * Math.sin(state.elevation) + 10,
+        tp.z - dz * state.distance * Math.cos(state.elevation)
+      );
+      const endLook = vec(tp.x + dx * 10, tp.y + 2, tp.z + dz * 10);
+      arrival = {
+        startTime: now,
+        duration: reducedMotion ? 50 : duration,
+        startPosition,
+        startLook,
+        endPosition,
+        endLook,
+      };
+      transition = null;
+      state.initialized = false;
+      copy(position, startPosition);
+      copy(look, startLook);
+      resetVelocity();
+    },
+
+    /**
      * Starts the putt-to-putt arc: the ball flies from the old cup to the next tee while the camera follows.
      * @param {object} options
      * @param {number[]|object} options.from World position of the previous cup (ball centre)
@@ -128,6 +202,7 @@ export function createCameraRig() {
      */
     startPuttTransition({ from, to, now, reducedMotion = false }) {
       const a = toVec(from), b = toVec(to);
+      arrival = null;
       transition = { startTime: now, duration: reducedMotion ? 1 : PUTT_TRANSITION_MS, from: a, to: b, arc: Math.min(200, 70 + distance(a, b) * 0.18), startPosition: copy(vec(), position), startLook: copy(vec(), look) };
     },
 
@@ -148,6 +223,7 @@ export function createCameraRig() {
      */
     update({ now, dt, ball, hole, origin = [0, 0], free = false, keys = new Set(), groundHeight = () => 0, ballVisible = true }) {
       if (transition) return updateTransition(now);
+      if (arrival) return updateArrival(now);
       const events = [];
       const bp = toVec(ball), holePos = toVec(hole), want = vec(), target = vec();
       if (free && !state.freeRoam) {

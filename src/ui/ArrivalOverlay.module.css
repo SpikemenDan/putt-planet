@@ -1,0 +1,256 @@
+/* Arrival sequence overlay: skydive, rushing clouds, crew ready status and countdown (VIS-A #167) */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 40px 20px;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* Clouds container: rushed upward during skydive */
+.cloudsLayer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.cloud {
+  position: absolute;
+  fill: #ffffff;
+  opacity: 0.85;
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.1));
+  animation: rushUp 1.4s cubic-bezier(0.2, 0.8, 0.3, 1) infinite;
+}
+
+.cloud1 { left: 10%; width: 220px; animation-duration: 1.1s; animation-delay: 0s; }
+.cloud2 { right: 12%; width: 280px; animation-duration: 1.3s; animation-delay: 0.2s; }
+.cloud3 { left: 35%; width: 180px; animation-duration: 0.9s; animation-delay: 0.4s; }
+.cloud4 { right: 38%; width: 240px; animation-duration: 1.2s; animation-delay: 0.1s; }
+.cloud5 { left: 5%; width: 300px; animation-duration: 1.5s; animation-delay: 0.5s; }
+
+@keyframes rushUp {
+  0% {
+    transform: translateY(110vh) scale(0.8);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.85;
+  }
+  80% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translateY(-40vh) scale(1.3);
+    opacity: 0;
+  }
+}
+
+/* Skydive stage */
+.skydiveStage {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 60px;
+}
+
+.courseHeader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.tagline {
+  font-family: var(--font-display, 'Titan One', 'Bangers', cursive, sans-serif);
+  font-size: 16px;
+  letter-spacing: 3px;
+  color: var(--yellow, #f7d02c);
+  text-shadow: 2px 2px 0 var(--ink, #18181b);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.courseTitle {
+  font-family: var(--font-display, 'Titan One', 'Bangers', cursive, sans-serif);
+  font-size: clamp(28px, 5vw, 54px);
+  color: #ffffff;
+  text-shadow: 4px 4px 0 var(--ink, #18181b), -2px -2px 0 var(--ink, #18181b);
+  letter-spacing: 1px;
+  margin: 0;
+}
+
+/* Balls formation falling */
+.ballsRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  flex-wrap: wrap;
+  max-width: 90vw;
+}
+
+.diver {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  animation: skydiveDrift 2.2s ease-in-out infinite alternate;
+}
+
+.diver:nth-child(2) { animation-delay: 0.15s; }
+.diver:nth-child(3) { animation-delay: 0.3s; }
+.diver:nth-child(4) { animation-delay: 0.45s; }
+.diver:nth-child(5) { animation-delay: 0.6s; }
+.diver:nth-child(6) { animation-delay: 0.75s; }
+.diver:nth-child(7) { animation-delay: 0.9s; }
+.diver:nth-child(8) { animation-delay: 1.05s; }
+
+@keyframes skydiveDrift {
+  0% { transform: translateY(0px) rotate(-3deg); }
+  100% { transform: translateY(12px) rotate(3deg); }
+}
+
+.windTrail {
+  width: 4px;
+  height: 50px;
+  background: linear-gradient(to top, rgba(255, 255, 255, 0.8), transparent);
+  border-radius: 2px;
+  margin-bottom: -10px;
+  opacity: 0.7;
+}
+
+.ballGraphic {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 3px solid var(--ink, #18181b);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3), inset -4px -4px 0 rgba(0, 0, 0, 0.2), inset 4px 4px 0 rgba(255, 255, 255, 0.3);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ballDimples {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background-image: radial-gradient(rgba(0, 0, 0, 0.15) 15%, transparent 20%);
+  background-size: 8px 8px;
+  opacity: 0.6;
+}
+
+.diverName {
+  font-family: var(--font-body, 'Nunito', sans-serif);
+  font-weight: 800;
+  font-size: 13px;
+  color: #ffffff;
+  background: rgba(24, 24, 27, 0.8);
+  border: 2px solid var(--ink, #18181b);
+  padding: 2px 8px;
+  border-radius: 12px;
+  margin-top: 8px;
+  white-space: nowrap;
+}
+
+/* Crew status badge */
+.waitingBadge {
+  z-index: 10;
+  background: var(--yellow, #f7d02c);
+  color: var(--ink, #18181b);
+  font-family: var(--font-display, 'Titan One', 'Bangers', cursive, sans-serif);
+  font-size: 18px;
+  letter-spacing: 1px;
+  padding: 10px 24px;
+  border: 3px solid var(--ink, #18181b);
+  border-radius: 30px;
+  box-shadow: 4px 4px 0 var(--ink, #18181b);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: auto;
+  margin-bottom: 40px;
+  animation: pulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.04); }
+}
+
+/* Comic countdown display */
+.countdownBox {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 20;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.countdownNumber {
+  font-family: var(--font-display, 'Titan One', 'Bangers', cursive, sans-serif);
+  font-size: clamp(80px, 15vw, 160px);
+  color: var(--yellow, #f7d02c);
+  -webkit-text-stroke: 6px var(--ink, #18181b);
+  text-shadow: 8px 8px 0 var(--ink, #18181b);
+  animation: comicPop 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  display: inline-block;
+}
+
+.countdownPutt {
+  color: var(--pink, #ec4899);
+  font-size: clamp(90px, 18vw, 180px);
+}
+
+@keyframes comicPop {
+  0% {
+    transform: scale(0.2) rotate(-10deg);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.15) rotate(4deg);
+    opacity: 1;
+  }
+  80% {
+    transform: scale(0.95) rotate(-2deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .cloud {
+    animation: none;
+    opacity: 0.4;
+  }
+  .diver {
+    animation: none;
+  }
+  .waitingBadge {
+    animation: none;
+  }
+  .countdownNumber {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}

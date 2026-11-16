@@ -34,7 +34,9 @@ const { EventEmitter } = require('node:events');
       assert.equal(f.command('START_VOTING', {}, f.guests[0]), false);
       f.command('START_VOTING');
       for (const transport of [f.host, ...f.guests]) f.command('CAST_VOTE', { mapIndex: 0 }, transport);
-      assert.equal(f.session.getSnapshot().phase, 'play'); f.clock.increment(4000);
+      assert.equal(f.session.getSnapshot().phase, 'play');
+      for (const transport of [f.host, ...f.guests]) f.command('ARRIVAL_READY', {}, transport);
+      f.clock.increment(4000);
       for (let i = 0; i < 6; i++) {
         const before = f.session.getSnapshot();
         f.clock.increment(Math.max(0, before.roundStartTime + 1500 - f.clock.now()));
@@ -113,6 +115,7 @@ const { EventEmitter } = require('node:events');
     const f = await fixture();
     try {
       f.command('START_VOTING'); for (const t of [f.host, ...f.guests]) f.command('CAST_VOTE', { mapIndex: 0 }, t);
+      for (const t of [f.host, ...f.guests]) f.command('ARRIVAL_READY', {}, t);
       const position = { x: 80, y: 80, z: 0, mode: 'play', strokes: 150 };
       const send = payload => f.guests[0].send({ type: 'presence', payload });
       assert.equal(send({ ...position, x: Infinity }), false);
@@ -135,6 +138,7 @@ const { EventEmitter } = require('node:events');
     const f = await fixture();
     try {
       f.command('START_VOTING'); for (const t of [f.host, ...f.guests]) f.command('CAST_VOTE', { mapIndex: 0 }, t);
+      for (const t of [f.host, ...f.guests]) f.command('ARRIVAL_READY', {}, t);
       f.guests[0].close();
       const late = f.hub.create({ peerId: 'late', hostId: 'host' }); await late.connect();
       late.send({ type: 'command', payload: { type: 'CAST_VOTE', mapIndex: 8 } });
@@ -387,6 +391,7 @@ const { EventEmitter } = require('node:events');
       // Worst case for size: a 7-map tournament late in its first map, all eight scorecards filled.
       f.command('SET_MODE', { mode: 'tournament_7' }); f.command('START_VOTING');
       for (const t of everyone) f.command('CAST_VOTE', { mapIndex: 0 }, t);
+      for (const t of everyone) f.command('ARRIVAL_READY', {}, t);
       for (let putt = 0; putt < 5; putt++) {
         const st = f.session.getSnapshot(); f.clock.increment(Math.max(0, st.roundStartTime + 1500 - f.clock.now()));
         for (const t of everyone) f.command('REPORT_SCORE', { roundNumber: st.roundNumber, puttIndex: st.puttIndex, strokes: 12345 }, t);
