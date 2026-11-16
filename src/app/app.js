@@ -23,6 +23,8 @@ import { AIM_WOBBLE, DEFAULT_RULES, rulesTuning, seriesMaps, validateRules, vali
 import { createAtlasScene } from '../render/atlas-scene.js';
 import { createPlanetScene } from '../render/planet-scene.js';
 import { colorOf, connectErrorMessage, createCourseInfo, createUiDispatcher, createUiStore, initialRoomCode, MESSAGES, mountUi, parseJoinRequest, UiCommands } from '../ui/index.js';
+import { reducedMotion as isReducedMotion } from '../ui/motion.js';
+import { CAMERA_PREFS_KEY, MOTION_PREFS_KEY, normalizeCameraPrefs, normalizeMotionPref, readPref, writePref } from '../shared/preferences.js';
 import { createPutt } from './putt.js';
 import { openRoom } from './room.js';
 import { frameSounds, PRESENCE_INTERVAL_MS, TICK_MS } from './rules.js';
@@ -55,6 +57,18 @@ export function createApp({ worldPreview = null, soloHazards = false, root, THRE
   // localStorage can be missing or throw (privacy modes); the choice then simply does not persist.
   const cosmeticsStorage = (() => { try { return win.localStorage ?? null; } catch { return null; } })();
   let cosmetics = loadCosmetics(cosmeticsStorage);
+  // Camera and motion preferences (owner, 2026-11-16): local to this device, presentation only.
+  let cameraPrefs = normalizeCameraPrefs(readPref(cosmeticsStorage, CAMERA_PREFS_KEY));
+  let motionPref = normalizeMotionPref(readPref(cosmeticsStorage, MOTION_PREFS_KEY));
+  const applyMotion = () => { const el = win.document?.documentElement; if (el) { if (motionPref === 'reduce') el.dataset.motion = 'reduce'; else delete el.dataset.motion; } };
+  applyMotion();
+  const applyCamera = () => {
+    if (!view) return;
+    view.rig.state.orbitSpeed = cameraPrefs.orbitSpeed;
+    view.rig.state.invertY = cameraPrefs.invertY;
+    const r = view.rig.setView(cameraPrefs.view);
+    if (r.changed) setLocal({ viewLabel: r.label });
+  };
   // Preferred ball colour (palette index), kept locally; the room confirms or replaces it if taken.
   let colorPref = (() => { try { const n = Number(cosmeticsStorage?.getItem('putt-planet.color')); return cosmeticsStorage?.getItem('putt-planet.color') != null && isColorIndex(n) ? n : null; } catch { return null; } })();
   store.setLocal({ cosmetics, colorPref });
@@ -239,7 +253,7 @@ export function createApp({ worldPreview = null, soloHazards = false, root, THRE
     if (view) {
       view.setCourse(definition, s.puttIndex);
       if (s.puttIndex > 0 && s.mode !== GameModes.PUTT_PRACTICE && previous && previous.mapIndex === s.mapIndex && definition.putts) {
-        const reducedMotion = !!win.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+        const reducedMotion = isReducedMotion(win);
         view.startPuttTransition({ previousHole: definition.putts[s.puttIndex - 1].hole, nextTee: definition.putts[s.puttIndex].tee, now: win.performance.now(), reducedMotion });
         audio.handleEvent({ type: 'putt_change' });
       }
@@ -526,6 +540,20 @@ export function createApp({ worldPreview = null, soloHazards = false, root, THRE
         renderer?.setCosmetics(cosmetics);
         setLocal({ cosmetics });
         break;
+      case UiCommands.SET_CAMERA: {
+        if (!command.camera || typeof command.camera !== 'object') break;
+        cameraPrefs = normalizeCameraPrefs({ ...cameraPrefs, ...command.camera });
+        writePref(cosmeticsStorage, CAMERA_PREFS_KEY, cameraPrefs);
+        applyCamera();
+        setLocal({ camera: cameraPrefs });
+        break;
+      }
+      case UiCommands.SET_MOTION:
+        motionPref = normalizeMotionPref(command.motion);
+        writePref(cosmeticsStorage, MOTION_PREFS_KEY, motionPref);
+        applyMotion();
+        setLocal({ motion: motionPref });
+        break;
       case UiCommands.TOGGLE_QUALITY:
         quality = !quality;
         renderer?.setQuality(quality, win.devicePixelRatio);
@@ -577,6 +605,7 @@ export function createApp({ worldPreview = null, soloHazards = false, root, THRE
     // VIS-E #166: the ?world preview also draws that world's scenery. Visual only, so it follows the world buttons at once.
     if (worldPreview) { const scenery = () => renderer?.setSceneryWorld(worldPreview.active ? worldPreview.world : null); scenery(); stopScenery = worldPreview.subscribe(scenery); }
     view = createGameView({ renderer });
+    applyCamera();
     const ray = new THREE.Raycaster();
     input = createInputAdapter({
       canvas, window: win, camera: view.rig, dispatch, display,
@@ -629,7 +658,7 @@ export function createApp({ worldPreview = null, soloHazards = false, root, THRE
   const onPress = event => { if (buttonOf(event)) audio.handleEvent({ type: 'ui', kind: 'click' }); };
   root.addEventListener('pointerover', onHover);
   root.addEventListener('click', onPress);
-  setLocal({ volume: audio.getStatus?.().volume ?? 1 });
+  setLocal({ volume: audio.getStatus?.().volume ?? 1, camera: cameraPrefs, motion: motionPref });
   const unmount = mountUi(root, { store, dispatch, aim, onCanvas, initialRoomCode: startCode, initialView: inviteLink ? 'party' : 'home', initialName: resume.read(startCode)?.name || '', display, createLoadingScene: options => createPlanetScene({ THREE, ...options }), createAtlasScene: options => createAtlasScene({ THREE, ...options }) });
 
   return {

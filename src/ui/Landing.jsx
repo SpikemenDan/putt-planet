@@ -7,6 +7,8 @@ import { MenuIcon } from './MenuIcons.jsx';
 import { CustomRules } from './CustomRules.jsx';
 import { Skins } from './Skins.jsx';
 import { changedRules, rulesFromPartial } from '../shared/rules.js';
+import { CAMERA_PREFS, ORBIT_SPEED_RANGE } from '../shared/preferences.js';
+import { CAMERA_VIEW_LABELS } from '../camera/rig.js';
 import app from './App.module.css';
 import menu from './Landing.module.css';
 
@@ -56,7 +58,9 @@ function useMenuLook(ref, display, hidden) {
 export function Landing({ hidden, initialName = '', initialRoomCode = '', initialView = 'home' }) {
   const { send } = useCommands();
   const { display } = useUiContext();
-  const { connecting, error, cosmetics, color, soundOn, volume, qualityHigh } = useView(v => v.landing);
+  const { connecting, error, cosmetics, color, soundOn, volume, qualityHigh, camera: cameraPrefs, motion } = useView(v => v.landing);
+  const camera = cameraPrefs || CAMERA_PREFS;
+  const setCamera = partial => send(UiCommands.SET_CAMERA, { camera: partial });
   const [name, setName] = useState(initialName);
   const [roomCode, setRoomCode] = useState(initialRoomCode);
   const [view, setView] = useState(MENU_VIEWS.includes(initialView) ? initialView : 'home');
@@ -163,6 +167,38 @@ export function Landing({ hidden, initialName = '', initialRoomCode = '', initia
                 </div>
               </div>
               <p className={menu.cardText + ' ' + app.small}>{qualityHigh ? 'High: sharp on high-resolution screens, with soft shadows.' : 'Low: no shadows and standard pixel density, for smoother play on slower computers.'}</p>
+              <div className={menu.setRow}>
+                <span className={menu.setLabel} id="set-motion">Reduce motion</span>
+                <div className={menu.segment} role="radiogroup" aria-labelledby="set-motion" data-ui="set-motion">
+                  {[['auto', 'Auto'], ['reduce', 'On']].map(([value, label]) => (
+                    <button key={value} type="button" role="radio" aria-checked={motion === value} onClick={() => { if (motion !== value) send(UiCommands.SET_MOTION, { motion: value }); }}>{label}</button>
+                  ))}
+                </div>
+              </div>
+              <p className={menu.cardText + ' ' + app.small}>{motion === 'reduce' ? 'On: menus stop bouncing and sliding, and camera flights cut straight to the view. The planet backdrop stays still from the next time it loads.' : 'Auto: follows your system’s reduced-motion setting.'}</p>
+            </section>
+            <section className={menu.card} data-tone="camera" aria-label="Camera" data-ui="settings-camera">
+              <h3 className={menu.cardHead}><MenuIcon name="camera" className={menu.cardIcon} />Camera</h3>
+              <div className={menu.setRow}>
+                <span className={menu.setLabel} id="set-view">Starting view</span>
+                <div className={menu.segment} role="radiogroup" aria-labelledby="set-view" data-ui="set-camera-view">
+                  {CAMERA_VIEW_LABELS.map((label, index) => (
+                    <button key={label} type="button" role="radio" aria-checked={camera.view === index} onClick={() => { if (camera.view !== index) setCamera({ view: index }); }}>{label}</button>
+                  ))}
+                </div>
+              </div>
+              <div className={menu.setRow}>
+                <label className={menu.setLabel} htmlFor="set-orbit">Rotate speed</label>
+                <input id="set-orbit" type="range" className={menu.slider} min={ORBIT_SPEED_RANGE.min} max={ORBIT_SPEED_RANGE.max} step={ORBIT_SPEED_RANGE.step} value={camera.orbitSpeed}
+                  style={{ '--fill': (camera.orbitSpeed - ORBIT_SPEED_RANGE.min) / (ORBIT_SPEED_RANGE.max - ORBIT_SPEED_RANGE.min) }} onChange={e => setCamera({ orbitSpeed: Number(e.target.value) })} data-ui="set-orbit" />
+                <output className={menu.setValue} htmlFor="set-orbit">{camera.orbitSpeed.toFixed(1)}×</output>
+              </div>
+              <div className={menu.setRow}>
+                <span className={menu.setLabel} id="set-invert">Invert up/down</span>
+                <button type="button" role="switch" aria-checked={camera.invertY} aria-labelledby="set-invert" className={menu.switch} onClick={() => setCamera({ invertY: !camera.invertY })} data-ui="set-invert"><span className={menu.knob} aria-hidden="true" /></button>
+                <output className={menu.setValue}>{camera.invertY ? 'On' : 'Off'}</output>
+              </div>
+              <p className={menu.cardText + ' ' + app.small}>Right-drag or the arrow keys rotate the camera; C switches view during a game.</p>
             </section>
             <details className={menu.card} data-tone="help"><summary><MenuIcon name="help" className={menu.cardIcon} />How to play</summary>
               <p className={menu.cardText}>3D party mini golf. Everyone plays the same hole at once, and the next hole starts when all players finish. Ride ramps, jump pads and teleporters, dodge fans and water, and mess with your friends.</p>

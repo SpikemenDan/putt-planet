@@ -154,6 +154,31 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
     await first.dispose(); await reloaded.dispose(); await junk.dispose();
   });
 
+  await scenario('preferences: camera and Reduce motion are saved locally, applied to the camera rig and the page, and junk falls back', async () => {
+    const W = world();
+    const c = await W.client('Cam');
+    await c.menu('settings');
+    const rig = c.app.view.rig;
+    assert.deepEqual([rig.state.view, rig.state.orbitSpeed, rig.state.invertY], [0, 1, false], 'shipped camera feel by default');
+    assert.equal(c.doc.documentElement.dataset.motion, undefined, 'motion follows the system by default');
+    await c.click(c.doc.querySelectorAll('[data-ui=set-camera-view] [role=radio]')[1]);
+    await c.click(c.doc.querySelector('[data-ui=set-invert]'));
+    await c.fill(c.doc.querySelector('[data-ui=set-orbit]'), '1.8');
+    await c.click(c.doc.querySelectorAll('[data-ui=set-motion] [role=radio]')[1]);
+    assert.deepEqual([rig.state.view, rig.state.orbitSpeed, rig.state.invertY], [1, 1.8, true], 'the rig follows the settings at once');
+    assert.equal(c.doc.documentElement.dataset.motion, 'reduce', 'Reduce motion marks the page');
+    const store = c.win.w.localStorage;
+    assert.deepEqual(JSON.parse(store.getItem('pp_camera')), { view: 1, orbitSpeed: 1.8, invertY: true });
+    assert.equal(JSON.parse(store.getItem('pp_motion')), 'reduce');
+    const again = await W.client('Cam2', { local: { pp_camera: store.getItem('pp_camera'), pp_motion: store.getItem('pp_motion') } });
+    assert.deepEqual([again.app.view.rig.state.view, again.app.view.rig.state.orbitSpeed, again.app.view.rig.state.invertY], [1, 1.8, true], 'restored on reload');
+    assert.equal(again.doc.documentElement.dataset.motion, 'reduce');
+    const junk = await W.client('Cam3', { local: { pp_camera: '{"view":5,"orbitSpeed":"fast"}', pp_motion: '"<b>"' } });
+    assert.deepEqual([junk.app.view.rig.state.view, junk.app.view.rig.state.orbitSpeed, junk.app.view.rig.state.invertY], [0, 1, false], 'junk storage falls back');
+    assert.equal(junk.doc.documentElement.dataset.motion, undefined);
+    await c.dispose(); await again.dispose(); await junk.dispose();
+  });
+
   await scenario('start screen: the planet is the backdrop of the menu, and leaves with it', async () => {
     const W = world();
     const ana = await W.client('Ana');

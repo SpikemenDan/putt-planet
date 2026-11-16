@@ -39,7 +39,8 @@ const out = v => [v.x, v.y, v.z];
  */
 export function createCameraRig() {
   const position = vec(), look = vec(), velocity = vec(), lookVelocity = vec(), freePosition = vec();
-  const state = { view: 0, azimuth: 0, elevation: Math.PI / 6, distance: 72, initialized: false, freeRoam: false, freeYaw: 0, freePitch: -0.5 };
+  // orbitSpeed and invertY are the player's camera preferences (src/shared/preferences.js); 1 and false keep the legacy feel.
+  const state = { view: 0, azimuth: 0, elevation: Math.PI / 6, distance: 72, initialized: false, freeRoam: false, freeYaw: 0, freePitch: -0.5, orbitSpeed: 1, invertY: false };
   let transition = null;
 
   const resetVelocity = () => { velocity.x = velocity.y = velocity.z = 0; lookVelocity.x = lookVelocity.y = lookVelocity.z = 0; };
@@ -84,6 +85,15 @@ export function createCameraRig() {
       return { changed: true, view: viewName(), label: CAMERA_VIEW_LABELS[state.view] };
     },
 
+    /** Shows one view by index (0 Ball cam, 1 Hole view, 2 World view); ignored in free roam or for an unknown index. */
+    setView(index) {
+      if (state.freeRoam || !Number.isInteger(index) || !CAMERA_VIEWS[index]) return { changed: false, view: viewName(), label: CAMERA_VIEW_LABELS[state.view] };
+      const changed = state.view !== index;
+      state.view = index;
+      if (changed) resetVelocity();
+      return { changed, view: viewName(), label: CAMERA_VIEW_LABELS[state.view] };
+    },
+
     /** Mouse wheel zoom outside free roam (legacy canvas wheel handler). */
     zoom(deltaY) {
       if (['follow', 'orbit', 'strategic'].includes(viewName())) state.distance = Math.max(CAMERA_MIN_DISTANCE, Math.min(CAMERA_MAX_DISTANCE, state.distance + deltaY * 0.15));
@@ -91,17 +101,19 @@ export function createCameraRig() {
     /** Arrow keys while aiming; returns false when the current view does not orbit (input rotates aim instead). */
     orbitKey(key) {
       if (!['follow', 'orbit'].includes(viewName())) return false;
-      if (key === 'ArrowLeft') state.azimuth -= 0.06;
-      if (key === 'ArrowRight') state.azimuth += 0.06;
-      if (key === 'ArrowUp') state.elevation = clampElevation(state.elevation - CAMERA_INVERT * 0.06);
-      if (key === 'ArrowDown') state.elevation = clampElevation(state.elevation + CAMERA_INVERT * 0.06);
+      const step = 0.06 * state.orbitSpeed, pitch = CAMERA_INVERT * (state.invertY ? -1 : 1) * step;
+      if (key === 'ArrowLeft') state.azimuth -= step;
+      if (key === 'ArrowRight') state.azimuth += step;
+      if (key === 'ArrowUp') state.elevation = clampElevation(state.elevation - pitch);
+      if (key === 'ArrowDown') state.elevation = clampElevation(state.elevation + pitch);
       return true;
     },
     /** Right-drag orbit from a drag start {x, y, azimuth, elevation}; returns false when the view does not orbit. */
     orbitDrag(start, clientX, clientY) {
       if (!['follow', 'orbit', 'strategic'].includes(viewName())) return false;
-      state.azimuth = start.azimuth + CAMERA_INVERT * (clientX - start.x) * 0.006;
-      state.elevation = clampElevation(start.elevation + CAMERA_INVERT * (clientY - start.y) * 0.006);
+      const k = 0.006 * state.orbitSpeed;
+      state.azimuth = start.azimuth + CAMERA_INVERT * (clientX - start.x) * k;
+      state.elevation = clampElevation(start.elevation + CAMERA_INVERT * (state.invertY ? -1 : 1) * (clientY - start.y) * k);
       return true;
     },
     /** Free-roam look drag from a start {x, y, yaw, pitch}. */

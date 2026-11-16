@@ -61,6 +61,7 @@
 .panel[data-menu-view=settings],.panel[data-menu-view=skins]{width:min(92vw,440px)}
 .card{--cat:var(--pink);margin:12px 0 0;padding:0 0 4px;overflow:hidden;font-size:14px;background:#fff;border:var(--line) solid var(--ink);border-radius:14px;box-shadow:4px 4px 0 var(--ink)}
 .card[data-tone=graphics]{--cat:var(--sky)}
+.card[data-tone=camera]{--cat:#ff8a1f}
 .card[data-tone=help]{--cat:var(--green);padding:0}
 .cardHead,.card summary{display:flex;align-items:center;gap:10px;margin:0 0 4px;padding:6px 12px 6px 8px;list-style:none;font:400 19px/1.1 var(--font);letter-spacing:2px;text-transform:uppercase;color:#fff;text-shadow:2px 2px 0 var(--ink);background:var(--cat);border-bottom:var(--line) solid var(--ink)}
 .card summary{margin:0;border-bottom:0;cursor:pointer}
@@ -89,8 +90,10 @@
 .slider::-moz-range-thumb{box-sizing:border-box;width:22px;height:22px;border:3px solid var(--ink);border-radius:50%;background:var(--yellow);box-shadow:2px 2px 0 var(--ink)}
 .slider:focus-visible{outline:3px solid var(--cat);outline-offset:2px}
 .segment{grid-column:2 / 4;display:flex;width:fit-content;border:var(--line) solid var(--ink);border-radius:10px;overflow:hidden;box-shadow:2px 2px 0 var(--ink)}
-.segment button{margin:0;padding:6px 18px;font:400 16px/1 var(--font);letter-spacing:1px;text-transform:uppercase;border:0;border-radius:0;box-shadow:none;background:#fff;color:var(--ink);text-shadow:none}
+.segment button{margin:0;padding:6px 14px;font:400 16px/1 var(--font);letter-spacing:1px;text-transform:uppercase;border:0;border-radius:0;box-shadow:none;background:#fff;color:var(--ink);text-shadow:none}
 .segment button + button{border-left:var(--line) solid var(--ink)}
+.segment button{white-space:nowrap}
+.segment[data-ui=set-camera-view]{grid-column:1 / -1;margin:0 0 6px}
 .segment button[aria-checked=true]{background:var(--cat);color:#fff;text-shadow:1px 1px 0 var(--ink)}
 .segment button:active:not(:disabled){transform:none;box-shadow:none}
 .keys{display:grid;gap:5px;margin:0 14px;padding:0;list-style:none;font:700 13px var(--pp-body,'Nunito',sans-serif);color:var(--ink)}

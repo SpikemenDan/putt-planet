@@ -853,6 +853,26 @@ function fakeClock() {
     assert.equal(sound.getAttribute('aria-checked'), 'false');
     assert.ok(volume.disabled, 'volume is idle while sound is off');
     assert.equal(low.getAttribute('aria-checked'), 'true');
+
+    // Camera and Reduce motion (owner, 2026-11-16): local presentation preferences.
+    const viewButtons = [...landing.querySelectorAll('[data-ui=set-camera-view] [role=radio]')];
+    assert.deepEqual(viewButtons.map(b => b.textContent), ['Ball cam', 'Hole view', 'World view']);
+    assert.equal(viewButtons[0].getAttribute('aria-checked'), 'true', 'Ball cam by default');
+    const orbit = landing.querySelector('[data-ui=set-orbit]'), invert = landing.querySelector('[data-ui=set-invert]');
+    const [auto, reduce] = [...landing.querySelectorAll('[data-ui=set-motion] [role=radio]')];
+    assert.equal(auto.getAttribute('aria-checked'), 'true', 'motion follows the system by default');
+    t.commands.length = 0;
+    await click(viewButtons[2]);
+    await act(async () => { const set = Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype, 'value').set; set.call(orbit, '1.5'); orbit.dispatchEvent(new dom.window.Event('input', { bubbles: true })); });
+    await click(invert);
+    await click(reduce);
+    assert.deepEqual(t.commands, [{ type: 'set-camera', camera: { view: 2 } }, { type: 'set-camera', camera: { orbitSpeed: 1.5 } }, { type: 'set-camera', camera: { invertY: true } }, { type: 'set-motion', motion: 'reduce' }]);
+    await act(async () => t.store.setLocal({ camera: { view: 1, orbitSpeed: 0.5, invertY: true }, motion: 'reduce' }));
+    assert.equal(viewButtons[1].getAttribute('aria-checked'), 'true');
+    assert.equal(orbit.value, '0.5');
+    assert.match(landing.querySelector('output[for=set-orbit]').textContent, /^0\.5×$/);
+    assert.equal(invert.getAttribute('aria-checked'), 'true');
+    assert.equal(reduce.getAttribute('aria-checked'), 'true');
     await t.teardown();
   });
 

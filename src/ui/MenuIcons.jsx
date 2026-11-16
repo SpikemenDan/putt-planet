@@ -90,6 +90,12 @@ const PATHS = {
     <path d="M12 27.5h8M16 22v5" {...line} strokeWidth="2.4" />
     <path d="M16 8.5l1.5 3.5 3.5 1.5-3.5 1.5-1.5 3.5-1.5-3.5-3.5-1.5 3.5-1.5z" fill="#2f7cf0" stroke={INK} strokeWidth="1.6" strokeLinejoin="round" />
   </>,
+  /** Settings sub-menu: a camera. */
+  camera: <>
+    <path d="M4 11a3 3 0 0 1 3-3h3l2-3h8l2 3h3a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3z" fill="#fff" stroke={INK} strokeWidth="2.4" strokeLinejoin="round" />
+    <circle cx="16" cy="17" r="5.5" fill="#ff8a1f" stroke={INK} strokeWidth="2.2" />
+    <circle cx="14.4" cy="15.4" r="1.5" fill="#fff" />
+  </>,
   /** Settings sub-menu, "Your style": a paint palette. */
   palette: <>
     <path d="M16 4C9 4 4 9 4 15.5S9 28 15 28c2.5 0 3-1.6 2.2-3.2-.8-1.6 0-3.3 2-3.3H23c3 0 5-2 5-5C28 9.5 22.6 4 16 4z" fill="#fff8e4" stroke={INK} strokeWidth="2.4" strokeLinejoin="round" />

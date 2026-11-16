@@ -61,3 +61,4 @@
 
 @media (max-width:480px){.grid{grid-template-columns:repeat(2,1fr)}}
 @media (prefers-reduced-motion:reduce){.ball,.trail,.burst i,.card .swatch i{animation:none!important}.ball,.trail{translate:calc(50cqw - 15px) 0}.card{transition:none}}
+:global(:root[data-motion=reduce]) .ball,:global(:root[data-motion=reduce]) .trail{translate:calc(50cqw - 15px) 0}
