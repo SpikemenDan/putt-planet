@@ -10,7 +10,7 @@
 import { TUNING } from '../shared/tuning.js';
 import { surfaceHeight } from '../simulation/physics.js';
 import { addInk } from './outline.js';
-import { PLAYER_COLORS } from './materials.js';
+import { colorHex } from './materials.js';
 
 /** body: main colour, accent: waist band, cap ring and orbital moon. */
 export const DEPLOYABLE_COLORS = Object.freeze({
@@ -37,7 +37,7 @@ export function createDeployableLayer({ THREE, scene, library = null, toon = fal
   /** A Bumper wears its owner's player colour with a lighter shade of it as the accent; the Orbital keeps its own blue. */
   function paletteFor(kind, colorIndex) {
     if (kind !== 'bumper' || !Number.isInteger(colorIndex)) return DEPLOYABLE_COLORS[kind] ?? DEPLOYABLE_COLORS.bumper;
-    const body = new THREE.Color(PLAYER_COLORS[colorIndex % 8]);
+    const body = new THREE.Color(colorHex(colorIndex)); // every palette colour, not just the first eight
     return { body: body.getHex(), accent: body.clone().lerp(new THREE.Color(0xffffff), 0.55).getHex() };
   }
 
