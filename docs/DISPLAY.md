@@ -45,8 +45,8 @@ Units: world units (ball radius 5) and multipliers. Opacity is 0..1. The shaft h
 | `menu.shineSeconds` | 5 | 0 to 20 | Main menu: seconds between shine sweeps across the Solo button (0 is off). Off under reduced motion. |
 | `menu.cardTint` | 0.22 | 0 to 1 | Solo steps: how strongly each choice card is tinted with its own colour (0 white, 1 full colour). |
 | `lobby.zoom` | 1 | 0.6 to 1.6 | Lobby vehicles: how big the helicopter, plane or rocket shows in its frame, multiplier (higher is closer). |
-| `lobby.sway` | 10 | 0 to 25 | Lobby vehicles: how far the vehicle turns back and forth, degrees (0 holds it at one angle; off under reduced motion). |
-| `lobby.bob` | 0.15 | 0 to 0.6 | Lobby vehicles: how far the vehicle rises and sinks, ball diameters (0 holds it level; off under reduced motion). |
+| `lobby.sway` | 4 | 0 to 25 | Lobby vehicles: how far the vehicle turns back and forth, degrees (0 holds it at one angle; off under reduced motion). |
+| `lobby.bob` | 0.08 | 0 to 0.6 | Lobby vehicles: how far the vehicle rises and sinks, ball diameters (0 holds it level; off under reduced motion). |
 | `lobby.spinSeconds` | 0.4 | 0 to 2 | Lobby vehicles: one turn of the helicopter rotor and plane propellers, seconds (0 holds them still; off under reduced motion). |
 | `environment.aresWind` | 1 | 0 to 2 | Ares courses: wind scenery strength, multiplier: speed and opacity of the wind streaks and blown dust, and the rust haze (0 hides it). |
 | `environment.aresWindDensity` | 1 | 0 to 2 | Ares courses: wind streaks and dust grains, multiplier of 1100 streaks and 2400 grains (plus 140 and 360 close around the camera). |

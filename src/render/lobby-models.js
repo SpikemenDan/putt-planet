@@ -6,7 +6,8 @@
  * The plane and rocket seat their passengers in a row under a long glass canopy along the top, each ball in front of its own seat
  * back, so every ball is easy to see. Units: a ball is 1 across (radius 0.5). Local axes: +x forward (nose), +y up, +z toward the
  * viewer's side. Each builder returns { body, glass, seats, spinners, flame?, flameAt?, tilt?, drop }: `seats` are ball centres,
- * `spinners` parts that turn about `axis` (rotors and fans), `flame` the rocket's exhaust, `inner` an optional cabin interior drawn without ink, `drop` how far below a seat the belly is,
+ * `spinners` parts that turn about `axis` (rotors and fans), `flame` the rocket's exhaust, `inner` an optional cabin interior drawn without ink, `trails`
+ * [x, y, z, length] points the air streams back from (engines, exhausts, tips), `drop` how far below a seat the belly is,
  * `rise` how far above it the roof is (0 when the ball rides on top).
  * `THREE` is injected.
  */
@@ -68,17 +69,17 @@ function inward(THREE, geometry) {
 
 /**
  * The Solo helicopter (owner, 2026-11-17: cleaner, the player in an opening in the side): a smooth white pod with a blue belly that
- * tapers into a slim tail boom, a dark wraparound windscreen and a rounded engine housing under a two-blade rotor. The sliding door
- * on the viewer's side is open (the door panel parked behind it), framed in yellow, and the ball sits in the doorway on a blue floor
+ * tapers into a slim tail boom, a dark wraparound windscreen and a rounded engine housing under a two-blade rotor. A wide doorway
+ * on the viewer's side stands open, framed in yellow, and the ball sits out in it on a blue floor
  * against a violet seat back, inside a soft lilac cabin. A blue fin and stabiliser with yellow tips, a pink tail rotor, slim skids.
  */
 export function makeHelicopter(THREE) {
   const white = 0xf8f6ff, blue = 0x3e8ef7, pink = 0xff3d8b, yellow = 0xffd23f, metal = 0x4b4570, dark = 0x2a2346, screen = 0x2c5cb8, seatColor = 0x4a3f9e;
   const Y = 1.5; // the fuselage axis height: the skids rest on y = 0
   const R = 1.1; // the cabin's radius, constant through the doorway
-  const DOOR = [-0.6, 0.8], A = 0.9; // the doorway along x, and its half-angle around the side facing the viewer (-z)
+  const DOOR = [-0.85, 0.98], A = 1.05; // the doorway along x, and its half-angle around the side facing the viewer (-z)
   // The pod's radius along the fuselage (x, nose at +x): a round nose, a straight cabin, then a smooth taper into the boom.
-  const profile = [[2.05, 0], [2.0, 0.4], [1.86, 0.7], [1.62, 0.9], [1.28, 1.04], [0.95, R], [-0.75, R], [-1.25, 1.0], [-1.75, 0.76],
+  const profile = [[2.05, 0], [2.0, 0.42], [1.86, 0.72], [1.64, 0.92], [1.34, 1.05], [1.0, R], [-0.9, R], [-1.35, 1.0], [-1.8, 0.76],
     [-2.25, 0.44], [-2.65, 0.29], [-4.4, 0.2], [-4.8, 0.17], [-4.9, 0]];
   const radiusAt = x => {
     for (let k = 1; k < profile.length; k++) {
@@ -116,10 +117,6 @@ export function makeHelicopter(THREE) {
     // The doorway's yellow frame: an arc at each end and a rail along the top and bottom.
     ...DOOR.map(x => ({ geometry: arc(), color: yellow, at: at(THREE, x, Y, 0) })),
     ...[railTop, railLow].map(y => ({ geometry: new THREE.CylinderGeometry(0.055, 0.055, doorLength, 10).rotateZ(Math.PI / 2), color: yellow, at: at(THREE, doorMid, Y + y * R * 1.01, railZ * R * 1.01) })),
-    // The sliding door, parked open behind the doorway, with a round window and a yellow handle.
-    { geometry: shell(DOOR[0] - 0.05, DOOR[0] - 1.25, -A + 0.08, 2 * A - 0.16, 1.05), color: white },
-    { geometry: new THREE.CircleGeometry(0.26, 24), color: screen, at: at(THREE, DOOR[0] - 0.62, Y + 0.25, -(radiusAt(DOOR[0] - 0.62) * 1.05 * Math.cos(0.23) + 0.07), 0.23, Math.PI, 0) },
-    { geometry: capsule(THREE, 0.05, 0.22, 4, 8), color: yellow, at: at(THREE, DOOR[0] - 0.2, Y - 0.1, -R * 1.055) },
     // The wraparound windscreen over the nose.
     { geometry: shell(1.97, 1.0, Math.PI + 0.25, Math.PI - 0.55, 1.008), color: screen },
     { geometry: shell(1.72, 1.52, Math.PI + 0.35, Math.PI - 0.75, 1.012), color: 0x9fd0ff }, // a glint across it
@@ -159,7 +156,7 @@ export function makeHelicopter(THREE) {
     { geometry: new THREE.CylinderGeometry(0.12, 0.12, 0.12, 14), color: yellow },
     { geometry: new THREE.BoxGeometry(1.0, 0.05, 0.16), color: pink },
   ]).rotateX(Math.PI / 2);
-  const seat = new THREE.Vector3(0.1, FLOOR + 0.5, -0.3); // in the doorway, a little proud of the hull
+  const seat = new THREE.Vector3(0.05, FLOOR + 0.5, -0.6); // out in the doorway, well proud of the hull
   return {
     body: mergeParts(THREE, parts),
     inner,
@@ -169,6 +166,7 @@ export function makeHelicopter(THREE) {
       { geometry: blades(7.2, 0.36, 0.65), position: new THREE.Vector3(-0.1, Y + 1.62, 0), axis: 'y', speed: 1 },
       { geometry: tail, position: new THREE.Vector3(-4.45, Y + 0.55, -0.2), axis: 'z', speed: 1.6 },
     ],
+    trails: [[-1.35, Y + 0.97, 0, 2.2], [-4.95, Y + 0.4, 0, 2.6], [-4.45, Y + 0.55, -0.3, 1.8], [-2.4, Y - 0.35, -0.2, 2.0]],
     tilt: -0.12, // nose down, as a helicopter flies forward
     drop: seat.y - 0.05, // the skids below the ball
     rise: Y + 1.62 - seat.y - 0.5, // the rotor above it
@@ -203,6 +201,7 @@ export function makeLobbyPlane(THREE, seatsCount = 8) {
     glass: capsule(THREE, 0.7, SEAT_STEP * seatsCount - 0.2).applyMatrix4(at(THREE, 0.1, floor + 0.45, 0, 0, 0, 0, 1, 1.0, 1.0)),
     seats,
     spinners: [1, -1].map(side => ({ geometry: fan(), position: new THREE.Vector3(1.7, -1.05, 2.9 * side), axis: 'x', speed: 2 })),
+    trails: [1, -1].flatMap(side => [[-1.3, -1.05, 2.9 * side, 4.6], [-1.7, -0.55, 6.6 * side, 3.6]]).concat([[-mid / 2 - 1.4, 3.3, 0, 3.0]]),
     drop: 2.5,
   };
 }
@@ -232,6 +231,9 @@ export function makeLobbyRocket(THREE, seatsCount = 8) {
     body: mergeParts(THREE, parts),
     glass: capsule(THREE, 0.72, SEAT_STEP * seatsCount - 0.2).applyMatrix4(at(THREE, -0.2, floor + 0.45, 0)),
     seats, spinners: [], flame, flameAt: new THREE.Vector3(-mid / 2 - 1.85, 0, 0), tilt: 0.1, drop: 2.6,
+    // Off each fin tip, and round the nozzle's rim beside the flame.
+    trails: [0, 1, 2, 3].map(k => { const a = Math.PI / 4 + k * Math.PI / 2; return [-mid / 2 - 1.6, 2.7 * Math.cos(a), 2.7 * Math.sin(a), 4.5]; })
+      .concat([[-mid / 2 - 1.9, 0.9, 0, 5.5], [-mid / 2 - 1.9, -0.9, 0, 5.5], [-mid / 2 - 1.9, 0, 0.9, 5.5]]),
   };
 }
 

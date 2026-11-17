@@ -18,6 +18,7 @@ const FOV = 30;
  * left to right behind the lobby, so a nose pointing left flies forward over it (owner, 2026-11-17: pointing right it flew backwards).
  */
 const TURN = Math.PI + 0.24;
+const CENTRE_PULL = 0.55; // 1 centres the vehicle in the free area between the panels, 0 on the screen
 
 /**
  * @param {object} options
@@ -146,7 +147,9 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', re
   const wrap = (x0, speed, t) => ((x0 + speed * t) % SPAN + SPAN) % SPAN - SPAN / 2;
   const ballGeometry = own(new THREE.SphereGeometry(BALL_RADIUS, 32, 22));
   const ballHull = own(smoothHullGeometry(THREE, ballGeometry));
-  let model = null, built = null, balls = [], spinners = [], flame = null, colors = [];
+  let model = null, built = null, balls = [], spinners = [], trails = [], flame = null, colors = [];
+  const TRAIL_DASHES = 3;
+  const trailGeometry = own(new THREE.CapsuleGeometry(0.06, 1, 2, 6).rotateZ(Math.PI / 2).translate(-0.5, 0, 0)); // 1 long, trailing back from 0
   const vehicleOwned = new Set();
   const mine = r => { vehicleOwned.add(r); return r; };
   const stats = { webgl: true, vehicle: null, passengers: 0, frames: 0 };
@@ -157,7 +160,7 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', re
     for (const b of balls) b.material.dispose();
     for (const r of vehicleOwned) r.dispose();
     vehicleOwned.clear();
-    built = null; balls = []; spinners = []; flame = null;
+    built = null; balls = []; spinners = []; trails = []; flame = null;
   };
   const buildBalls = () => {
     for (const b of balls) { built.remove(b); b.material.dispose(); }
@@ -200,6 +203,16 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', re
     const glass = new THREE.Mesh(mine(model.glass), glassMaterial); // after the box: glass never sets the frame
     glass.renderOrder = 2;
     built.add(glass); // no ink hull: through clear glass it would read as a dark tint
+    // Trails (owner, 2026-11-17): from each engine, exhaust and tip a few thin dashes stream back toward the tail, stretching and
+    // fading as they go, so the air visibly pours off the vehicle. In its own frame, so they follow its gentle motion.
+    trails = (model.trails ?? []).flatMap(([x, y, z, length], k) => Array.from({ length: TRAIL_DASHES }, (_, j) => {
+      const material = mine(new THREE.MeshBasicMaterial({ color: kind === 'rocket' ? 0xfff1c9 : 0xffffff, transparent: true, opacity: 0, depthWrite: false }));
+      const dash = new THREE.Mesh(trailGeometry, material);
+      dash.userData = { x, y, z, length, phase: j / TRAIL_DASHES + seeded(k + 500) * 0.3, rate: (kind === 'rocket' ? 2.2 : kind === 'plane' ? 1.5 : 1.1) * (0.9 + seeded(k + 540) * 0.2), thick: kind === 'helicopter' ? 1.1 : 2.2 };
+      dash.renderOrder = 1;
+      built.add(dash);
+      return dash;
+    }));
     rig.add(built);
     stats.vehicle = kind;
     const space = kind === 'rocket';
@@ -233,7 +246,8 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', re
     const tan = Math.tan((FOV * Math.PI / 180) / 2);
     // At distance d the view is 2·d·tan tall and 2·d·tan·aspect wide; the free area is that much of it.
     const dist = Math.max(model.half.x / (tan * freeW / height), model.half.y / (tan * freeH / height)) * 1.08 / l.zoom;
-    const offX = (insets.right - insets.left) / 2, offY = (insets.bottom - insets.top) / 2;
+    // Centred between the panels, pulled part of the way toward the middle of the screen (owner, 2026-11-17: more centred).
+    const offX = (insets.right - insets.left) / 2 * CENTRE_PULL, offY = (insets.bottom - insets.top) / 2 * CENTRE_PULL;
     camera.setViewOffset(width, height, offX, offY, width, height);
     camera.position.set(dist * 0.1, dist * 0.32, dist);
     camera.lookAt(0, 0, 0);
@@ -250,15 +264,26 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', re
     const rush = stats.vehicle === 'rocket' ? 1.8 : stats.vehicle === 'helicopter' ? 0.7 : 1;
     for (const s of streaks) { const u = s.userData; s.position.set(wrap(u.x0, u.speed * rush, t), u.y, u.z); }
     for (const c of clouds) { const u = c.userData; c.position.set(wrap(u.x0, u.speed * rush, t), u.y, u.z); }
-    rig.rotation.y = TURN + Math.sin(t * 0.6) * l.sway * Math.PI / 180;
-    rig.position.y = Math.sin(t * 1.7) * l.bob;
-    rig.rotation.x = Math.sin(t * 1.1) * 0.02;
+    // Calm flight (owner, 2026-11-17: less shake): one slow swell up and down with the nose easing down as it sinks, a slow sway,
+    // and over that a very slight breeze, a few small unrelated slow waves, so the motion never repeats mechanically.
+    const breeze = (a, b, c) => Math.sin(t * a) * 0.5 + Math.sin(t * b + 1.3) * 0.3 + Math.sin(t * c + 2.1) * 0.2;
+    const swell = Math.sin(t * 0.9);
+    rig.rotation.y = TURN + (Math.sin(t * 0.35) + breeze(0.53, 0.89, 1.37) * 0.25) * l.sway * Math.PI / 180;
+    rig.position.y = (swell + breeze(0.71, 1.13, 1.61) * 0.2) * l.bob;
+    rig.rotation.z = Math.cos(t * 0.9) * l.bob * 0.25 + breeze(0.61, 0.97, 1.49) * 0.006; // nose follows the swell, a breath of roll
+    rig.rotation.x = breeze(0.47, 0.83, 1.21) * 0.008;
+    for (const d of trails) {
+      const u = d.userData, p = reducedMotion ? 0.35 : ((t * u.rate + u.phase) % 1 + 1) % 1;
+      d.position.set(u.x - p * u.length, u.y, u.z);
+      d.scale.set(u.length * (0.25 + p * 0.45), u.thick * (1 - p * 0.5), u.thick * (1 - p * 0.5));
+      d.material.opacity = Math.min(1, 1.3 * Math.sin(Math.PI * Math.min(1, p * 1.6)) * (1 - p * 0.8));
+    }
     for (const mesh of spinners) {
       const s = mesh.userData.spin;
       if (l.spinSeconds > 0 && !reducedMotion) mesh.rotation[s.axis] = (t / l.spinSeconds) * Math.PI * 2 * s.speed;
     }
     if (flame) flame.scale.set(reducedMotion ? 1 : 1 + Math.sin(t * 31) * 0.12 + Math.sin(t * 17) * 0.08, 1 + Math.sin(t * 23) * 0.06, 1 + Math.sin(t * 23) * 0.06);
-    balls.forEach((b, k) => { b.position.y = model.seats[b.userData.seat].y + (reducedMotion ? 0 : Math.abs(Math.sin(t * 2.4 + k * 0.9)) * 0.06); });
+    balls.forEach((b, k) => { b.position.y = model.seats[b.userData.seat].y + (reducedMotion ? 0 : (0.5 - 0.5 * Math.cos(t * 1.6 + k * 0.9)) * 0.03); });
     rig.updateMatrixWorld(true);
     renderer.render(scene, camera);
     stats.frames++;

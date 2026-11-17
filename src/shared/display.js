@@ -67,7 +67,7 @@ export const DEFAULT_DISPLAY = {
   loading: { spinSpeed: 4, axisTilt: 12, horizonHeight: 0.48, cameraAltitude: 0.4, cloudCover: 0.6, cloudDrift: 1.4, finishTime: 0.8, atmosphere: 0.75, atmosphereHeight: 0.62, citySize: 1, lunaSize: 2.6, outlineWidth: 1.6, planes: 3, boats: 9, satellites: 2, ballPulse: 1.6, ballBounce: 3 },
   space: { orbitSeconds: 120, travelSeconds: 1.8, aresZoom: 0.5, nebula: 0.6, distance: 1 },
   menu: { buttonScale: 1, stagger: 0.07, bob: 2, tilt: 1.5, shineSeconds: 5, cardTint: 0.22 },
-  lobby: { zoom: 1, sway: 10, bob: 0.15, spinSeconds: 0.4 },
+  lobby: { zoom: 1, sway: 4, bob: 0.08, spinSeconds: 0.4 },
   environment: { aresWind: 1, aresWindDensity: 1, lunaDust: 1, lunaDustDensity: 1, lunaSolar: 1 },
 };
 
