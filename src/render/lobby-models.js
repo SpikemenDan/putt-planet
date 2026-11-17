@@ -9,6 +9,7 @@
  * `spinners` parts that turn about `axis` (rotors and fans), `flame` the rocket's exhaust, `inner` an optional cabin interior drawn without ink, `trails`
  * [x, y, z, length] points the air streams back from (engines, exhausts, tips), `drop` how far below a seat the belly is,
  * `rise` how far above it the roof is (0 when the ball rides on top).
+ * `room` (optional, default 1) scales the space framed round the vehicle.
  * `THREE` is injected.
  */
 import { mergeParts } from './sky-models.js';
@@ -74,7 +75,7 @@ function inward(THREE, geometry) {
  * against a violet seat back, inside a soft lilac cabin. A blue fin and stabiliser with yellow tips, a pink tail rotor, slim skids.
  */
 export function makeHelicopter(THREE) {
-  const white = 0xf8f6ff, blue = 0x3e8ef7, pink = 0xff3d8b, yellow = 0xffd23f, metal = 0x4b4570, dark = 0x2a2346, screen = 0x2c5cb8, seatColor = 0x4a3f9e;
+  const white = 0xf8f6ff, blue = 0x3e8ef7, pink = 0xff3d8b, yellow = 0xffd23f, metal = 0x8f8bb3, dark = 0x3b3557, screen = 0x2c5cb8, seatColor = 0x5a4fb0;
   const Y = 1.5; // the fuselage axis height: the skids rest on y = 0
   const R = 1.1; // the cabin's radius, constant through the doorway
   const DOOR = [-0.85, 0.98], A = 1.05; // the doorway along x, and its half-angle around the side facing the viewer (-z)
@@ -111,12 +112,12 @@ export function makeHelicopter(THREE) {
   const side = phi => [-Math.sin(phi), -Math.cos(phi)]; // [y, z] of angle phi on the fuselage, per unit radius
   const [railTop, railZ] = side(-A), [railLow] = side(A);
   const doorLength = DOOR[1] - DOOR[0], doorMid = (DOOR[0] + DOOR[1]) / 2;
-  const arc = () => new THREE.TorusGeometry(R * 1.01, 0.055, 8, 24, 2 * A).rotateZ(-A).rotateY(Math.PI / 2);
+  const arc = () => new THREE.TorusGeometry(R * 1.01, 0.04, 8, 24, 2 * A).rotateZ(-A).rotateY(Math.PI / 2);
   const parts = [
     ...pod(1, white, blue),
     // The doorway's yellow frame: an arc at each end and a rail along the top and bottom.
     ...DOOR.map(x => ({ geometry: arc(), color: yellow, at: at(THREE, x, Y, 0) })),
-    ...[railTop, railLow].map(y => ({ geometry: new THREE.CylinderGeometry(0.055, 0.055, doorLength, 10).rotateZ(Math.PI / 2), color: yellow, at: at(THREE, doorMid, Y + y * R * 1.01, railZ * R * 1.01) })),
+    ...[railTop, railLow].map(y => ({ geometry: new THREE.CylinderGeometry(0.04, 0.04, doorLength, 10).rotateZ(Math.PI / 2), color: yellow, at: at(THREE, doorMid, Y + y * R * 1.01, railZ * R * 1.01) })),
     // The wraparound windscreen over the nose.
     { geometry: shell(1.97, 1.0, Math.PI + 0.25, Math.PI - 0.55, 1.008), color: screen },
     { geometry: shell(1.72, 1.52, Math.PI + 0.35, Math.PI - 0.75, 1.012), color: 0x9fd0ff }, // a glint across it
@@ -133,17 +134,17 @@ export function makeHelicopter(THREE) {
     ...[1, -1].map(s => ({ geometry: wing(THREE, [[-4.15, 0.65], [-3.62, 0.65], [-3.6, 0.82], [-4.0, 0.82]], 0.12), color: yellow, at: at(THREE, 0, Y + 0.05, 0, s < 0 ? Math.PI : 0, 0, 0) })),
   ];
   for (const s of [1, -1]) {
-    parts.push({ geometry: capsule(THREE, 0.08, 3.0, 4, 12), color: metal, at: at(THREE, -0.1, 0.09, s * 0.95) }); // skid
-    parts.push({ geometry: capsule(THREE, 0.08, 0.32, 4, 12), color: metal, at: at(THREE, 1.55, 0.2, s * 0.95, 0, 0, 0.5) }); // its upturned toe
-    for (const x of [-0.9, 0.8]) parts.push({ geometry: new THREE.CylinderGeometry(0.06, 0.06, 0.95, 10), color: metal, at: at(THREE, x, 0.5, s * 0.8, s * 0.4, 0, 0) });
+    parts.push({ geometry: capsule(THREE, 0.06, 2.6, 4, 12), color: metal, at: at(THREE, -0.05, 0.2, s * 0.85) }); // skid
+    parts.push({ geometry: capsule(THREE, 0.06, 0.26, 4, 12), color: metal, at: at(THREE, 1.4, 0.29, s * 0.85, 0, 0, 0.5) }); // its upturned toe
+    for (const x of [-0.75, 0.7]) parts.push({ geometry: new THREE.CylinderGeometry(0.045, 0.045, 0.75, 10), color: metal, at: at(THREE, x, 0.55, s * 0.74, s * 0.3, 0, 0) });
   }
   // The cabin, seen through the doorway (no ink): a lilac lining, a blue floor and a violet seat back against the far wall.
   const FLOOR = Y - 0.5, d = Y - FLOOR, outline = [];
   for (let x = -1.2; x <= 1.75; x += 0.05) outline.push([x, Math.sqrt(Math.max(0, (radiusAt(x) * 0.95) ** 2 - d * d))]);
   const floorShape = new THREE.Shape(outline.map(([x, w]) => new THREE.Vector2(x, w)).concat([...outline].reverse().map(([x, w]) => new THREE.Vector2(x, -w))));
   const inner = mergeParts(THREE, [
-    ...pod(0.95, 0xe4e1ff, 0xc9c3f2).map(p => ({ ...p, geometry: inward(THREE, p.geometry) })),
-    { geometry: new THREE.ShapeGeometry(floorShape).rotateX(Math.PI / 2), color: 0x2d6fd0, at: at(THREE, 0, FLOOR, 0) },
+    ...pod(0.95, 0xd9dcf2, 0xb3b6dc).map(p => ({ ...p, geometry: inward(THREE, p.geometry) })),
+    { geometry: new THREE.ShapeGeometry(floorShape).rotateX(Math.PI / 2), color: 0x3a5fae, at: at(THREE, 0, FLOOR, 0) },
     { geometry: new THREE.BoxGeometry(1.05, 1.0, 0.16), color: seatColor, at: at(THREE, 0.1, Y + 0.05, 0.62, -0.1, 0, 0) }, // seat back
     { geometry: new THREE.BoxGeometry(1.05, 0.16, 0.5), color: seatColor, at: at(THREE, 0.1, FLOOR + 0.08, 0.38) }, // seat base
   ]);
@@ -163,11 +164,14 @@ export function makeHelicopter(THREE) {
     glass: shell(1.97, 1.0, Math.PI + 0.25, Math.PI - 0.55, 1.02),
     seats: [seat],
     spinners: [
-      { geometry: blades(7.2, 0.36, 0.65), position: new THREE.Vector3(-0.1, Y + 1.62, 0), axis: 'y', speed: 1 },
+      { geometry: blades(6.2, 0.3, 0.5), position: new THREE.Vector3(-0.1, Y + 1.62, 0), axis: 'y', speed: 1 },
       { geometry: tail, position: new THREE.Vector3(-4.45, Y + 0.55, -0.2), axis: 'z', speed: 1.6 },
     ],
-    trails: [[-1.35, Y + 0.97, 0, 2.2], [-4.95, Y + 0.4, 0, 2.6], [-4.45, Y + 0.55, -0.3, 1.8], [-2.4, Y - 0.35, -0.2, 2.0]],
-    tilt: -0.12, // nose down, as a helicopter flies forward
+    // Air off the exhaust, the tail, the tail rotor, the belly, the fin tip and both ends of the rotor's sweep.
+    trails: [[-1.35, Y + 0.97, 0, 2.2], [-4.95, Y + 0.4, 0, 2.6], [-4.45, Y + 0.55, -0.3, 1.8], [-2.4, Y - 0.35, -0.2, 2.0], [-4.98, Y + 1.25, 0, 2.2],
+      [-0.4, Y + 1.62, -3.0, 3.0], [-0.4, Y + 1.62, 3.0, 3.0]],
+    tilt: -0.1, // nose down, as a helicopter flies forward
+    room: 1.2, // framed with more sky round it, so it reads as a small craft in the air rather than filling the view
     drop: seat.y - 0.05, // the skids below the ball
     rise: Y + 1.62 - seat.y - 0.5, // the rotor above it
   };
@@ -201,7 +205,7 @@ export function makeLobbyPlane(THREE, seatsCount = 8) {
     glass: capsule(THREE, 0.7, SEAT_STEP * seatsCount - 0.2).applyMatrix4(at(THREE, 0.1, floor + 0.45, 0, 0, 0, 0, 1, 1.0, 1.0)),
     seats,
     spinners: [1, -1].map(side => ({ geometry: fan(), position: new THREE.Vector3(1.7, -1.05, 2.9 * side), axis: 'x', speed: 2 })),
-    trails: [1, -1].flatMap(side => [[-1.3, -1.05, 2.9 * side, 4.6], [-1.7, -0.55, 6.6 * side, 3.6]]).concat([[-mid / 2 - 1.4, 3.3, 0, 3.0]]),
+    trails: [1, -1].flatMap(side => [[-1.3, -1.05, 2.9 * side, 4.6], [-1.7, -0.55, 6.6 * side, 3.6], [-mid / 2 - 1.5, 0.2, 2.5 * side, 2.4]]).concat([[-mid / 2 - 1.4, 3.3, 0, 3.0]]),
     drop: 2.5,
   };
 }

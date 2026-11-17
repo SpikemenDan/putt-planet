@@ -50,7 +50,7 @@ const WORLD_BLURB = Object.freeze({ gaia: 'Home: six regions of courses', luna: 
  * Solo, one question per screen (owner, 2026-11-12, layout A): how to play (Casual, Tournament and its length, or the
  * smaller Practice button), then the destination, then the Solo lobby (owner, 2026-11-16, 2026-11-17): full screen, a 3D helicopter
  * carrying the player's ball, and on the right a boarding pass with their name (edited on the pass), the colour badge that opens the
- * party lobby's colour picker, the flight, Play Solo and Back; along the bottom, the same mode bar as the party lobby. The menu card steps away for it. Play opens the solo room and
+ * party lobby's colour picker, the planet (switchable right there, like the mode), the flight, Play Solo and Back; along the bottom, the same mode bar as the party lobby. The menu card steps away for it. Play opens the solo room and
  * goes straight to the level select with the chosen mode. Back (or Escape) steps back; from the first step it leaves Solo. `colorField` is no longer shown here (the ticket's badge replaces it);
  * it stays accepted so Landing.jsx needs no change.
  */
@@ -170,7 +170,7 @@ export function SoloSteps({ name, onName, colorField, connecting, send, onExit, 
             </div>
             <div className={solo.pass}>
               <LobbyTicket vehicle="helicopter" solo name={name} onName={onName} color={color} onPick={c => send(UiCommands.SET_COLOR, { color: c })} destination={world}
-                flight={flight} seat={1} onBack={back}>
+                onDestination={setWorld} openWorlds={PLAYABLE_WORLDS} flight={flight} seat={1} onBack={back}>
                 <button type="button" className={solo.go} disabled={connecting} onClick={() => send(UiCommands.PLAY_SOLO, { name, mode, world })} data-ui="solo-play">Play Solo</button>
               </LobbyTicket>
             </div>

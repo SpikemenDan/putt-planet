@@ -376,7 +376,19 @@ function fakeClock() {
     const ticket = stage.querySelector('[data-ui=lobby-ticket]');
     assert.ok(ticket, 'the boarding pass');
     assert.equal(ticket.querySelector('[data-ui=ticket-destination]').textContent, 'Gaia');
-    assert.equal(ticket.querySelector('[data-ui=destination-pick]'), null, 'Solo chose its planet already');
+    // The planet can be changed right on the pass (owner, 2026-11-17), among the planets with courses; the rest are greyed out.
+    const pickWorld = ticket.querySelector('[data-ui=destination-pick]');
+    assert.ok(pickWorld, 'Solo can switch planet on the pass');
+    assert.deepEqual([...pickWorld.querySelectorAll('[data-world]')].map(b => b.dataset.world), ['gaia', 'luna', 'ares']);
+    assert.equal(pickWorld.querySelector('[aria-checked=true]').dataset.world, 'gaia', 'the planet chosen in the steps');
+    const otherWorld = [...pickWorld.querySelectorAll('[data-world]')].find(b => b.dataset.world !== 'gaia' && !b.disabled);
+    if (otherWorld) {
+      await click(otherWorld);
+      assert.equal(ticket.querySelector('[data-ui=ticket-destination]').textContent, otherWorld.textContent, 'the route follows the pick');
+      assert.match($('[data-ui=solo-summary]').textContent, new RegExp(' on ' + otherWorld.textContent + '$'));
+      await click(pickWorld.querySelector('[data-world=gaia]'));
+    }
+    assert.equal(ticket.querySelector('[data-ui=ticket-destination]').textContent, 'Gaia');
     assert.deepEqual([...ticket.querySelectorAll('dt')].map(d => d.textContent), ['Flight', 'Helipad', 'Seat'], 'flight, helipad and seat only');
     assert.equal(ticket.querySelector('dd').textContent, 'PP 4242', 'easter egg: Solo to Gaia flies GAIA on a phone keypad');
     assert.equal(ticket.querySelector('[data-gate]').dataset.gate, 'lily', 'the helicopter lifts off from a lily pad');

@@ -148,8 +148,43 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', re
   const ballGeometry = own(new THREE.SphereGeometry(BALL_RADIUS, 32, 22));
   const ballHull = own(smoothHullGeometry(THREE, ballGeometry));
   let model = null, built = null, balls = [], spinners = [], trails = [], flame = null, colors = [];
-  const TRAIL_DASHES = 3;
-  const trailGeometry = own(new THREE.CapsuleGeometry(0.06, 1, 2, 6).rotateZ(Math.PI / 2).translate(-0.5, 0, 0)); // 1 long, trailing back from 0
+  // Wind trails (owner, 2026-11-17: smoother, like real wind, very faint): a soft ribbon from each engine, tip and fin that streams back
+  // and curls on a slow travelling wave, widening and fading as it goes, with gusts of brighter air running down it. Two crossed strips,
+  // so it reads from any angle. The shape is built once (1 long, trailing back from 0); each trail bends it in the vertex shader.
+  const TRAIL_STEPS = 48;
+  const trailGeometry = own((() => {
+    const g = new THREE.BufferGeometry(), rib = [], cross = [], index = [];
+    for (let plane = 0; plane < 2; plane++) {
+      const base = rib.length / 2;
+      for (let i = 0; i <= TRAIL_STEPS; i++) for (const side of [-1, 1]) { rib.push(i / TRAIL_STEPS, side); cross.push(plane); }
+      for (let i = 0; i < TRAIL_STEPS; i++) { const a = base + i * 2; index.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
+    }
+    g.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(rib.length / 2 * 3), 3));
+    g.setAttribute('rib', new THREE.Float32BufferAttribute(rib, 2));
+    g.setAttribute('cross', new THREE.Float32BufferAttribute(cross, 1));
+    g.setIndex(index);
+    g.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 1e4); // bent in the shader: never culled
+    return g;
+  })());
+  const TRAIL_VERTEX = `attribute vec2 rib; attribute float cross; uniform float time, len, width, amp, phase, speed; varying vec2 vRib;
+    void main() {
+      float u = rib.x, a = amp * u * u, w = width * (0.4 + u * 1.6);
+      vec3 p = vec3(-u * len, 0.0, 0.0);
+      p.y += a * (sin(u * 5.5 - time * speed * 1.3 + phase) * 0.7 + sin(u * 11.0 - time * speed * 2.1 + phase * 1.7) * 0.3);
+      p.z += a * 0.8 * cos(u * 4.3 - time * speed + phase * 1.3);
+      if (cross < 0.5) p.y += rib.y * w; else p.z += rib.y * w;
+      vRib = rib;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+    }`;
+  const TRAIL_FRAGMENT = `uniform vec3 color; uniform float time, phase, speed, opacity; varying vec2 vRib;
+    void main() {
+      float u = vRib.x, edge = 1.0 - vRib.y * vRib.y;
+      float gust = 0.55 + 0.45 * sin(u * 9.0 - time * speed * 3.0 + phase);
+      float a = opacity * edge * smoothstep(0.0, 0.08, u) * pow(1.0 - u, 1.5) * gust;
+      if (a < 0.003) discard;
+      gl_FragColor = vec4(color, a);
+    }`;
+  const TRAIL_LOOK = { helicopter: { width: 0.05, amp: 0.55, speed: 1.6, opacity: 0.38 }, plane: { width: 0.08, amp: 0.7, speed: 2.0, opacity: 0.34 }, rocket: { width: 0.1, amp: 0.6, speed: 2.6, opacity: 0.34 } };
   let vehicleOwned = new Set();
   const mine = r => { vehicleOwned.add(r); return r; };
   // Switching vehicles (owner, 2026-11-17: a smoother switch): the old one speeds away ahead (off to the left, nose first) while the new
@@ -218,20 +253,28 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', re
     // Centre the vehicle on its real extent (rotor tips and tail included), so nothing hangs out of the frame.
     const box = new THREE.Box3().setFromObject(built), centre = box.getCenter(new THREE.Vector3()), size = box.getSize(new THREE.Vector3());
     built.position.set(-centre.x, -centre.y, -centre.z);
-    model.half = { x: size.x * 0.5 + size.z * 0.12, y: size.y * 0.5 + size.z * 0.1 };
+    const room = model.room ?? 1;
+    model.half = { x: (size.x * 0.5 + size.z * 0.12) * room, y: (size.y * 0.5 + size.z * 0.1) * room };
     const glass = new THREE.Mesh(mine(model.glass), glassMaterial); // after the box: glass never sets the frame
     glass.renderOrder = 2;
     built.add(glass); // no ink hull: through clear glass it would read as a dark tint
     // Trails (owner, 2026-11-17): from each engine, exhaust and tip a few thin dashes stream back toward the tail, stretching and
     // fading as they go, so the air visibly pours off the vehicle. In its own frame, so they follow its gentle motion.
-    trails = (model.trails ?? []).flatMap(([x, y, z, length], k) => Array.from({ length: TRAIL_DASHES }, (_, j) => {
-      const material = mine(new THREE.MeshBasicMaterial({ color: kind === 'rocket' ? 0xfff1c9 : 0xffffff, transparent: true, opacity: 0, depthWrite: false }));
-      const dash = new THREE.Mesh(trailGeometry, material);
-      dash.userData = { x, y, z, length, phase: j / TRAIL_DASHES + seeded(k + 500) * 0.3, rate: (kind === 'rocket' ? 2.2 : kind === 'plane' ? 1.5 : 1.1) * (0.9 + seeded(k + 540) * 0.2), thick: kind === 'helicopter' ? 1.1 : 2.2 };
-      dash.renderOrder = 1;
-      built.add(dash);
-      return dash;
-    }));
+    const look = TRAIL_LOOK[kind] ?? TRAIL_LOOK.plane;
+    trails = (model.trails ?? []).map(([x, y, z, length], k) => {
+      const material = mine(new THREE.ShaderMaterial({
+        vertexShader: TRAIL_VERTEX, fragmentShader: TRAIL_FRAGMENT, transparent: true, depthWrite: false, side: THREE.DoubleSide,
+        uniforms: { color: { value: new THREE.Color(kind === 'rocket' ? 0xfff1c9 : 0xffffff) }, time: { value: 0 }, len: { value: length * 1.6 },
+          width: { value: look.width }, amp: { value: look.amp * (0.8 + seeded(k + 520) * 0.4) }, phase: { value: seeded(k + 500) * 6.28 },
+          speed: { value: look.speed * (0.85 + seeded(k + 540) * 0.3) }, opacity: { value: look.opacity } },
+      }));
+      const ribbon = new THREE.Mesh(trailGeometry, material);
+      ribbon.position.set(x, y, z);
+      ribbon.frustumCulled = false;
+      ribbon.renderOrder = 1;
+      built.add(ribbon);
+      return ribbon;
+    });
     holder = new THREE.Group();
     holder.add(built);
     holder.visible = arriveAt !== null; // a gliding arrival shows once its slide begins
@@ -318,12 +361,7 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', re
     rig.position.y = (swell + breeze(0.71, 1.13, 1.61) * 0.2) * l.bob;
     rig.rotation.z = Math.cos(t * 0.9) * l.bob * 0.25 + breeze(0.61, 0.97, 1.49) * 0.006; // nose follows the swell, a breath of roll
     rig.rotation.x = breeze(0.47, 0.83, 1.21) * 0.008;
-    for (const d of trails) {
-      const u = d.userData, p = reducedMotion ? 0.35 : ((t * u.rate + u.phase) % 1 + 1) % 1;
-      d.position.set(u.x - p * u.length, u.y, u.z);
-      d.scale.set(u.length * (0.25 + p * 0.45), u.thick * (1 - p * 0.5), u.thick * (1 - p * 0.5));
-      d.material.opacity = Math.min(1, 1.3 * Math.sin(Math.PI * Math.min(1, p * 1.6)) * (1 - p * 0.8));
-    }
+    for (const d of trails) d.material.uniforms.time.value = t;
     for (const mesh of spinners) {
       const s = mesh.userData.spin;
       if (l.spinSeconds > 0 && !reducedMotion) mesh.rotation[s.axis] = (t / l.spinSeconds) * Math.PI * 2 * s.speed;

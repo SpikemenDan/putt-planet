@@ -69,9 +69,10 @@ function PassengerName({ name, onName, onNameDone }) {
  * Solo pass) with the code printed under it like a booking reference
  * (`code`, with a copy-invite icon: `onCopy`) and Back (`onBack`). In a party everyone
  * votes for the destination on the pass (`onDestination`, `worldVoters`: each voter's ball sits on their planet; `myWorld` is checked);
- * the route shows the planet the vote leads with. Names render as React text only, cut to NAME_LIMIT.
+ * the route shows the planet the vote leads with. Solo picks its planet the same way, without votes; `openWorlds` lists the
+ * planets that can be picked (the rest show greyed out, coming soon). Names render as React text only, cut to NAME_LIMIT.
  */
-export function LobbyTicket({ vehicle = 'plane', name = '', onName = null, onNameDone = null, color = null, taken = {}, onPick, solo = false, destination = 'gaia', onDestination = null, worldVoters = null, myWorld = null, code = '', onCopy = null, flight = 'PP 1000', seat = 1, onBack = null, backLabel = 'Back', hidden = false, children }) {
+export function LobbyTicket({ vehicle = 'plane', name = '', onName = null, onNameDone = null, color = null, taken = {}, onPick, solo = false, destination = 'gaia', onDestination = null, openWorlds = TICKET_WORLDS, worldVoters = null, myWorld = null, code = '', onCopy = null, flight = 'PP 1000', seat = 1, onBack = null, backLabel = 'Back', hidden = false, children }) {
   const planet = WORLDS.find(w => w.id === destination)?.name ?? 'Gaia';
   const pass = PASS[vehicle] ?? PASS.plane;
   const gateMark = gateFor(vehicle, destination, flight);
@@ -97,9 +98,9 @@ export function LobbyTicket({ vehicle = 'plane', name = '', onName = null, onNam
       {onDestination && (
         <div className={styles.worlds} role="radiogroup" aria-label="Destination" data-ui="destination-pick" data-voting={worldVoters ? '' : undefined}>
           {TICKET_WORLDS.map(id => {
-            const mine = worldVoters ? id === myWorld : id === destination;
+            const mine = worldVoters ? id === myWorld : id === destination, open = openWorlds.includes(id);
             return (
-              <button key={id} type="button" role="radio" aria-checked={mine} data-world={id} data-leading={(worldVoters && id === destination) || undefined} className={styles.world}
+              <button key={id} type="button" role="radio" aria-checked={mine} disabled={!open} title={open ? undefined : 'Coming soon'} data-world={id} data-leading={(worldVoters && id === destination) || undefined} className={styles.world}
                 onClick={() => { if (!mine) onDestination(id); }}>{WORLDS.find(w => w.id === id).name}{worldVoters && <Voters list={worldVoters[id]} />}</button>
             );
           })}

@@ -39,7 +39,8 @@
 .world[data-world=gaia]{--tone:#2fbf5b}
 .world[data-world=ares]{--tone:#e5484d}
 .world[data-world=luna]{--tone:#8e4ec6}
-.world:hover{background:color-mix(in srgb,var(--tone) 22%,#fff)}
+.world:hover:not(:disabled){background:color-mix(in srgb,var(--tone) 22%,#fff)}
+.world:disabled{opacity:.45;cursor:not-allowed}
 .worlds[data-voting] .world[data-leading]{outline:3px dashed var(--tone);outline-offset:2px}
 .world[aria-checked=true]{background:var(--tone);color:#fff;text-shadow:1px 1px 0 var(--ink);translate:0 3px;box-shadow:0 0 0 var(--ink)}
 /* Flight details, three across, as on a real pass. */
