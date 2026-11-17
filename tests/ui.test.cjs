@@ -1018,6 +1018,8 @@ function fakeClock() {
     assert.equal(t.session.getSnapshot().phase, 'play');
     assert.ok(shown(t.within('[data-ui=room-lobby]')), 'countdown shows on the lobby card');
     assert.equal(t.within('[data-ui=room-lobby] p:nth-of-type(2)').textContent, 'Dune Serpent · putt 1/6 starts in 3…');
+    await t.send({ type: 'ARRIVAL_READY', playerId: 'host' });
+    await t.send({ type: 'ARRIVAL_READY', playerId: 'g1' });
     await act(async () => t.store.setLocal({ mode: 'play', strokes: 0 }));
     await t.step(2600);
     assert.ok(shown(t.within('[data-ui=game]')));
@@ -1074,6 +1076,8 @@ function fakeClock() {
       if (t.session.getSnapshot().phase !== 'select') await click(t.within('[data-ui=results] button'));
       await t.send({ type: 'CAST_VOTE', playerId: 'host', mapIndex: map });
       await t.send({ type: 'CAST_VOTE', playerId: 'g1', mapIndex: map });
+      await t.send({ type: 'ARRIVAL_READY', playerId: 'host' });
+      await t.send({ type: 'ARRIVAL_READY', playerId: 'g1' });
       await t.step(2600);
       for (let k = 0; k < courses[map].putts.length; k++) {
         const s = t.session.getSnapshot();
@@ -1380,6 +1384,38 @@ function fakeClock() {
     assert.equal(options.length, 2);
     assert.match(t.within('[data-ui=room-lobby] p:nth-of-type(2)').textContent, /^Vote tied! Random pick: /);
     await t.step(2600);
+    await t.teardown();
+  });
+
+  await scenario('arrival overlay: skydive formation, clouds, crew waiting badge and comic countdown (VIS-A #167)', async () => {
+    const t = await setup();
+    await t.send({ type: 'JOIN_ROOM', playerId: 'g1', name: 'Ben' });
+    await t.send({ type: 'START_VOTING', playerId: 'host' });
+    await t.send({ type: 'CAST_VOTE', playerId: 'host', mapIndex: 0 });
+    await t.send({ type: 'CAST_VOTE', playerId: 'g1', mapIndex: 0 });
+    assert.equal(t.session.getSnapshot().phase, 'play');
+    assert.equal(t.session.getSnapshot().awaitingArrival, true);
+
+    // Arrival overlay is mounted
+    assert.ok(t.within('[data-ui=arrival-overlay]'), 'arrival overlay is mounted');
+    assert.equal(t.within('[data-ui=arrival-overlay] h1').textContent, 'Switchback Garden');
+    const divers = [...t.within('[data-ui=skydive-formation]').querySelectorAll('[data-ui=skydive-diver]')];
+    assert.equal(divers.length, 2, 'both players shown in skydive formation');
+
+    // Host sends ARRIVAL_READY; waiting badge appears
+    await t.send({ type: 'ARRIVAL_READY', playerId: 'host' });
+    assert.ok(t.within('[data-ui=waiting-crew]'), 'waiting for crew badge shown');
+    assert.match(t.within('[data-ui=waiting-crew]').textContent, /WAITING FOR CREW\.\.\. \(1\/2\)/);
+
+    // Guest sends ARRIVAL_READY; transitions to starting countdown
+    await t.send({ type: 'ARRIVAL_READY', playerId: 'g1' });
+    assert.equal(t.session.getSnapshot().awaitingArrival, false);
+    assert.ok(t.within('[data-ui=arrival-countdown]'), 'comic countdown mounted');
+    assert.match(t.within('[data-ui=arrival-countdown]').textContent, /^[123]$/);
+
+    // Stepping past roundStartTime finishes arrival and hides overlay
+    await t.step(2600);
+    assert.equal(t.within('[data-ui=arrival-overlay]'), null, 'arrival overlay unmounts when countdown finishes');
     await t.teardown();
   });
 

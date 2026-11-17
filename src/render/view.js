@@ -45,6 +45,18 @@ export function createGameView({ renderer, rig = createCameraRig(), cameraCollis
       });
     },
     /**
+     * Wide establishing shot emerging from clouds, swooping into the opening tee (VIS-A).
+     * Call after setCourse() for the opening hole of a map.
+     */
+    startArrival({ tee, now, reducedMotion = false }) {
+      const { course, transform } = requireCourse();
+      rig.startArrival({
+        tee: transform.ball(tee[0], tee[1], surfaceHeight(course, tee[0], tee[1])),
+        now,
+        reducedMotion,
+      });
+    },
+    /**
      * Draws one frame.
      * @param {object} frame See renderer.render(); plus `free` (spectating/waiting) and `keys` (held keys, lower case).
      * @returns {{ events: string[], mode: string, transitioning: boolean }}

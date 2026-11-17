@@ -11,7 +11,7 @@ import { createPongSession } from './pong.js';
 
 export const SessionEvents = Object.freeze({ ...SessionCommands, UPDATE_STROKES: 'UPDATE_STROKES', REPORT_SCORE: 'REPORT_SCORE', PRACTICE_STEP: 'PRACTICE_STEP', PRACTICE_MAPS: 'PRACTICE_MAPS' });
 const eventTypes = new Set(Object.values(SessionEvents));
-export const SESSION_TIMING = Object.freeze({ start: 2500, minimumPlay: 1500, fallback: 4000, replay: 2200 });
+export const SESSION_TIMING = Object.freeze({ start: 2500, minimumPlay: 1500, fallback: 4000, replay: 2200, arrivalFallback: 10000 });
 const modes = Object.values(GameModes);
 const own = (object, key) => typeof key === 'string' && Object.hasOwn(object, key);
 const practice = c => [GameModes.PRACTICE, GameModes.PUTT_PRACTICE].includes(c.mode);
@@ -77,12 +77,15 @@ export function createRoomSession({ hostId, controllerId = hostId, hostName = 'H
   };
   const resetPlayers = (c, clearScores) => Object.fromEntries(Object.entries(c.players).map(([id, p]) => [id, { ...p, strokes: 0, done: false, timedOut: false, missed: false, score: null, scores: clearScores ? [] : p.scores }]));
   const round = (c, mapIndex, puttIndex, newMap) => {
+    const needsArrival = !serverOwned && !practice(c) && newMap && !replay(c);
     const nextRound = {
       mapIndex, puttIndex, roundNumber: c.roundNumber + 1,
       roundLimitSeconds: holeLimitSeconds(c.rules, courseData[mapIndex].putts[puttIndex].limitSeconds),
       roundStartTime: clock.now() + (replay(c) ? 0 : SESSION_TIMING.start),
       roster: newMap ? newMapRoster(c) : c.roster,
       players: resetPlayers(c, newMap), votes: {}, votingDeadline: 0,
+      awaitingArrival: needsArrival,
+      readyArrivals: {},
     };
     if (c.mode === GameModes.PONG) {
       const roster = newMap ? newMapRoster(c) : c.roster;
@@ -130,6 +133,7 @@ export function createRoomSession({ hostId, controllerId = hostId, hostName = 'H
   const machine = setup({
     delays: {
       votingRemaining: ({ context: c }) => Math.max(0, c.votingDeadline - clock.now()),
+      arrivalFallback: SESSION_TIMING.arrivalFallback,
       startRemaining: ({ context: c }) => Math.max(0, c.roundStartTime - clock.now()),
       minimumPlay: ({ context: c }) => Math.max(0, c.roundStartTime + SESSION_TIMING.minimumPlay - clock.now()),
       fallbackRemaining: ({ context: c }) => Math.max(0, c.roundStartTime + c.roundLimitSeconds * 1000 + SESSION_TIMING.fallback - clock.now()),
@@ -180,6 +184,9 @@ export function createRoomSession({ hostId, controllerId = hostId, hostName = 'H
       practiceHost: ({ context: c, event: e }) => host(c, e) && practice(c),
       canExpirePlayer: ({ context: c, event: e }) => serverOwned && typeof e.playerId === 'string' && own(c.players, e.playerId) && !c.players[e.playerId].connected,
       canAbandonRoom: ({ context: c }) => serverOwned && active(c).length === 0,
+      needsArrival: ({ context: c }) => !!c.awaitingArrival,
+      canMarkArrivalReady: ({ context: c, event: e }) => !!c.awaitingArrival && active(c).includes(e.playerId),
+      allArrivalsReady: ({ context: c }) => active(c).length > 0 && active(c).every(id => !!c.readyArrivals?.[id]),
     },
     actions: {
       join: assign(({ context: c, event: e }) => {
@@ -293,6 +300,18 @@ export function createRoomSession({ hostId, controllerId = hostId, hostName = 'H
         mode: GameModes.STANDARD, votes: {}, votingDeadline: 0, roster: [],
         roundNumber: c.roundNumber + 1, players: resetPlayers(c, false),
       })),
+      markArrivalReady: assign(({ context: c, event: e }) => ({
+        readyArrivals: { ...(c.readyArrivals || {}), [e.playerId]: true },
+      })),
+      setRoundStart: assign(({ context: c }) => ({
+        roundStartTime: clock.now() + (replay(c) ? 0 : SESSION_TIMING.start),
+        awaitingArrival: false,
+      })),
+      clearArrivals: assign(({ context: c }) => ({
+        roundStartTime: clock.now() + (replay(c) ? 0 : SESSION_TIMING.start),
+        awaitingArrival: false,
+        readyArrivals: {},
+      })),
     },
   }).createMachine({
     id: 'session', initial: 'lobby',
@@ -300,6 +319,7 @@ export function createRoomSession({ hostId, controllerId = hostId, hostName = 'H
       ...createInitialSessionState({ rules: roomRules }),
       ...(serverOwned ? { controllerId: initialControllerId } : { hostId: initialControllerId }),
       players: { [initialControllerId]: fresh(initialControllerId, hostName, isColorIndex(hostColor) ? hostColor : 0, hostToken) }, totals: {}, last: null, tie: restore?.context?.tie ?? null,
+      awaitingArrival: restore?.context?.awaitingArrival ?? false, readyArrivals: restore?.context?.readyArrivals ?? {},
     },
     on: {
       JOIN_ROOM: { guard: 'canJoin', actions: 'join' },
@@ -326,7 +346,7 @@ export function createRoomSession({ hostId, controllerId = hostId, hostName = 'H
         },
       },
       play: {
-        initial: 'starting',
+        initial: 'deciding',
         on: {
           UPDATE_STROKES: { guard: 'strokes', actions: 'strokes' },
           REPORT_SCORE: { guard: 'score', actions: 'score' },
@@ -336,7 +356,26 @@ export function createRoomSession({ hostId, controllerId = hostId, hostName = 'H
           RETURN_TO_LOBBY: { guard: 'replayHost', target: 'lobby', actions: 'lobby' },
         },
         states: {
-          starting: { ...timed('startRemaining', { target: 'active', actions: 'clearTie' }) },
+          deciding: {
+            always: [
+              { guard: 'needsArrival', target: 'arrival' },
+              { target: 'starting' },
+            ],
+          },
+          arrival: {
+            always: [
+              { guard: 'allArrivalsReady', target: 'starting', actions: 'clearArrivals' },
+            ],
+            ...timed('arrivalFallback', { target: 'starting', actions: 'clearArrivals' }, {
+              ARRIVAL_READY: [
+                { guard: 'canMarkArrivalReady', actions: 'markArrivalReady' },
+              ],
+            }),
+          },
+          starting: {
+            entry: 'setRoundStart',
+            ...timed('startRemaining', { target: 'active', actions: 'clearTie' }),
+          },
           active: {
             initial: 'settling',
             states: {
@@ -390,6 +429,7 @@ export function createRoomSession({ hostId, controllerId = hostId, hostName = 'H
         const node = sessionNode(value.value);
         const timers = {
           voteAt: ['select.timing', 'votingRemaining', c.votingDeadline],
+          arrivalFallbackAt: ['play.arrival', 'arrivalFallback', at],
           startAt: ['play.starting', 'startRemaining', c.roundStartTime],
           minimumPlayAt: ['play.active.settling', 'minimumPlay', c.roundStartTime + SESSION_TIMING.minimumPlay],
           fallbackAt: ['play.active.running', 'fallbackRemaining', c.roundStartTime + c.roundLimitSeconds * 1000 + SESSION_TIMING.fallback],

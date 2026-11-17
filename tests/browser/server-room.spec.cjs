@@ -10,7 +10,7 @@ test.beforeEach(() => { contexts = []; });
 test.afterEach(async () => { await Promise.all(contexts.map(c => c.close())); });
 
 test('server rooms: tournament, late spectator and controller departure preserve the series', async ({ browser }, info) => {
-  test.setTimeout(240_000);
+  test.setTimeout(300_000);
   const code = roomCode('N4F');
   const ana = await openPlayer(browser, info, 'Ana', { contexts }); await ana.join(code);
   const ben = await openPlayer(browser, info, 'Ben', { contexts }); await ben.join(code);

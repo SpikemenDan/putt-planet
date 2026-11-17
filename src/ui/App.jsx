@@ -8,6 +8,7 @@ import { MapSelect } from './MapSelect.jsx';
 import { Results } from './Results.jsx';
 import { RoomLobby } from './RoomLobby.jsx';
 import { ScorecardOverlay } from './Scorecard.jsx';
+import { ArrivalOverlay } from './ArrivalOverlay.jsx';
 import { MESSAGES } from './commands.js';
 import { DISPLAY } from '../shared/display.js';
 import app from './App.module.css';
@@ -28,6 +29,7 @@ function Screens({ onCanvas, initialName, initialRoomCode, initialView }) {
       <div className={app.netnotice} hidden={!screens.netNotice} role="alert">{screens.netNotice ? (screens.reconnecting ? MESSAGES.reconnecting : screens.connectionReason || MESSAGES.connectionLost) : ''}</div>
       <ScorecardOverlay />
       <Banner />
+      <ArrivalOverlay hidden={!screens.arrival} />
       <GameScreen hidden={!screens.game} onCanvas={onCanvas} />
       <Results hidden={!screens.results} />
     </div>

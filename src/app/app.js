@@ -72,6 +72,7 @@ export function createApp({ worldPreview = null, soloHazards = false, root, THRE
   let unsubscribeInputAim = null;
   // Bumper / Orbital Bumper placement (G1e): `placing` while the player picks a spot, `awaiting` while a guest's DEPLOY_OBJECT is in flight.
   let placing = null, awaiting = null, hazardAwaiting = null, targeting = null, cursor = null, unbindPlacement = null;
+  let arrivalTimeout = null, arrivalReadySent = false;
   const AWAIT_MS = 3000;
   let seenKey = '', seenKinds = new Map();
 
@@ -182,6 +183,8 @@ export function createApp({ worldPreview = null, soloHazards = false, root, THRE
 
   // ---------------------------------------------------------------- rounds
   function endPutt() {
+    if (arrivalTimeout) { win.clearTimeout(arrivalTimeout); arrivalTimeout = null; }
+    arrivalReadySent = false;
     if (putt && puttPolicy?.carryover) carriedInventory = [...putt.player.inventory];
     putt?.dispose(); putt = null;
     stopPlacing(); stopTargeting(); awaiting = null; hazardAwaiting = null; setLocal({ hazardPrompt: null });
@@ -196,7 +199,7 @@ export function createApp({ worldPreview = null, soloHazards = false, root, THRE
       if (putt || activeRound !== null) { endPutt(); activeRound = null; }
       if (s.phase === SessionPhases.LOBBY) carriedInventory = []; // a tournament keeps its inventory through map selection only
       setLocalIfChanged({ mode: 'lobby', strokes: 0, inventory: s.phase === SessionPhases.SELECT ? [...carriedInventory] : [] });
-    } else if (s.phase === SessionPhases.PLAY && now >= s.roundStartTime && activeRound !== s.roundNumber) {
+    } else if (s.phase === SessionPhases.PLAY && (s.awaitingArrival || now >= s.roundStartTime) && activeRound !== s.roundNumber) {
       startRound(s);
     } else if (s.phase === SessionPhases.RESULTS && lastPhase !== SessionPhases.RESULTS) {
       if (activeRound !== s.roundNumber) startRound(s, true);
@@ -238,11 +241,23 @@ export function createApp({ worldPreview = null, soloHazards = false, root, THRE
     putt.mapIndex = s.mapIndex; putt.puttIndex = s.puttIndex;
     if (view) {
       view.setCourse(definition, s.puttIndex);
+      const reducedMotion = !!win.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
       if (s.puttIndex > 0 && s.mode !== GameModes.PUTT_PRACTICE && previous && previous.mapIndex === s.mapIndex && definition.putts) {
-        const reducedMotion = !!win.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
         view.startPuttTransition({ previousHole: definition.putts[s.puttIndex - 1].hole, nextTee: definition.putts[s.puttIndex].tee, now: win.performance.now(), reducedMotion });
         audio.handleEvent({ type: 'putt_change' });
+      } else if (s.puttIndex === 0 && s.mode !== GameModes.PUTT_PRACTICE && definition.putts) {
+        view.startArrival({ tee: definition.putts[0].tee, now: win.performance.now(), reducedMotion });
       }
+    }
+    if (s.awaitingArrival) {
+      arrivalReadySent = false;
+      const reducedMotion = !!win.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      arrivalTimeout = win.setTimeout(() => {
+        if (room?.snapshot?.awaitingArrival && !arrivalReadySent) {
+          room.command({ type: 'ARRIVAL_READY' });
+          arrivalReadySent = true;
+        }
+      }, reducedMotion ? 50 : 2800);
     }
     if (playing && !(previous && previous.mapIndex === s.mapIndex)) audio.handleEvent({ type: 'turn_ready' });
     input?.setAimAngle(putt.aimAngle());
@@ -454,6 +469,12 @@ export function createApp({ worldPreview = null, soloHazards = false, root, THRE
       for (const event of result.events) {
         if (event === 'free-roam-start') { setLocal({ viewLabel: 'Free roam' }); toast(MESSAGES.freeRoamHint); }
         if (event === 'free-roam-end') setLocal({ viewLabel: CAMERA_VIEW_LABELS[view.rig.state.view] });
+        if (event === 'arrival-end') {
+          if (room?.snapshot?.awaitingArrival && !arrivalReadySent) {
+            room.command({ type: 'ARRIVAL_READY' });
+            arrivalReadySent = true;
+          }
+        }
       }
       const cam = renderer.camera, dir = new THREE.Vector3();
       cam.getWorldDirection(dir);
@@ -599,7 +620,7 @@ export function createApp({ worldPreview = null, soloHazards = false, root, THRE
       },
       getState: () => ({
         active: !!room, mode: putt ? putt.mode : 'lobby', moving: !!putt?.player.moving, connected: !!room?.connected,
-        transitioning: view.rig.transitioning, steady: !!putt?.player.armedPowerups.steady, aimMode: putt ? aimModeOf(putt.player) : '', wobble: aimWobble,
+        transitioning: view.rig.transitioning || (room?.snapshot ? (room.snapshot.awaitingArrival || room.now() < room.snapshot.roundStartTime) : false), steady: !!putt?.player.armedPowerups.steady, aimMode: putt ? aimModeOf(putt.player) : '', wobble: aimWobble,
         canResetBall: !!putt?.canResetBall,
       }),
     });
@@ -672,6 +693,7 @@ export function createApp({ worldPreview = null, soloHazards = false, root, THRE
       disposed = true;
       leave();
       if (frameId !== null) win.cancelAnimationFrame(frameId);
+      if (arrivalTimeout) { win.clearTimeout(arrivalTimeout); arrivalTimeout = null; }
       win.clearInterval(tick);
       stopBannerAudio();
       unsubscribeInputAim?.();

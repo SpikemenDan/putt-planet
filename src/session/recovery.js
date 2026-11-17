@@ -8,6 +8,7 @@ const nodes = Object.freeze({
   'select.waiting': { select: 'waiting' },
   'select.timing': { select: 'timing' },
   'select.choosingPutt': { select: 'choosingPutt' },
+  'play.arrival': { play: 'arrival' },
   'play.starting': { play: 'starting' },
   'play.active.settling': { play: { active: 'settling' } },
   'play.active.running': { play: { active: 'running' } },
