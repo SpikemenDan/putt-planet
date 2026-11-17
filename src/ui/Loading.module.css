@@ -28,10 +28,13 @@
     radial-gradient(circle at 62% 70%,rgba(30,36,72,.15) 0 4%,transparent 5%),
     radial-gradient(circle at 56% 30%,rgba(30,36,72,.08) 0 4%,transparent 5%),
     radial-gradient(circle at 36% 30%,#fdfdff 0 46%,#e4e8f3 66%,#bcc4da 100%);
-  box-shadow:2px 3px 0 var(--ink);will-change:transform;animation:lift var(--pulse) ease-in-out var(--delay) infinite}
-.ball::before,.ball::after{content:"";position:absolute;inset:-3px;border-radius:50%;pointer-events:none;animation:inherit;animation-name:glow}
-.ball::before{box-shadow:0 0 0 4px var(--yellow),0 0 16px 5px rgba(255,240,170,.6);opacity:0}
-.ball::after{background:#0b1030;opacity:.4;animation-name:veil}
+  box-shadow:2px 3px 0 var(--ink);animation:lift var(--pulse) ease-in-out var(--delay) infinite}
+/* The glow ring and the dim veil are painted as radial gradients, not blurred box-shadows or a clipped dark disc: while a ball scales,
+   browsers can split a blurred rounded shadow into tiles whose seams show as a dark X across the ball (owner, 2026-11-17). */
+.ball::before,.ball::after{content:"";position:absolute;pointer-events:none;animation:inherit;animation-name:glow}
+.ball::before{inset:-17px;opacity:0;
+  background:radial-gradient(circle closest-side,transparent calc(100% - 14px),var(--yellow) calc(100% - 14px),var(--yellow) calc(100% - 10px),rgba(255,240,170,.6) calc(100% - 9px),rgba(255,240,170,0) 100%)}
+.ball::after{inset:-3px;opacity:.4;animation-name:veil;background:radial-gradient(circle closest-side,#0b1030 calc(100% - 1px),rgba(11,16,48,0) 100%)}
 .ball:nth-child(2){--delay:calc(var(--pulse) * .2)}
 .ball:nth-child(3){--delay:calc(var(--pulse) * .4)}
 @keyframes lift{0%,60%,100%{transform:none}30%{transform:translateY(calc(var(--lift) * -1)) scale(1.06)}}
