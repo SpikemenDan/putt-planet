@@ -864,10 +864,10 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
     step,
     /**
      * The destination view (VIS-M4): `space` pulls the camera back from the horizon into space (or returns it), `target` flies to Gaia,
-     * Luna or Ares, and `near` brings the camera down to just above Ares or Luna, inside Ares's dusty air (owner, 2026-11-17: the
+     * Luna or Ares, and `near` (off unless asked for, each call) brings the camera down to just above Ares or Luna, inside Ares's dusty air (owner, 2026-11-17: the
      * lobby rocket). Safe to call at any time; a still frame (reduced motion) jumps straight there.
      */
-    setView({ space: inSpace = space.goal === 1, target = space.to, near = space.nearGoal === 1 } = {}) {
+    setView({ space: inSpace = space.goal === 1, target = space.to, near = false } = {}) {
       if (!['gaia', 'luna', 'ares'].includes(target)) return;
       space.goal = inSpace ? 1 : 0;
       space.nearGoal = near ? 1 : 0;
