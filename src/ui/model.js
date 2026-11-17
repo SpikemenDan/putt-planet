@@ -100,7 +100,11 @@ export function screensView(room, local, now) {
 
 /** Room lobby card, including the pre-start countdown. */
 export function lobbyView(room, local, now, courses) {
-  const players = connectedPlayers(room);
+  // Seats follow the order players joined (owner, 2026-11-17): the server's join order when it sends one, else the order the room
+  // added them (a peer room adds players as they join).
+  const order = Array.isArray(room?.joinOrder) ? room.joinOrder : [];
+  const rank = id => { const i = order.indexOf(id); return i < 0 ? order.length : i; };
+  const players = connectedPlayers(room).map((p, i) => [p, i]).sort((a, b) => rank(a[0].id) - rank(b[0].id) || a[1] - b[1]).map(([p]) => p);
   const n = players.length;
   let status;
   const tie = inCountdown(room, now) && room.tie ? {

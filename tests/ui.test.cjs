@@ -378,6 +378,8 @@ function fakeClock() {
     assert.equal(ticket.querySelector('[data-ui=ticket-destination]').textContent, 'Gaia');
     assert.equal(ticket.querySelector('[data-ui=destination-pick]'), null, 'Solo chose its planet already');
     assert.deepEqual([...ticket.querySelectorAll('dt')].map(d => d.textContent), ['Flight', 'Helipad', 'Seat'], 'flight, helipad and seat only');
+    assert.equal(ticket.querySelector('[data-gate]').dataset.gate, 'helipad', 'the helicopter lifts off from the H of its helipad');
+    assert.equal(ticket.querySelector('[data-gate]').textContent, 'H');
     const bar = stage.querySelector('[data-ui=solo-modes] [data-ui=mode-picker]');
     assert.deepEqual([...bar.querySelectorAll('[data-mode]')].map(b => b.dataset.mode), ['standard', 'tournament_3', 'tournament_5', 'tournament_7', 'practice', 'putt_practice', 'pong'], 'the mode bar has every Solo mode');
     assert.equal(bar.querySelector('[aria-checked=true]').dataset.mode, 'standard', 'the mode chosen in the steps');
@@ -1118,6 +1120,7 @@ function fakeClock() {
     const ticket = lobby.querySelector('[data-ui=lobby-ticket]');
     const worlds = [...ticket.querySelectorAll('[data-ui=destination-pick] button')];
     assert.deepEqual(worlds.map(b => b.dataset.world), ['gaia', 'luna', 'ares'], 'everyone votes for the destination on the ticket');
+    assert.equal(ticket.querySelector('[data-gate]').textContent, 'Cloud 9', 'the plane boards at Cloud 9');
     t.commands.length = 0;
     await click(worlds[2]);
     assert.deepEqual(t.commands, [{ type: 'session', event: { type: 'LOBBY_VOTE', mode: null, world: 'ares' } }]);
@@ -1129,6 +1132,8 @@ function fakeClock() {
     assert.equal(ticket.querySelector('[data-ui=ticket-destination]').textContent, 'Ares');
     assert.equal(ticket.querySelector('[data-ui=ticket-title]').textContent, 'Rocket Boarding Pass');
     assert.equal(ticket.querySelector('[data-ui=ticket-code]').textContent, 'ARS');
+    assert.match(ticket.querySelector('[data-gate]').textContent, /^Canyon [1-9]$/, 'the rocket to Ares launches from a canyon');
+    assert.equal(ticket.querySelector('dt:nth-of-type(1)') && [...ticket.querySelectorAll('dt')][1].textContent, 'Launch pad');
     assert.equal(lobby.querySelector('[data-ui=lobby-vehicle]').dataset.vehicle, 'rocket');
     const sky = t.within('[data-ui=planet-stage]');
     assert.ok(sky?.hasAttribute('data-low'), 'the rocket flies over the planet: the sky puts it low');
@@ -1142,6 +1147,7 @@ function fakeClock() {
     assert.equal(t.session.getSnapshot().lobbyVotes.host.world, 'ares', 'an unknown world is refused');
     await t.send({ type: 'LOBBY_VOTE', playerId: 'host', mode: null, world: 'luna' });
     assert.equal(t.session.getSnapshot().destination, 'luna', 'two votes for Luna');
+    assert.match(ticket.querySelector('[data-gate]').textContent, /^Crater [1-9]$/, 'to Luna: a crater');
     assert.equal(sc.vehicle, 'rocket');
     await t.send({ type: 'LOBBY_VOTE', playerId: 'host', mode: null, world: 'gaia' });
     assert.equal(t.session.getSnapshot().destination, 'gaia', 'a tie again: the host');
@@ -1151,6 +1157,16 @@ function fakeClock() {
     const guest = await setup({ localId: 'g1', isHost: false });
     assert.ok(guest.within('[data-ui=destination-pick]'), 'guests vote for the destination too');
     await guest.teardown();
+  });
+
+  await scenario('lobby seats (owner, 2026-11-17): seat numbers follow the order players joined, the server\'s join order when it sends one', async () => {
+    const { lobbyView } = await import('../src/ui/model.js');
+    const p = (id, name) => ({ id, name, color: 0, connected: true });
+    const room = { phase: 'lobby', players: { zed: p('zed', 'Zed'), ana: p('ana', 'Ana'), ben: p('ben', 'Ben') }, roster: [], hostId: 'ana' };
+    assert.deepEqual(lobbyView(room, { id: 'ben', roomCode: 'abcd' }, 0, []).roster.map(r => r.name), ['Zed', 'Ana', 'Ben'], 'a peer room: the order the room added them');
+    const online = { ...room, joinOrder: ['ana', 'ben', 'zed'] };
+    assert.deepEqual(lobbyView(online, { id: 'ben', roomCode: 'abcd' }, 0, []).roster.map(r => r.name), ['Ana', 'Ben', 'Zed'], 'an online room: the server\'s join order');
+    assert.deepEqual(lobbyView({ ...online, joinOrder: ['ben'] }, { id: 'ben', roomCode: 'abcd' }, 0, []).roster.map(r => r.name), ['Ben', 'Zed', 'Ana'], 'anyone missing from the order keeps the room order after it');
   });
 
   await scenario('lobby scene (owner, 2026-11-16): helicopter, plane and rocket models; balls only in occupied seats; anchors every frame; live display; disposal', async () => {

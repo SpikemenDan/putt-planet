@@ -14,11 +14,24 @@ export const PASS = Object.freeze({
   rocket: { title: 'Rocket Boarding Pass', gate: 'Launch pad' },
 });
 
-/** A flight number and gate from any text (the party code), stable for the party: PP 1000–9999 and a gate like B7. */
+/**
+ * Themed gates (owner, 2026-11-17): the party plane boards at Cloud 9, rockets launch from a Luna crater or an Ares canyon (numbered
+ * from the flight, so a party keeps its pad), and the Solo helicopter lifts off from the H of its helipad.
+ */
+export function gateFor(vehicle, destination, flight = '') {
+  if (vehicle === 'helicopter') return { kind: 'helipad', text: 'H' };
+  if (vehicle === 'rocket') {
+    const n = 1 + (Number(String(flight).replace(/\D/g, '')) || 0) % 9;
+    return destination === 'luna' ? { kind: 'crater', text: 'Crater ' + n } : { kind: 'canyon', text: 'Canyon ' + n };
+  }
+  return { kind: 'cloud', text: 'Cloud 9' };
+}
+
+/** A flight number from any text (the party code), stable for the party: PP 1000–9999. */
 export function flightOf(text = '') {
   let h = 2166136261;
   for (const ch of String(text)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0;
-  return { flight: 'PP ' + (1000 + (h % 9000)), gate: 'ABCDEF'[(h >>> 8) % 6] + (1 + ((h >>> 16) % 9)) };
+  return { flight: 'PP ' + (1000 + (h % 9000)) };
 }
 
 /**
@@ -47,10 +60,11 @@ function PassengerName({ name, onName }) {
  * votes for the destination on the pass (`onDestination`, `worldVoters`: each voter's ball sits on their planet; `myWorld` is checked);
  * the route shows the planet the vote leads with. Names render as React text only, cut to NAME_LIMIT.
  */
-export function LobbyTicket({ vehicle = 'plane', name = '', onName = null, color = null, taken = {}, onPick, solo = false, destination = 'gaia', onDestination = null, worldVoters = null, myWorld = null, code = '', onCopy = null, flight = 'PP 1000', gate = 'A1', seat = 1, onBack = null, backLabel = 'Back', hidden = false, children }) {
+export function LobbyTicket({ vehicle = 'plane', name = '', onName = null, color = null, taken = {}, onPick, solo = false, destination = 'gaia', onDestination = null, worldVoters = null, myWorld = null, code = '', onCopy = null, flight = 'PP 1000', seat = 1, onBack = null, backLabel = 'Back', hidden = false, children }) {
   const planet = WORLDS.find(w => w.id === destination)?.name ?? 'Gaia';
   const pass = PASS[vehicle] ?? PASS.plane;
-  const fields = [['Flight', flight], [pass.gate, gate], ['Seat', String(seat).padStart(2, '0')]];
+  const gateMark = gateFor(vehicle, destination, flight);
+  const fields = [['Flight', flight], [pass.gate, gateMark.kind === 'helipad' ? <span className={styles.helipad} aria-label="H">H</span> : gateMark.text], ['Seat', String(seat).padStart(2, '0')]];
   return (
     <aside className={styles.ticket} data-ui="lobby-ticket" data-world={destination} data-vehicle={vehicle} aria-label={pass.title}>
       <header className={styles.head}>
@@ -81,20 +95,18 @@ export function LobbyTicket({ vehicle = 'plane', name = '', onName = null, color
         </div>
       )}
       <dl className={styles.details}>
-        {fields.map(([label, value]) => <div key={label} data-field={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+        {fields.map(([label, value]) => <div key={label} data-field={label}><dt>{label}</dt><dd data-gate={label === pass.gate ? gateMark.kind : undefined}>{value}</dd></div>)}
       </dl>
       <div className={styles.actions}>{children}</div>
       <div className={styles.stub}>
-        <span className={styles.ref}>
-          <span className={styles.barcode} aria-hidden="true" />
-          {code && (
-            <span className={styles.code} data-ui="party-code">
-              <small>Party code</small><strong>{code}</strong>
-              {onCopy && <button type="button" className={styles.copy} onClick={onCopy} title="Copy invite"><span className={styles.hiddenText}>Copy invite</span></button>}
-            </span>
-          )}
-        </span>
+        <span className={styles.barcode} aria-hidden="true" />
         {onBack && <button type="button" className={styles.back} onClick={onBack} data-ui={solo ? 'menu-back' : 'pass-leave'} data-kind={solo ? 'back' : 'leave'}>{backLabel}</button>}
+        {code && (
+          <span className={styles.code} data-ui="party-code">
+            <small>Party code</small><strong>{code}</strong>
+            {onCopy && <button type="button" className={styles.copy} onClick={onCopy} title="Copy invite"><span className={styles.hiddenText}>Copy invite</span></button>}
+          </span>
+        )}
       </div>
     </aside>
   );

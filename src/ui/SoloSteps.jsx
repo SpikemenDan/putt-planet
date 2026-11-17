@@ -151,7 +151,7 @@ export function SoloSteps({ name, onName, colorField, connecting, send, onExit, 
       })()}
 
       {step === 'ready' && (() => {
-        const { flight, gate } = flightOf('solo-' + mode + '-' + world);
+        const { flight } = flightOf('solo-' + mode + '-' + world);
         // The helicopter is framed between the left edge, the pass on the right and the mode bar below.
         const insets = () => {
           const view = body.current?.ownerDocument.defaultView;
@@ -170,7 +170,7 @@ export function SoloSteps({ name, onName, colorField, connecting, send, onExit, 
             </div>
             <div className={solo.pass}>
               <LobbyTicket vehicle="helicopter" solo name={name} onName={onName} color={color} onPick={c => send(UiCommands.SET_COLOR, { color: c })} destination={world}
-                flight={flight} gate={gate} seat={1} onBack={back}>
+                flight={flight} seat={1} onBack={back}>
                 <button type="button" className={solo.go} disabled={connecting} onClick={() => send(UiCommands.PLAY_SOLO, { name, mode, world })} data-ui="solo-play">Play Solo</button>
               </LobbyTicket>
             </div>
