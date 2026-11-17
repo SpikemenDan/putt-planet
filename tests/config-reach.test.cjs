@@ -184,12 +184,17 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
       assert.ok(run(0.1).nebula > 0, 'the nebula shows in space');
       live.space.nebula = 0;
       assert.equal(run(0.1).nebula, 0, 'space.nebula sets the nebula brightness');
+      reset();
+      const sunMove = () => { const a = run(0.1).sun; const b = run(3).sun; return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]); };
+      const slowSwing = sunMove();
+      live.space.revolveSeconds = 30;
+      assert.ok(sunMove() > slowSwing * 3, 'space.revolveSeconds sets how fast the planets swing around the sun');
       scene.dispose(); dom.window.close();
     }
     // loading.finishTime is checked in tests/ui.test.cjs, where the screen really closes after it, and so is the menu group
     // (VIS-M2), where each value lands on its own CSS variable on the real main menu, and the lobby group (VIS-M3), on the plane.
     // The table covers every DISPLAY setting, so a new setting cannot be added without a reach check.
-    assert.deepEqual([...Object.keys(expectations), 'ball.visualScale', ...['spinSpeed', 'axisTilt', 'horizonHeight', 'cameraAltitude', 'cloudCover', 'cloudDrift', 'finishTime', 'atmosphere', 'atmosphereHeight', 'citySize', 'lunaSize', 'outlineWidth', 'planes', 'boats', 'satellites'].map(k => 'loading.' + k), ...['orbitSeconds', 'travelSeconds', 'aresZoom', 'nebula', 'distance'].map(k => 'space.' + k), ...['buttonScale', 'stagger', 'bob', 'tilt'].map(k => 'menu.' + k), ...['ballSize', 'tilt', 'spacing', 'bob'].map(k => 'lobby.' + k), ...['aresWind', 'aresWindDensity', 'lunaDust', 'lunaDustDensity', 'lunaSolar'].map(k => 'environment.' + k)].sort(), DISPLAY_FIELDS.map(f => f[0]).sort());
+    assert.deepEqual([...Object.keys(expectations), 'ball.visualScale', ...['spinSpeed', 'axisTilt', 'horizonHeight', 'cameraAltitude', 'cloudCover', 'cloudDrift', 'finishTime', 'atmosphere', 'atmosphereHeight', 'citySize', 'lunaSize', 'outlineWidth', 'planes', 'boats', 'satellites'].map(k => 'loading.' + k), ...['orbitSeconds', 'travelSeconds', 'aresZoom', 'nebula', 'distance', 'revolveSeconds'].map(k => 'space.' + k), ...['buttonScale', 'stagger', 'bob', 'tilt'].map(k => 'menu.' + k), ...['ballSize', 'tilt', 'spacing', 'bob'].map(k => 'lobby.' + k), ...['aresWind', 'aresWindDensity', 'lunaDust', 'lunaDustDensity', 'lunaSolar'].map(k => 'environment.' + k)].sort(), DISPLAY_FIELDS.map(f => f[0]).sort());
   });
 
   // ---- TUNING probes: [name, setting, value, code printing one number, expected default, expected with the override]

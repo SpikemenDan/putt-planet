@@ -36,6 +36,7 @@ Units: world units (ball radius 5) and multipliers. Opacity is 0..1. The shaft h
 | `space.aresZoom` | 0.5 | 0 to 1 | Destination view: how strongly the lens widens then zooms in on the long Ares trips (0 is a plain glide). |
 | `space.nebula` | 0.6 | 0 to 1 | Destination view: brightness of the nebula clouds behind the planets (0 hides them). |
 | `space.distance` | 1 | 0.6 to 2 | Destination view: camera distance from the planet it shows, multiplier. |
+| `space.revolveSeconds` | 180 | 30 to 600 | Destination view: seconds for one slow swing of Gaia and Ares a few degrees around the sun and back. |
 | `menu.buttonScale` | 1 | 0.7 to 1.5 | Main menu: size of the Solo, Party, Custom and Settings buttons, multiplier. |
 | `menu.stagger` | 0.07 | 0 to 0.3 | Main menu: seconds between each button dropping in (0 brings them in together). |
 | `menu.bob` | 2 | 0 to 8 | Main menu: idle bob of the big buttons, CSS px (0 holds them still; off under reduced motion). |
