@@ -404,6 +404,7 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', re
       clear();
       for (const r of owned) r.dispose?.();
       renderer.dispose?.();
+      renderer.forceContextLoss?.(); // release the context now: browsers cap live contexts and drop the oldest, which can be the game's
     },
   };
 }

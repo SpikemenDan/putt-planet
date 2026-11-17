@@ -32,12 +32,12 @@ function installProbe() {
   const nativeRaf = window.requestAnimationFrame, nativeCancel = window.cancelAnimationFrame;
   window.requestAnimationFrame = fn => { const id = nativeRaf.call(window, t => { frames.delete(id); fn(t); }); frames.add(id); return id; };
   window.cancelAnimationFrame = id => { frames.delete(id); return nativeCancel.call(window, id); };
-  // The game draws on one canvas for the page's life. The planet behind the menu and the 3D map select are backdrops with canvases of
-  // their own, built and released as those screens come and go; they must give their context back when they go.
+  // The game draws on one canvas for the page's life. The planet behind the menu, the 3D map select and the lobby's 3D vehicle are
+  // backdrops with canvases of their own, built and released as those screens come and go; they must give their context back when they go.
   const webgl = new Map();
   const getContext = HTMLCanvasElement.prototype.getContext;
   HTMLCanvasElement.prototype.getContext = function (type, ...rest) { const gl = getContext.call(this, type, ...rest); if (/webgl/.test(type) && gl) webgl.set(this, gl); return gl; };
-  const backdrop = canvas => canvas.matches('[data-ui=loading-planet], [data-ui=atlas-canvas]');
+  const backdrop = canvas => canvas.matches('[data-ui=loading-planet], [data-ui=atlas-canvas], [data-ui=lobby-canvas]');
   window.__ppProbe = () => ({
     listeners: [...listeners.values()].reduce((n, keys) => n + keys.size, 0),
     timers: timers.size,
@@ -88,7 +88,7 @@ test('lifecycle: repeated join/leave keeps one loop and no leaked listeners, tim
     const now = await probe();
     expect(now.frames, `cycle ${i + 1}: still one animation loop and the planet's`).toBeLessThanOrEqual(2);
     expect(now.webglCanvases, `cycle ${i + 1}: the WebGL renderer is reused`).toBe(1);
-    expect(now.liveBackdrops, `cycle ${i + 1}: only the menu's planet holds a context; the map select's was released`).toBeLessThanOrEqual(1);
+    expect(now.liveBackdrops, `cycle ${i + 1}: only the menu's planet holds a context; the map select's and the lobby vehicle's were released`).toBeLessThanOrEqual(1);
     testInfo.annotations.push({ type: `cycle ${i + 1}`, description: JSON.stringify(now) });
   }
 

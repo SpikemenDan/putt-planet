@@ -24,7 +24,9 @@ test('multiplayer: four pages on real WebSockets play a full map and agree on th
     const [ana, ...guests] = players;
     await expect(ana.ui('room-lobby').locator('p').first()).toHaveText(`Room ${partyCode(code)} · 4 players · You control the room`, { timeout: 30_000 });
     for (const g of guests) await expect(g.ui('room-lobby').locator('p').first()).toHaveText(`Room ${partyCode(code)} · 4 players · Waiting for room controller`);
-    await expect(guests[0].ui('room-lobby').getByLabel('Game mode')).toBeHidden();
+    // Everyone votes for the mode in the party lobby (owner, 2026-11-17), but only the room controller can start.
+    await expect(guests[0].ui('room-lobby').getByLabel('Game mode')).toHaveAttribute('data-voting', '');
+    for (const g of guests) await expect(g.ui('start-game')).toHaveCount(0);
 
     await ana.button('Start Game').click();
     for (const p of players) {
