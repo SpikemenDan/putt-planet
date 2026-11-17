@@ -116,15 +116,16 @@ export function Landing({ hidden, initialName = '', initialRoomCode = '', initia
             <h2 className={menu.heading}><MenuIcon name="party" className={menu.headingIcon} />Party</h2>
             {nameField}
             {/* VIS-M3 #175: Host creates the party and only then gets its code; opening this menu makes no room and no code. */}
-            <div className={menu.partyPart} data-ui="party-host">
-              <p className={menu.question}>Host</p>
+            {/* Cleaner Party menu (owner, 2026-11-17): host with one big button, then "or join with a code" and the code box beside Join. */}
+            <div className={menu.partyHost} data-ui="party-host">
               <button type="button" className={menu.go} disabled={connecting} onClick={() => send(UiCommands.CREATE_PARTY, { name, rules: hostRules })}>Create party</button>
+              <p className={menu.partyHint}>You get a code to share with friends.</p>
               {hostRules && <p className={app.small} data-ui="party-custom-rules">Your party uses your Custom rules ({changedRules(hostRules).length} changed); everyone who joins plays them. <button type="button" className={menu.inline} onClick={() => setHostRules(null)}>Use standard</button></p>}
             </div>
-            <form className={menu.partyPart} data-ui="party-join" onSubmit={e => { e.preventDefault(); if (!connecting && roomCode.trim()) send(UiCommands.JOIN, { name, roomCode }); }}>
-              <p className={menu.question}>Join</p>
+            <form className={menu.partyJoin} data-ui="party-join" onSubmit={e => { e.preventDefault(); if (!connecting && roomCode.trim()) send(UiCommands.JOIN, { name, roomCode }); }}>
+              <p className={menu.or} aria-hidden="true"><span>or join with a code</span></p>
               <div className={menu.joinRow}>
-                <label className={menu.joinCode}>Party code<input maxLength={12} autoComplete="off" spellCheck={false} placeholder="Code from your host" value={roomCode} onChange={e => setRoomCode(e.target.value)} /></label>
+                <label className={menu.joinCode}><span className={menu.hiddenLabel}>Party code</span><input maxLength={12} autoComplete="off" spellCheck={false} placeholder="Code from your host" value={roomCode} onChange={e => setRoomCode(e.target.value)} /></label>
                 <button type="submit" className={menu.joinGo} disabled={connecting || !roomCode.trim()}>Join</button>
               </div>
             </form>
