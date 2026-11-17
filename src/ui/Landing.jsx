@@ -125,7 +125,7 @@ export function Landing({ hidden, initialName = '', initialRoomCode = '', initia
             <form className={menu.partyJoin} data-ui="party-join" onSubmit={e => { e.preventDefault(); if (!connecting && roomCode.trim()) send(UiCommands.JOIN, { name, roomCode }); }}>
               <p className={menu.or} aria-hidden="true"><span>or join with a code</span></p>
               <div className={menu.joinRow}>
-                <label className={menu.joinCode}><span className={menu.hiddenLabel}>Party code</span><input maxLength={12} autoComplete="off" spellCheck={false} placeholder="Code from your host" value={roomCode} onChange={e => setRoomCode(e.target.value)} /></label>
+                <label className={menu.joinCode}><span className={menu.hiddenLabel}>Party code</span><input maxLength={12} autoComplete="off" spellCheck={false} placeholder="CODE" value={roomCode} onChange={e => setRoomCode(e.target.value)} /></label>
                 <button type="submit" className={menu.joinGo} disabled={connecting || !roomCode.trim()}>Join</button>
               </div>
             </form>

@@ -167,7 +167,7 @@
 .joinCode{flex:1;min-width:0;margin:0!important}
 /* The same face as the party code on the boarding pass (LobbyTicket .code strong): the display font at weight 400, spaced out. */
 .joinCode input{height:100%;box-sizing:border-box;margin:0;padding:8px 12px;font:400 26px/1 var(--font);letter-spacing:3px;text-transform:uppercase;color:var(--ink);background:var(--paper)}
-.joinCode input::placeholder{font:400 19px/1 var(--font);letter-spacing:1px;text-transform:none;color:#8a83a6}
+.joinCode input::placeholder{color:#8a83a6}
 .joinGo{margin:0;padding:10px 20px;font-size:18px;background:var(--green);color:#fff;box-shadow:0 4px 0 var(--ink)}
 .joinGo:not(:disabled):hover{background:#3fd36c}
 .joinGo:disabled{background:rgba(255,248,228,.75);color:var(--mut);opacity:1}
