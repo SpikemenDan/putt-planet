@@ -34,7 +34,7 @@ export function validCommand(e, isHost) {
   if (!record(e) || typeof e.type !== 'string') return false;
   if (!isHost && hostCommands.includes(e.type)) return false;
   const fields = {
-    JOIN_ROOM: ['name', 'resume', 'color'], LEAVE_ROOM: [], SET_COLOR: ['color'], SET_MODE: ['mode'], SET_POWERUPS: ['enabled'], SET_DESTINATION: ['world'], LOBBY_VOTE: ['mode', 'world'], START_VOTING: [],
+    JOIN_ROOM: ['name', 'resume', 'color'], LEAVE_ROOM: [], SET_COLOR: ['color'], SET_NAME: ['name'], SET_MODE: ['mode'], SET_POWERUPS: ['enabled'], SET_DESTINATION: ['world'], LOBBY_VOTE: ['mode', 'world'], START_VOTING: [],
     CAST_VOTE: ['mapIndex'], START_ROUND: ['puttIndex'], RETURN_TO_LOBBY: [],
     PRACTICE_STEP: ['step'], PRACTICE_MAPS: [],
     UPDATE_STROKES: ['strokes', 'roundNumber', 'puttIndex'],
@@ -46,6 +46,7 @@ export function validCommand(e, isHost) {
   switch (e.type) {
     case 'JOIN_ROOM': return name(e.name) && (e.resume === undefined || validResumeToken(e.resume)) && (e.color === undefined || isColorIndex(e.color));
     case 'SET_COLOR': return isColorIndex(e.color);
+    case 'SET_NAME': return name(e.name);
     case 'SET_MODE': return Object.values(GameModes).includes(e.mode);
     case 'SET_POWERUPS': return typeof e.enabled === 'boolean';
     case 'SET_DESTINATION': return isWorldId(e.world);

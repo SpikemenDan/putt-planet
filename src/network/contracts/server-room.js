@@ -22,7 +22,8 @@ import { isWorldId } from '../../shared/worlds.js';
 //     lobby's plane (Gaia) or rocket (Ares, Luna) (owner, 2026-11-16).
 // 13: LOBBY_VOTE (any member, lobby: { mode, world }, each a value or null) and an optional `lobbyVotes` in the session context: every
 //     player votes for the mode and the planet; the planet follows the vote (owner, 2026-11-17).
-export const SERVER_ROOM_VERSION = 13;
+// 14: SET_NAME (any member, lobby: { name }): rename yourself on the boarding pass (owner, 2026-11-17).
+export const SERVER_ROOM_VERSION = 14;
 /** Hello intents (VIS-M3): only the host's Create makes a room; a Join never does. */
 export const HELLO_INTENTS = Object.freeze(['create', 'join']);
 /** Socket path that asks the Worker for a new room under a code it generates (VIS-M3). Never a valid room code (`_`). */
@@ -89,12 +90,13 @@ export function validServerCommand(c) {
     const { type, ...command } = c;
     return allowed(c, ['type', 'kind', 'direction', 'targetId', 'x', 'y']) && validGlobalHazardCommand(command);
   }
-  const fields = { LEAVE_ROOM: [], SET_COLOR: ['color'], SET_MODE: ['mode'], SET_POWERUPS: ['enabled'], SET_DESTINATION: ['world'], LOBBY_VOTE: ['mode', 'world'], START_VOTING: [], CAST_VOTE: ['mapIndex'], START_ROUND: ['puttIndex'],
+  const fields = { LEAVE_ROOM: [], SET_COLOR: ['color'], SET_NAME: ['name'], SET_MODE: ['mode'], SET_POWERUPS: ['enabled'], SET_DESTINATION: ['world'], LOBBY_VOTE: ['mode', 'world'], START_VOTING: [], CAST_VOTE: ['mapIndex'], START_ROUND: ['puttIndex'],
     RETURN_TO_LOBBY: [], PRACTICE_STEP: ['step'], PRACTICE_MAPS: [], UPDATE_STROKES: ['strokes'], REPORT_SCORE: ['strokes', 'timedOut'],
     DEPLOY_OBJECT: ['kind', 'x', 'y'], DEPLOY_HIT: ['id'], PONG_SHOT: ['hit', 'cupId', 'timedOut'] }[c.type];
   if (!Array.isArray(fields) || !exact(c, ['type', ...fields])) return false;
   switch (c.type) {
     case 'SET_COLOR': return isColorIndex(c.color);
+    case 'SET_NAME': return name(c.name);
     case 'SET_MODE': return modes.includes(c.mode);
     case 'SET_POWERUPS': return typeof c.enabled === 'boolean';
     case 'SET_DESTINATION': return isWorldId(c.world);

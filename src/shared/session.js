@@ -34,6 +34,7 @@ export const SessionCommands = Object.freeze({
   SET_POWERUPS: 'SET_POWERUPS', // host: power-ups on or off for the room (GM1)
   SET_DESTINATION: 'SET_DESTINATION', // host, lobby only: the party's planet (Gaia, Ares or Luna), shown as the lobby's plane or rocket
   SET_COLOR: 'SET_COLOR', // any member, lobby only: choose an unused ball colour (#161)
+  SET_NAME: 'SET_NAME', // any member, lobby only: rename yourself on your boarding pass (owner, 2026-11-17)
   LOBBY_VOTE: 'LOBBY_VOTE', // any member, lobby only: vote for a game mode and/or a planet (owner, 2026-11-17)
   START_VOTING: 'START_VOTING',
   CAST_VOTE: 'CAST_VOTE',
@@ -241,6 +242,7 @@ export function canExecuteCommand(phase, commandType, isHost) {
         SessionCommands.SET_POWERUPS,
         SessionCommands.SET_DESTINATION,
         SessionCommands.SET_COLOR,
+        SessionCommands.SET_NAME,
         SessionCommands.LOBBY_VOTE,
         SessionCommands.START_VOTING,
       ].includes(commandType);

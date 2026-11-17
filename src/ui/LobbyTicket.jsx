@@ -17,12 +17,12 @@ export const PASS = Object.freeze({
 
 /**
  * Themed gates (owner, 2026-11-17): the party plane boards at Cloud 9, rockets launch from a Luna crater or an Ares canyon (numbered
- * from the flight, so a party keeps its pad), and the Solo helicopter lifts off from the H of its helipad.
+ * from the flight, so a party keeps its pad), and the Solo helicopter lifts off from a lily pad on Gaia's lakes (owner, 2026-11-17).
  */
 export function gateFor(vehicle, destination, flight = '') {
-  if (vehicle === 'helicopter') return { kind: 'helipad', text: 'H' };
+  const n = 1 + (Number(String(flight).replace(/\D/g, '')) || 0) % 9;
+  if (vehicle === 'helicopter') return { kind: 'lily', text: 'Lily Pad ' + n };
   if (vehicle === 'rocket') {
-    const n = 1 + (Number(String(flight).replace(/\D/g, '')) || 0) % 9;
     return destination === 'luna' ? { kind: 'crater', text: 'Crater ' + n } : { kind: 'canyon', text: 'Canyon ' + n };
   }
   return { kind: 'cloud', text: 'Cloud 9' };
@@ -37,15 +37,16 @@ export function flightOf(text = '') {
 
 /**
  * The passenger's name on the pass. With `onName` it is edited right there, like the colour badge beside it: the name is a field that
- * reads as printed text until you click it. Without `onName` (a party: names are set when you join) it is plain text.
+ * reads as printed text until you click it. `onNameDone` runs when editing ends (Enter, Escape or clicking away): a party sends the
+ * rename to the room then, not on every key. Without `onName` it is plain text.
  */
-function PassengerName({ name, onName }) {
+function PassengerName({ name, onName, onNameDone }) {
   const shown = String(name).trim().slice(0, NAME_LIMIT) || 'Player';
   if (!onName) return <strong className={styles.name} data-ui="ticket-name">{shown}</strong>;
   return (
     <label className={styles.nameEdit} data-ui="ticket-name-edit">
       <input className={styles.name} data-ui="ticket-name" aria-label="Your name" maxLength={NAME_LIMIT} autoComplete="off" spellCheck={false}
-        placeholder="Player" value={name} onChange={e => onName(e.target.value)}
+        placeholder="Player" value={name} onChange={e => onName(e.target.value)} onBlur={() => onNameDone?.()}
         onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); e.currentTarget.blur(); } }} />
       <svg className={styles.pencil} viewBox="0 0 24 24" aria-hidden="true"><path className={styles.pencilBody} d="M15.2 3.6l5.2 5.2L9.6 19.6l-5.2-5.2z" /><path className={styles.pencilTip} d="M4.4 14.4l5.2 5.2-6.6 1.4z" /><path className={styles.pencilEnd} d="M15.2 3.6l1.6-1.6a1.6 1.6 0 0 1 2.3 0l2.9 2.9a1.6 1.6 0 0 1 0 2.3l-1.6 1.6z" /></svg>
     </label>
@@ -62,11 +63,11 @@ function PassengerName({ name, onName }) {
  * votes for the destination on the pass (`onDestination`, `worldVoters`: each voter's ball sits on their planet; `myWorld` is checked);
  * the route shows the planet the vote leads with. Names render as React text only, cut to NAME_LIMIT.
  */
-export function LobbyTicket({ vehicle = 'plane', name = '', onName = null, color = null, taken = {}, onPick, solo = false, destination = 'gaia', onDestination = null, worldVoters = null, myWorld = null, code = '', onCopy = null, flight = 'PP 1000', seat = 1, onBack = null, backLabel = 'Back', hidden = false, children }) {
+export function LobbyTicket({ vehicle = 'plane', name = '', onName = null, onNameDone = null, color = null, taken = {}, onPick, solo = false, destination = 'gaia', onDestination = null, worldVoters = null, myWorld = null, code = '', onCopy = null, flight = 'PP 1000', seat = 1, onBack = null, backLabel = 'Back', hidden = false, children }) {
   const planet = WORLDS.find(w => w.id === destination)?.name ?? 'Gaia';
   const pass = PASS[vehicle] ?? PASS.plane;
   const gateMark = gateFor(vehicle, destination, flight);
-  const fields = [['Flight', flight], [pass.gate, gateMark.kind === 'helipad' ? <span className={styles.helipad} aria-label="H">H</span> : gateMark.text], ['Seat', String(seat).padStart(2, '0')]];
+  const fields = [['Flight', flight], [pass.gate, gateMark.text], ['Seat', String(seat).padStart(2, '0')]];
   return (
     <aside className={styles.ticket} data-ui="lobby-ticket" data-world={destination} data-vehicle={vehicle} aria-label={pass.title}>
       <header className={styles.head}>
@@ -77,7 +78,7 @@ export function LobbyTicket({ vehicle = 'plane', name = '', onName = null, color
         <small>Passenger</small>
         <div className={styles.who}>
           <ColorBadge color={color} taken={taken} onPick={onPick} hidden={hidden} />
-          <PassengerName name={name} onName={onName} />
+          <PassengerName name={name} onName={onName} onNameDone={onNameDone} />
         </div>
       </div>
       <div className={styles.route}>

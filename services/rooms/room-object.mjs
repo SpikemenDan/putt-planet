@@ -622,6 +622,8 @@ export class RoomDurableObject {
       : payload.type === 'ACTIVATE_HAZARD' ? this.activateGlobalHazard(room, identity, payload, now)
       : room.session.send(event);
     if (!changed) room.dirty = true;
+    // A renamed player keeps the new name when they reconnect: resume rejoins under the identity's name.
+    if (changed && payload.type === 'SET_NAME') identity.name = payload.name;
     if (payload.type === 'LEAVE_ROOM') {
       room.seats.delete(identity.playerId);
       room.identities.delete(identity.playerId);

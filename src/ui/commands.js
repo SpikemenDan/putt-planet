@@ -21,6 +21,8 @@ export const UiCommands = Object.freeze({
   INVITE: 'invite',
   /** { type, color } — Choose a ball colour (palette index). Saved locally; in a lobby it also asks the room for it. */
   SET_COLOR: 'set-color',
+  /** { type, name } — Rename yourself in a room lobby (owner, 2026-11-17): the room shows the new name on every pass and seat. */
+  SET_NAME: 'set-name',
   /** { type, kind, id } — Choose a cosmetic (kind: ball, trail or celebration; id from the cosmetics catalog). */
   SET_COSMETIC: 'set-cosmetic',
   /** { type, volume } — Sound volume, 0 to 1. Saved locally. */

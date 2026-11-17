@@ -17,7 +17,7 @@ const assert = require('node:assert/strict');
   });
   await test('server authority separate from controller; versions 4 (peer) and 5 (server room) carry global hazards',async()=>{
     assert.equal((await import('../src/shared/constants.js')).PROTOCOL_VERSION,7);
-    assert.equal(c.SERVER_ROOM_VERSION,13);assert.ok(c.validRoomSnapshot(snapshot));
+    assert.equal(c.SERVER_ROOM_VERSION,14);assert.ok(c.validRoomSnapshot(snapshot));
     // Version 12 (owner, 2026-11-16): the controller's SET_DESTINATION, and an optional destination in the context.
     assert.ok(c.CONTROLLER_COMMANDS.includes('SET_DESTINATION'));
     assert.ok(c.validServerCommand({type:'SET_DESTINATION',world:'ares'}));
@@ -35,6 +35,12 @@ const assert = require('node:assert/strict');
     const voted=copy(snapshot);voted.session.context.lobbyVotes={p1:{mode:'standard',world:'ares'},p2:{world:'luna'}};assert.ok(c.validRoomSnapshot(voted),'a snapshot may carry lobby votes');
     voted.session.context.lobbyVotes.p1.world='pluto';assert.equal(c.validRoomSnapshot(voted),false,'an unknown planet vote is refused');
     voted.session.context.lobbyVotes.p1={mode:'standard',extra:1};assert.equal(c.validRoomSnapshot(voted),false,'extra vote fields are refused');
+    // Version 14 (owner, 2026-11-17): any member's SET_NAME renames them on the boarding pass.
+    assert.equal(c.CONTROLLER_COMMANDS.includes('SET_NAME'),false,'every player renames themself');
+    assert.ok(c.validServerCommand({type:'SET_NAME',name:'Zed'}));
+    assert.equal(c.validServerCommand({type:'SET_NAME',name:'  '}),false,'a blank name is refused');
+    assert.equal(c.validServerCommand({type:'SET_NAME',name:'x'.repeat(15)}),false,'a name past the limit is refused');
+    assert.equal(c.validServerCommand({type:'SET_NAME'}),false);
     const invalid=copy(snapshot);invalid.session.context.hostId='p1';assert.equal(c.validRoomSnapshot(invalid),false);
     assert.equal(c.authorizeRoomFrame(command(),binding,snapshot,snapshot.serverTime),null);
     assert.equal(c.authorizeRoomFrame({...command(),connectionId:'socket_p2'},{...binding,playerId:'p2',connectionId:'socket_p2'},snapshot,snapshot.serverTime),'unauthorized');

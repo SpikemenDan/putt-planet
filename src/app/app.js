@@ -23,7 +23,7 @@ import { AIM_WOBBLE, DEFAULT_RULES, rulesTuning, seriesMaps, validateRules, vali
 import { createAtlasScene } from '../render/atlas-scene.js';
 import { createLobbyScene } from '../render/lobby-scene.js';
 import { createPlanetScene } from '../render/planet-scene.js';
-import { colorOf, connectErrorMessage, createCourseInfo, createUiDispatcher, createUiStore, initialRoomCode, MESSAGES, mountUi, parseJoinRequest, UiCommands } from '../ui/index.js';
+import { colorOf, connectErrorMessage, createCourseInfo, createUiDispatcher, createUiStore, initialRoomCode, MESSAGES, mountUi, parseJoinRequest, sanitizeName, UiCommands } from '../ui/index.js';
 import { createPutt } from './putt.js';
 import { openRoom } from './room.js';
 import { frameSounds, PRESENCE_INTERVAL_MS, TICK_MS } from './rules.js';
@@ -521,6 +521,14 @@ export function createApp({ worldPreview = null, soloHazards = false, root, THRE
         setLocal({ colorPref });
         room?.command({ type: 'SET_COLOR', color: colorPref });
         break;
+      case UiCommands.SET_NAME: {
+        const name = typeof command.name === 'string' ? sanitizeName(command.name) : null;
+        if (!name || !room || room.snapshot?.players?.[room.localId]?.name === name) break;
+        room.command({ type: 'SET_NAME', name });
+        setLocal({ name });
+        if (room.identity) resume.write(room.roomCode, { ...room.identity, name });
+        break;
+      }
       case UiCommands.SET_COSMETIC:
         cosmetics = selectCosmetic(cosmetics, command.kind, command.id);
         if (cosmeticsStorage) saveCosmetics(cosmeticsStorage, cosmetics);

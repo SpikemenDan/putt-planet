@@ -152,6 +152,7 @@ export function createRoomSession({ hostId, controllerId = hostId, hostName = 'H
         return true;
       },
       canLeave: ({ context: c, event: e }) => member(c, e),
+      canSetName: ({ context: c, event: e }) => member(c, e) && validName(e.name),
       canSetColor: ({ context: c, event: e }) => member(c, e) && isColorIndex(e.color) && !heldColors(c, e.playerId).has(e.color),
       // Online rooms fix their rules (power-ups included) when they are created (VIS-U, VIS-M3): No Power-Ups is a Custom rule.
       powerups: ({ context: c, event: e }) => !serverOwned && host(c, e) && typeof e.enabled === 'boolean',
@@ -247,6 +248,7 @@ export function createRoomSession({ hostId, controllerId = hostId, hostName = 'H
           players: { ...c.players, [e.playerId]: fresh(e.playerId, e.name, color, token) },
         };
       }),
+      setName: assign(({ context: c, event: e }) => ({ players: { ...c.players, [e.playerId]: { ...c.players[e.playerId], name: e.name } } })),
       setColor: assign(({ context: c, event: e }) => ({ players: { ...c.players, [e.playerId]: { ...c.players[e.playerId], color: e.color } } })),
       leave: assign(({ context: c, event: e }) => ({ players: { ...c.players, [e.playerId]: { ...c.players[e.playerId], connected: false } }, votes: Object.fromEntries(Object.entries(c.votes).filter(([id]) => id !== e.playerId)), lobbyVotes: Object.fromEntries(Object.entries(c.lobbyVotes ?? {}).filter(([id]) => id !== e.playerId)) })),
       mode: assign(({ event: e }) => ({ mode: e.mode })),
@@ -324,7 +326,7 @@ export function createRoomSession({ hostId, controllerId = hostId, hostName = 'H
       } : {}),
     },
     states: {
-      lobby: { on: { SET_COLOR: { guard: 'canSetColor', actions: 'setColor' }, SET_MODE: { guard: 'mode', actions: 'mode' }, SET_POWERUPS: { guard: 'powerups', actions: 'powerups' }, SET_DESTINATION: { guard: 'destination', actions: 'destination' }, LOBBY_VOTE: { guard: 'lobbyVote', actions: 'lobbyVote' }, START_VOTING: { guard: 'canStartVoting', target: 'select', actions: 'clearSeries' } } },
+      lobby: { on: { SET_COLOR: { guard: 'canSetColor', actions: 'setColor' }, SET_NAME: { guard: 'canSetName', actions: 'setName' }, SET_MODE: { guard: 'mode', actions: 'mode' }, SET_POWERUPS: { guard: 'powerups', actions: 'powerups' }, SET_DESTINATION: { guard: 'destination', actions: 'destination' }, LOBBY_VOTE: { guard: 'lobbyVote', actions: 'lobbyVote' }, START_VOTING: { guard: 'canStartVoting', target: 'select', actions: 'clearSeries' } } },
       select: {
         initial: 'waiting',
         states: {

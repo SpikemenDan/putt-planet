@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { GameModes } from '../shared/session.js';
 import { WORLDS } from '../shared/worlds.js';
 import { lobbyVehicleFor } from '../render/lobby-models.js';
-import { MODE_OPTIONS, UiCommands } from './commands.js';
+import { MODE_OPTIONS, sanitizeName, UiCommands } from './commands.js';
 import { useCommands, useUiContext, useView } from './context.js';
 import { LobbyManifest } from './LobbyManifest.jsx';
 import { flightOf, LobbyTicket } from './LobbyTicket.jsx';
@@ -40,6 +40,14 @@ export function RoomLobby({ hidden }) {
   };
   const roster = lobby?.roster ?? [];
   const me = roster.find(p => p.you);
+  // Rename on the pass (owner, 2026-11-17): typed into a draft, sent to the room once when editing ends.
+  const [nameDraft, setNameDraft] = useState(null);
+  const commitName = () => {
+    if (nameDraft === null) return;
+    setNameDraft(null);
+    const next = sanitizeName(nameDraft);
+    if (next !== me?.name) send(UiCommands.SET_NAME, { name: next });
+  };
   const destination = lobby?.destination ?? 'gaia';
   const vehicle = lobbyVehicleFor({ solo: !party, destination });
   const seat = roster.findIndex(p => p.you) + 1;
@@ -78,7 +86,7 @@ export function RoomLobby({ hidden }) {
         <LobbyManifest passengers={roster} seats={VEHICLE_SEATS[vehicle] ?? 8} flight={flight} destination={planet} />
       </div>
       <div ref={right} className={styles.right}>
-        <LobbyTicket vehicle={vehicle} name={me?.name ?? ''} color={lobby?.myColor ?? null} taken={lobby?.takenColors} hidden={hidden || !lobby}
+        <LobbyTicket vehicle={vehicle} name={nameDraft ?? me?.name ?? ''} onName={setNameDraft} onNameDone={commitName} color={lobby?.myColor ?? null} taken={lobby?.takenColors} hidden={hidden || !lobby}
           onPick={c => send(UiCommands.SET_COLOR, { color: c })} destination={destination}
           onDestination={voting ? world => vote({ world }) : lobby?.canPickDestination ? world => session({ type: 'SET_DESTINATION', world }) : null}
           worldVoters={voting ? lobby.votes.world : null} myWorld={lobby?.myVote?.world ?? null}
