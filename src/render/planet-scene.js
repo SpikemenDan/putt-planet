@@ -420,18 +420,91 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
   // ---- The destination view (VIS-M4): the camera pulls back from the horizon into space, where Gaia hangs with Luna slowly orbiting it (framed on Gaia alone: Luna shows only when its orbit brings it into view)
   // and Ares stands far off. Sizes and distances are staged for the view, not real. `setView` picks the planet; the camera flies between
   // them, and the long trips to and from Ares widen the lens and then zoom in. Reads the live `display.space` settings.
-  const spaceSettings = () => display.space ?? { orbitSeconds: 120, travelSeconds: 1.8, aresZoom: 0.5, nebula: 0.6, distance: 1 };
-  const SPACE_LUNA = { orbit: 520, radius: 34, lean: 0.12 }, SPACE_ARES = { position: new THREE.Vector3(-4200, 700, -3600), radius: 62 };
+  const spaceSettings = () => display.space ?? { orbitSeconds: 120, travelSeconds: 1.8, aresZoom: 0.5, nebula: 0.6, distance: 1, revolveSeconds: 180 };
+  // The little solar system (owner, 2026-11-17): the sun shines from where the light comes from, Gaia orbits it, and Ares orbits further
+  // out, behind Gaia as seen from the sun and a little to the side, so from Ares the sun and Gaia both show in the sky beyond it. In
+  // space everything revolves slightly and softly: a few degrees back and forth around the sun (`space.revolveSeconds`). Gaia stays the
+  // centre of the scene, so its revolving shows as the sun (and its light) easing around it. The horizon view never moves.
+  const SUN_HOME = sun.clone(), SUN_ORBIT_NORMAL = new THREE.Vector3(), SUN_SIDE = new THREE.Vector3().crossVectors(SUN_HOME, yAxis).normalize();
+  SUN_ORBIT_NORMAL.crossVectors(SUN_HOME, SUN_SIDE).normalize();
+  const SPACE_SUN = { distance: 7000, radius: 300, revolve: 4 * Math.PI / 180 };
+  const SPACE_LUNA = { orbit: 520, radius: 34, lean: 0.12 }, SPACE_ARES = { position: SUN_HOME.clone().multiplyScalar(-2400).addScaledVector(SUN_SIDE, 1400), radius: 62 };
+  const ARES_FROM_SUN = SPACE_ARES.position.clone().addScaledVector(SUN_HOME, -SPACE_SUN.distance); // Ares relative to the sun
+  const sunNow = new THREE.Vector3().copy(SUN_HOME).multiplyScalar(SPACE_SUN.distance), aresNow = SPACE_ARES.position.clone();
+  /** Where the sun and Ares are `seconds` into the revolve, blended in by `k` (0 is the fixed home layout). */
+  function revolve(seconds, k) {
+    const turn = reducedMotion ? 0 : Math.PI * 2 * seconds / spaceSettings().revolveSeconds;
+    const gaiaAngle = SPACE_SUN.revolve * Math.sin(turn) * k, aresAngle = SPACE_SUN.revolve * 0.7 * Math.sin(turn * 0.8 + 1.2) * k;
+    sunNow.copy(SUN_HOME).multiplyScalar(SPACE_SUN.distance).applyAxisAngle(SUN_ORBIT_NORMAL, gaiaAngle);
+    aresNow.copy(ARES_FROM_SUN).applyAxisAngle(SUN_ORBIT_NORMAL, aresAngle).add(sunNow);
+    sun.copy(sunNow).normalize(); // the light follows (shared.sun is this vector)
+    light.position.copy(sun).multiplyScalar(1000);
+  }
   const SPACE_FRAME = { gaia: 700, luna: 240, ares: 400 }; // camera distance from each planet's centre, before `space.distance`: each about 7 radii, so every planet fills the view alike
   const SPACE_VIEW_DIR = new THREE.Vector3(0.42, 0.16, 1).normalize(); // seen a little from the right and above: the sun lights the near side
   const SPACE_BACKDROP = 0x03050f; // the darkest tone of the page's own backdrop, so the fade in is seamless
-  const space = { goal: 0, t: 0, from: 'gaia', to: 'gaia', travel: 1, orbit: 0.96 };
-  const home = { luna: { position: new THREE.Vector3(), scale: 1 }, ares: { position: new THREE.Vector3(), scale: 1 } };
+  const space = { goal: 0, t: 0, from: 'gaia', to: 'gaia', travel: 1, orbit: 0.96, near: 0, nearGoal: 0 };
+  // A change of planet mid-flight (owner, 2026-11-17: smoother switching) starts from where the camera is, not from the planet it left:
+  // `snap` holds that pose, and the new flight leaves it already moving.
+  const snap = { on: false, pos: new THREE.Vector3(), look: new THREE.Vector3(), up: new THREE.Vector3(), fov: FOV };
+  // Close in (owner, 2026-11-17: the lobby rocket flies in Mars's atmosphere): with `near`, Ares and Luna are seen from just above
+  // their surface instead of from far out. The ground curves away along the bottom of the screen and the camera looks out over the
+  // horizon toward the sky the planet sees: Gaia and the sun for Ares, Gaia for Luna. `alt` is the height above the ground and `dip`
+  // how far the view tips down, both in planet radii and radians.
+  const NEAR = { ares: { alt: 0.07, dip: 0.2 }, luna: { alt: 0.12, dip: 0.22 } };
+  // Ares's air (owner, 2026-11-17: gradual, like Gaia's): butterscotch dust that thins smoothly with height, so from far out it is a
+  // soft glow hugging the rim and fading gently into space, and from inside it is a sky: deep and clear overhead, thick and dusty
+  // toward the horizon, warmest toward the sun. Each pixel marches its line of sight through the air (density falling off by `scale`,
+  // a fraction of the radius, up to `top`), stopping at the ground; the colour follows the height the light mostly came through,
+  // pale near the ground and deepening above, as Gaia's does.
+  const ARES_AIR = { top: 1.6, scale: 0.12, density: 1.9 };
+  const aresAir = new THREE.Mesh(sphere(1, 64, 32), own(new THREE.ShaderMaterial({
+    uniforms: { centre: { value: new THREE.Vector3() }, ground: { value: 1 }, top: { value: ARES_AIR.top }, scale: { value: ARES_AIR.scale }, density: { value: ARES_AIR.density }, toSun: { value: new THREE.Vector3(0, 1, 0) }, fade: { value: 0 } },
+    vertexShader: 'varying vec3 vWorld; void main() { vec4 w = modelMatrix * vec4(position, 1.0); vWorld = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
+    fragmentShader: `uniform vec3 centre; uniform float ground; uniform float top; uniform float scale; uniform float density; uniform vec3 toSun; uniform float fade;
+      varying vec3 vWorld;
+      vec2 hit(vec3 o, vec3 d, float r) { float b = dot(o, d), c = dot(o, o) - r * r, h = b * b - c; if (h < 0.0) return vec2(1e9, -1e9); h = sqrt(h); return vec2(-b - h, -b + h); }
+      void main() {
+        vec3 o = cameraPosition - centre, d = normalize(vWorld - cameraPosition);
+        vec2 air = hit(o, d, top), land = hit(o, d, ground);
+        float from = max(air.x, 0.0), to = air.y;
+        bool onGround = land.x < land.y && land.x > 0.0;
+        if (onGround) to = min(to, land.x);
+        if (to <= from) discard;
+        float stepLength = (to - from) / 24.0, tau = 0.0, heightSum = 0.0;
+        vec3 lit = vec3(0.0);
+        for (int i = 0; i < 24; i++) {
+          vec3 p = o + d * (from + (float(i) + 0.5) * stepLength);
+          float h = max(0.0, length(p) / ground - 1.0), rho = exp(-h / scale) * stepLength;
+          tau += rho; heightSum += rho * h; lit += rho * normalize(p);
+        }
+        float h = heightSum / max(tau, 1e-6) / (top / ground - 1.0) * 2.0; // 0 at the ground, about 1 well up
+        float a = (1.0 - exp(-tau / ground * density)) * fade;
+        a *= 0.6 + 0.4 * smoothstep(-0.3, 0.7, dot(normalize(lit), toSun)); // the night side glows less
+        vec3 col = mix(vec3(0.46, 0.18, 0.13), vec3(0.94, 0.58, 0.34), exp(-h * 2.4));
+        col = mix(col, vec3(1.0, 0.86, 0.66), exp(-h * 9.0));
+        col += vec3(1.0, 0.88, 0.62) * pow(max(0.0, dot(d, toSun)), 3.0) * 0.3;
+        // Dust lies on the ground too: seen from inside the air, the surface takes a rusty veil, so Ares always reads red below.
+        float settle = onGround ? 0.62 * fade * smoothstep(1.25, 1.02, length(o) / ground) : 0.0;
+        vec3 rust = vec3(0.78, 0.38, 0.22);
+        float total = 1.0 - (1.0 - a) * (1.0 - settle);
+        if (total < 0.003) discard;
+        vec3 mixed = (col * a + rust * settle * (1.0 - a)) / max(total, 1e-4);
+        gl_FragColor = vec4(mixed * total, total);
+      }`,
+    // No depth test: the far wall of the shell lies behind the ground, and the path length already stops at the ground.
+    side: THREE.BackSide, transparent: true, premultipliedAlpha: true, depthWrite: false, depthTest: false,
+  })));
+  aresAir.visible = false;
+  aresAir.renderOrder = 1;
+  scene.add(aresAir);
+  const nearUp = new THREE.Vector3(), nearAhead = new THREE.Vector3();
+  const home = { luna: { position: new THREE.Vector3(), scale: 1 } };
   function lunaSpacePosition(phase, out) {
     const a = phase * Math.PI * 2;
     return out.set(Math.cos(a) * SPACE_LUNA.orbit, -Math.sin(a) * SPACE_LUNA.orbit * Math.sin(SPACE_LUNA.lean), Math.sin(a) * SPACE_LUNA.orbit * Math.cos(SPACE_LUNA.lean)); // the near side of the orbit passes below Gaia
   }
-  const bodyCentre = (id, out) => id === 'luna' ? lunaSpacePosition(space.orbit, out) : id === 'ares' ? out.copy(SPACE_ARES.position) : out.set(0, 0, 0);
+  const bodyCentre = (id, out) => id === 'luna' ? lunaSpacePosition(space.orbit, out) : id === 'ares' ? out.copy(aresNow) : out.set(0, 0, 0);
   const ease = x => x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
   const longTrip = () => space.from === 'ares' || space.to === 'ares';
   // Extra space for the whole frame: stars below the horizon line (hidden by the planet in the horizon view) and soft nebula clouds.
@@ -451,6 +524,54 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
     lower.frustumCulled = false;
     lower.renderOrder = -2;
     deepSky.add(lower);
+  }
+  // The sun in space (owner, 2026-11-17): the same cartoon golf-ball sun as the lobbies, a warm yellow ball in flat toon bands with
+  // dimples and a dark rim, an opaque pale halo and slim rays that fade to clear. It always faces the camera and shows only in space.
+  const sunBody = new THREE.Group();
+  sunBody.visible = false;
+  scene.add(sunBody);
+  {
+    const R = SPACE_SUN.radius, DIMPLES = 150;
+    const points = Array.from({ length: DIMPLES }, (_, i) => {
+      const y = 1 - 2 * (i + 0.5) / DIMPLES, r = Math.sqrt(1 - y * y), a = i * Math.PI * (3 - Math.sqrt(5));
+      return new THREE.Vector3(Math.cos(a) * r, y, Math.sin(a) * r);
+    });
+    const ball = new THREE.Mesh(own(new THREE.SphereGeometry(R, 64, 48)), own(new THREE.ShaderMaterial({
+      uniforms: { pts: { value: points }, light: { value: new THREE.Vector3(-0.55, 0.6, 0.58).normalize() } },
+      vertexShader: 'varying vec3 vN; void main(){ vN = normal; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: `uniform vec3 pts[${DIMPLES}]; uniform vec3 light; varying vec3 vN;
+        void main(){
+          vec3 n = normalize(vN), c = pts[0];
+          if (n.z < 0.2) { gl_FragColor = vec4(0.1, 0.07, 0.14, 1.0); return; } // the ink rim
+          float best = 10.0;
+          for (int i = 0; i < ${DIMPLES}; i++) { float d = distance(n, pts[i]); if (d < best) { best = d; c = pts[i]; } }
+          float k = 1.0 - smoothstep(0.108, 0.135, best);
+          vec3 m = normalize(n - (n - c) * 3.2 * k);
+          float lam = dot(m, light);
+          vec3 col = lam > 0.45 ? vec3(1.0, 0.85, 0.27) : lam > -0.05 ? vec3(1.0, 0.74, 0.2) : vec3(0.98, 0.6, 0.16);
+          if (k < 0.5 && dot(n, normalize(light + vec3(0.0, 0.0, 0.6))) > 0.94) col = vec3(1.0, 0.94, 0.6);
+          gl_FragColor = vec4(col, 1.0);
+        }`,
+    })));
+    const halo = new THREE.Mesh(own(new THREE.CircleGeometry(R * 1.4, 64)), own(new THREE.MeshBasicMaterial({ color: 0xffeb8a })));
+    const rayMaterial = own(new THREE.ShaderMaterial({
+      transparent: true, depthWrite: false, uniforms: { from: { value: R * 1.56 }, to: { value: R * 2.44 } },
+      vertexShader: 'varying float h; void main(){ h = length(position.xy); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: 'uniform float from; uniform float to; varying float h; void main(){ gl_FragColor = vec4(1.0, 0.78, 0.12, 0.95 * (1.0 - smoothstep(from, to, h))); }',
+    }));
+    const rays = new THREE.Group();
+    for (let k = 0; k < 12; k++) {
+      const long = k % 2 === 0, shape = new THREE.Shape(), w = R * (long ? 0.16 : 0.125), from = R * 1.53, to = R * (long ? 2.44 : 2.06);
+      shape.moveTo(-w, from);
+      shape.quadraticCurveTo(-w * 0.5, (from + to) / 2, 0, to);
+      shape.quadraticCurveTo(w * 0.5, (from + to) / 2, w, from);
+      shape.lineTo(-w, from);
+      const ray = new THREE.Mesh(own(new THREE.ShapeGeometry(shape, 8)), rayMaterial);
+      ray.rotation.z = k / 12 * Math.PI * 2;
+      rays.add(ray);
+    }
+    sunBody.add(rays, halo, ball);
+    sunBody.userData.rays = rays;
   }
   const nebulae = [];
   {
@@ -520,7 +641,6 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
     place(luna, 0.86, 0.5, LUNA_RADIUS * s.lunaSize);
     place(ares, -0.6, 0.8, ARES_SHARE * ARES_DISTANCE * t * 2);
     home.luna.position.copy(luna.mesh.position); home.luna.scale = luna.mesh.scale.x;
-    home.ares.position.copy(ares.mesh.position); home.ares.scale = ares.mesh.scale.x;
     stats.lunaPixels = LUNA_RADIUS * s.lunaSize / (LUNA_DISTANCE * t) * h;
     stats.limb = 1 - 2 * s.horizonHeight;
   }
@@ -584,28 +704,87 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
   }
 
   const horizonQuat = new THREE.Quaternion(), poseQuat = new THREE.Quaternion(), lookAtMatrix = new THREE.Matrix4();
+  const upFrom = new THREE.Vector3(), upTo = new THREE.Vector3(), upNow = new THREE.Vector3();
   const camFrom = new THREE.Vector3(), camTo = new THREE.Vector3(), lookFrom = new THREE.Vector3(), lookTo = new THREE.Vector3(), spacePos = new THREE.Vector3(), spaceLook = new THREE.Vector3(), tmpA = new THREE.Vector3();
-  /** Where the camera stands to show planet `id` in space, and the point it looks at. */
-  function spaceCamera(id, pos, look) {
+  const toGaia = new THREE.Vector3(), toSun = new THREE.Vector3(), across = new THREE.Vector3(), mid = new THREE.Vector3(), lift = new THREE.Vector3();
+  /**
+   * Where the camera stands to show planet `id` in space, the point it looks at and the camera's up. At Ares it looks past the planet
+   * toward the sun: Gaia on one side and the sun on the other, both a little above Ares, so they still show when the planet sits low.
+   */
+  function spaceCamera(id, pos, look, up) {
     bodyCentre(id, look);
+    up.copy(yAxis);
+    const near = id === 'gaia' ? 0 : ease(space.near);
+    if (near > 0) {
+      far(id, tmpPos, tmpLook, tmpUp);
+      nearCamera(id, look, pos, nearLook, up);
+      pos.lerpVectors(tmpPos, pos, near); look.lerpVectors(tmpLook, nearLook, near); up.lerpVectors(tmpUp, up, near).normalize();
+      return;
+    }
+    far(id, pos, look, up);
+  }
+  const tmpPos = new THREE.Vector3(), tmpLook = new THREE.Vector3(), tmpUp = new THREE.Vector3(), nearLook = new THREE.Vector3();
+  /** The close-in view of Ares or Luna (centred at `centre`): camera `pos`, the point it looks at and its up. */
+  function nearCamera(id, centre, pos, look, up) {
+    const r = id === 'ares' ? SPACE_ARES.radius : SPACE_LUNA.radius, { alt, dip } = NEAR[id];
+    toGaia.copy(centre).negate().normalize();
+    if (id === 'ares') nearAhead.copy(toSun.copy(sunNow).sub(centre).normalize()).add(toGaia).normalize(); // between the sun and Gaia
+    else nearAhead.copy(toGaia);
+    nearUp.copy(yAxis).addScaledVector(nearAhead, -yAxis.dot(nearAhead)).normalize(); // straight up, square to the view
+    // Stand over the ground on the side away from the sky we look at, a little back, so the horizon arcs ahead and below.
+    pos.copy(centre).addScaledVector(nearUp, r * (1 + alt)).addScaledVector(nearAhead, -r * 0.35);
+    look.copy(pos).addScaledVector(nearAhead, 1000).addScaledVector(nearUp, -1000 * Math.tan(dip));
+    up.copy(nearUp);
+  }
+  /** The far view of planet `id`: camera `pos`, the point it looks at and its up. */
+  function far(id, pos, look, up) {
+    bodyCentre(id, look);
+    up.copy(yAxis);
+    if (id === 'ares') {
+      toGaia.copy(look).negate().normalize();
+      toSun.copy(sunNow).sub(look).normalize();
+      across.copy(toSun).sub(toGaia).normalize(); // screen right: from Gaia to the sun
+      mid.copy(toGaia).add(toSun).normalize();
+      lift.crossVectors(across, mid).normalize();
+      if (lift.y < 0) { across.negate(); lift.negate(); } // keep the sky's up roughly up
+      const tilt = 10 * Math.PI / 180;
+      mid.multiplyScalar(Math.cos(tilt)).addScaledVector(lift, -Math.sin(tilt)).normalize(); // look a little below them
+      up.crossVectors(across, mid).normalize();
+      pos.copy(look).addScaledVector(mid, -SPACE_FRAME.ares * spaceSettings().distance);
+      return;
+    }
     pos.copy(look).addScaledVector(SPACE_VIEW_DIR, SPACE_FRAME[id] * spaceSettings().distance); // the planet sits centred, like Luna and Ares
   }
-  /** The lens on a long trip: wider through the middle of the flight, then a short zoom in on arrival. */
+  /** The lens on a long trip: gently wider through the middle of the flight. */
   function tripFov(e) {
     if (!longTrip() || space.travel >= 1) return FOV;
-    const z = spaceSettings().aresZoom, wide = Math.sin(Math.PI * Math.min(1, e / 0.8)) * 16 * z, punch = e > 0.8 ? -Math.sin(Math.PI * (e - 0.8) / 0.2) * 6 * z : 0;
-    return FOV + (e < 0.8 ? wide : punch);
+    return FOV + Math.sin(Math.PI * e) * 16 * spaceSettings().aresZoom; // widens through the middle and eases back: no snap zoom on arrival
   }
   /** Blends the horizon view into the space view (`space.t`) and flies between planets (`space.travel`). */
   function applySpace() {
     if (focus) return;
-    const k = ease(space.t), e = ease(Math.min(1, space.travel));
+    const k = ease(space.t), x = Math.min(1, space.travel), e = snap.on ? 1 - Math.pow(1 - x, 3) : ease(x); // a redirected flight is already moving
+    revolve(clock, k);
+    sunBody.visible = k > 0.001;
+    if (sunBody.visible) { sunBody.position.copy(sunNow); sunBody.userData.rays.rotation.z = reducedMotion ? 0 : clock * 0.12; }
     lunaSpacePosition(space.orbit, tmpA);
     luna.mesh.position.lerpVectors(home.luna.position, tmpA, k);
     luna.mesh.scale.setScalar(home.luna.scale + (SPACE_LUNA.radius - home.luna.scale) * k);
-    ares.mesh.position.lerpVectors(home.ares.position, SPACE_ARES.position, k);
-    ares.mesh.scale.setScalar(home.ares.scale + (SPACE_ARES.radius - home.ares.scale) * k);
-    ares.mesh.material.opacity = 0.78 + 0.22 * k;
+    // Ares stays put (owner, 2026-11-17): one planet at its place in the little solar system, behind Gaia from the sun, so from the
+    // horizon it is out of sight below the limb, and going out into space only moves the camera. (The preview gallery's close look
+    // still uses the stand-in placed in the sky.)
+    ares.mesh.position.copy(aresNow);
+    ares.mesh.scale.setScalar(SPACE_ARES.radius);
+    ares.mesh.material.opacity = 1;
+    aresAir.visible = k > 0.001;
+    if (aresAir.visible) {
+      const r = ares.mesh.scale.x, u = aresAir.material.uniforms;
+      aresAir.position.copy(ares.mesh.position);
+      aresAir.scale.setScalar(r * ARES_AIR.top * 1.01);
+      u.centre.value.copy(ares.mesh.position); u.ground.value = r; u.top.value = r * ARES_AIR.top;
+      u.toSun.value.copy(sunNow).sub(ares.mesh.position).normalize();
+      u.fade.value = k;
+    }
     deepSky.visible = k > 0.001;
     air.material.uniforms.ahead.value = k;
     renderer?.setClearColor?.(k > 0 ? SPACE_BACKDROP : 0x000000, k); // in space the canvas turns opaque deep space, hiding the page's blue horizon backdrop
@@ -618,17 +797,21 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
       sky.quaternion.identity();
       return;
     }
-    spaceCamera(space.from, camFrom, lookFrom); spaceCamera(space.to, camTo, lookTo);
-    spacePos.lerpVectors(camFrom, camTo, e); spaceLook.lerpVectors(lookFrom, lookTo, e);
-    if (longTrip() && space.travel < 1) spacePos.addScaledVector(SPACE_VIEW_DIR, Math.sin(Math.PI * e) * 900 * spaceSettings().aresZoom); // pull back mid-flight
-    lookAtMatrix.lookAt(spacePos, spaceLook, yAxis);
+    if (snap.on && space.travel >= 1) snap.on = false;
+    if (snap.on) { camFrom.copy(snap.pos); lookFrom.copy(snap.look); upFrom.copy(snap.up); } else spaceCamera(space.from, camFrom, lookFrom, upFrom);
+    spaceCamera(space.to, camTo, lookTo, upTo);
+    spacePos.lerpVectors(camFrom, camTo, e); spaceLook.lerpVectors(lookFrom, lookTo, e); upNow.lerpVectors(upFrom, upTo, e).normalize();
+    if (longTrip() && space.travel < 1) spacePos.addScaledVector(SPACE_VIEW_DIR, Math.sin(Math.PI * e) * (snap.on ? 1 - e : 1) * 900 * spaceSettings().aresZoom); // pull back mid-flight
+    lookAtMatrix.lookAt(spacePos, spaceLook, upNow);
     poseQuat.setFromRotationMatrix(lookAtMatrix);
     camera.position.set(0, framing.y, framing.z).lerp(spacePos, k);
     camera.quaternion.slerpQuaternions(horizonQuat, poseQuat, k);
-    camera.fov = FOV + (tripFov(e) - FOV) * k;
+    const lens = snap.on ? snap.fov + (FOV - snap.fov) * e : tripFov(x); // the lens follows the flight's own clock, so it is wide while the camera travels
+    camera.fov = FOV + (lens - FOV) * k;
     camera.updateProjectionMatrix();
     // The stars follow part of the camera's turn, so the sky drifts as it flies but its painted field never runs out.
     sky.quaternion.copy(poseQuat).invert().slerp(horizonQuat, 1 - 0.35 * k);
+    sunBody.quaternion.copy(camera.quaternion); // the sun's disc faces the camera
   }
 
   function draw() {
@@ -675,11 +858,13 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
       stepStreak(dt);
     }
     const sp = spaceSettings();
-    if (reducedMotion) { space.t = space.goal; space.travel = 1; }
+    if (reducedMotion) { space.t = space.goal; space.travel = 1; space.near = space.nearGoal; }
     else {
-      space.t = Math.max(0, Math.min(1, space.t + Math.sign(space.goal - space.t) * dt / 1.4));
+      const homing = space.goal < space.t && (space.travel < 0.55 || space.near > 0.4); // back to the horizon: fly home first, then settle
+      if (!homing) space.t = Math.max(0, Math.min(1, space.t + Math.sign(space.goal - space.t) * dt / 1.4));
       if (space.travel < 1) space.travel = Math.min(1, space.travel + dt / (sp.travelSeconds * (longTrip() ? 1.6 : 1)));
       if (space.t > 0) space.orbit = (space.orbit + dt / sp.orbitSeconds) % 1;
+      space.near = Math.max(0, Math.min(1, space.near + Math.sign(space.nearGoal - space.near) * dt / (sp.travelSeconds * 1.2)));
     }
     draw();
   }
@@ -705,20 +890,26 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
     step,
     /**
      * The destination view (VIS-M4): `space` pulls the camera back from the horizon into space (or returns it), `target` flies to Gaia,
-     * Luna or Ares. Safe to call at any time; a still frame (reduced motion) jumps straight there.
+     * Luna or Ares, and `near` (off unless asked for, each call) brings the camera down to just above Ares or Luna, inside Ares's dusty air (owner, 2026-11-17: the
+     * lobby rocket). Safe to call at any time; a still frame (reduced motion) jumps straight there.
      */
-    setView({ space: inSpace = space.goal === 1, target = space.to } = {}) {
+    setView({ space: inSpace = space.goal === 1, target = space.to, near = false } = {}) {
       if (!['gaia', 'luna', 'ares'].includes(target)) return;
+      if (!inSpace) target = 'gaia'; // the horizon is Gaia's: leaving space always flies home first
       space.goal = inSpace ? 1 : 0;
+      space.nearGoal = near ? 1 : 0;
       if (target !== space.to) {
-        space.from = space.travel < 0.5 ? space.from : space.to;
+        if (space.t > 0 && space.travel < 1) { // redirected mid-flight: leave from right here
+          snap.on = true; snap.pos.copy(spacePos); snap.look.copy(spaceLook); snap.up.copy(upNow); snap.fov = FOV + (camera.fov - FOV) / Math.max(0.05, ease(space.t));
+        } else snap.on = false;
+        space.from = space.to;
         space.to = target;
         space.travel = space.t > 0 || inSpace ? 0 : 1;
       }
-      if (reducedMotion) { space.t = space.goal; space.travel = 1; draw(); }
+      if (reducedMotion) { space.t = space.goal; space.travel = 1; space.near = space.nearGoal; snap.on = false; draw(); }
     },
     /** Destination view state, for checks: blend into space (0..1), the planet shown, trip progress, Luna's orbit phase, lens and camera. */
-    get space() { return { t: space.t, goal: space.goal, from: space.from, to: space.to, travel: space.travel, orbit: space.orbit, fov: camera.fov, camera: camera.position.toArray(), luna: luna.mesh.position.toArray(), ares: ares.mesh.position.toArray(), aresRadius: ares.mesh.scale.x, nebula: nebulae[0]?.opacity ?? 0 }; },
+    get space() { return { t: space.t, goal: space.goal, near: space.near, air: aresAir.visible ? aresAir.material.uniforms.fade.value : 0, from: space.from, to: space.to, travel: space.travel, orbit: space.orbit, fov: camera.fov, camera: camera.position.toArray(), luna: luna.mesh.position.toArray(), ares: ares.mesh.position.toArray(), aresRadius: ares.mesh.scale.x, sun: sunBody.visible ? sunBody.position.toArray() : null, light: sun.toArray(), nebula: nebulae[0]?.opacity ?? 0 }; },
     /** How many planes, ships and satellites the current settings show. */
     get traffic() { const s = settings(); return { planes: count(s.planes, MAX_PLANES), boats: Math.min(count(s.boats, MAX_BOATS), ships.length), satellites: count(s.satellites, MAX_SATELLITES) }; },
     /** What the last frame used, for checks. */

@@ -87,6 +87,7 @@ export const DISPLAY_UNITS = Object.freeze({
   'space.aresZoom': 'fraction, 0 to 1',
   'space.nebula': 'fraction, 0 to 1',
   'space.distance': 'multiplier',
+  'space.revolveSeconds': 'seconds',
   'menu.buttonScale': 'multiplier',
   'menu.stagger': 'seconds',
   'menu.bob': 'CSS px',
