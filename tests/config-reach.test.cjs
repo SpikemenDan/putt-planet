@@ -189,6 +189,18 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
       const slowSwing = sunMove();
       live.space.revolveSeconds = 30;
       assert.ok(sunMove() > slowSwing * 3, 'space.revolveSeconds sets how fast the planets swing around the sun');
+      reset(); fly('gaia', 4);
+      const farAres = fly('ares', 8);
+      scene.setView({ space: true, target: 'ares', near: true });
+      for (let k = 0; k < 80; k++) scene.step(0.1);
+      const near = scene.space, dist = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
+      assert.equal(near.near, 1, 'near brings the camera down to Ares');
+      assert.ok(dist(near.camera, near.ares) < near.aresRadius * 1.2 && dist(near.camera, near.ares) > near.aresRadius, 'just above the ground, inside the air');
+      assert.ok(dist(farAres.camera, farAres.ares) > near.aresRadius * 3, 'the far view stands well off');
+      assert.ok(near.air > 0.99, 'Ares has its dusty air in space');
+      scene.setView({ space: true, target: 'ares', near: false });
+      for (let k = 0; k < 80; k++) scene.step(0.1);
+      assert.equal(scene.space.near, 0, 'and back out again');
       scene.dispose(); dom.window.close();
     }
     // loading.finishTime, ballPulse and ballBounce are checked in tests/ui.test.cjs, where the screen really closes after the first
