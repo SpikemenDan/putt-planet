@@ -1,3 +1,4 @@
+import { reducedMotion as isReducedMotion } from './motion.js';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { GAIA_REGIONS, REGION_COURSES } from '../shared/gaia-map.js';
 import { useUiContext } from './context.js';
@@ -37,7 +38,7 @@ export function WorldSelect({ cards, onPick, onUnavailable, children }) {
 
   useEffect(() => {
     const canvas = canvasRef.current, win = canvas.ownerDocument.defaultView;
-    const reducedMotion = !!win.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const reducedMotion = isReducedMotion(win);
     let scene = null, retry = null, tries = 0;
     const follow = () => { // overlays ride the camera; React stays out of the frame loop
       for (const r of GAIA_REGIONS) {

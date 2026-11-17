@@ -31,6 +31,8 @@ Units: world units (ball radius 5) and multipliers. Opacity is 0..1. The shaft h
 | `loading.planes` | 3 | 0 to 12 | Loading screen: planes flying between cities with contrails (whole planes; 0 hides them). |
 | `loading.boats` | 9 | 0 to 20 | Loading screen: boats on the sea (whole boats; 0 hides them). |
 | `loading.satellites` | 2 | 0 to 8 | Loading screen: satellites orbiting the planet (whole satellites; 0 hides them). |
+| `loading.ballPulse` | 1.6 | 0.6 to 4 | Loading screen: seconds for the glow to run once across the three progress balls. Off under reduced motion. |
+| `loading.ballBounce` | 3 | 0 to 10 | Loading screen: CSS px each progress ball lifts while it glows (0 keeps them still). |
 | `space.orbitSeconds` | 120 | 20 to 600 | Destination view (Solo → Where to?): seconds Luna takes to orbit Gaia once. |
 | `space.travelSeconds` | 1.8 | 0.4 to 6 | Destination view: seconds to fly between Gaia and Luna; trips to and from Ares take 1.6 times as long. |
 | `space.aresZoom` | 0.5 | 0 to 1 | Destination view: how strongly the lens widens then zooms in on the long Ares trips (0 is a plain glide). |
@@ -40,6 +42,8 @@ Units: world units (ball radius 5) and multipliers. Opacity is 0..1. The shaft h
 | `menu.stagger` | 0.07 | 0 to 0.3 | Main menu: seconds between each button dropping in (0 brings them in together). |
 | `menu.bob` | 2 | 0 to 8 | Main menu: idle bob of the big buttons, CSS px (0 holds them still; off under reduced motion). |
 | `menu.tilt` | 1.5 | 0 to 8 | Main menu: alternating lean of the buttons, degrees (0 keeps them straight). |
+| `menu.shineSeconds` | 5 | 0 to 20 | Main menu: seconds between shine sweeps across the Solo, Party and Custom buttons (0 is off). Off under reduced motion. |
+| `menu.cardTint` | 0.22 | 0 to 1 | Solo steps: how strongly each choice card is tinted with its own colour (0 white, 1 full colour). |
 | `lobby.ballSize` | 56 | 24 to 96 | Party lobby: diameter of each player's ball on the lobby plane, CSS px. |
 | `lobby.tilt` | 52 | 0 to 70 | Party lobby: how far the plane under the balls leans back, degrees (0 faces the player flat on). |
 | `lobby.spacing` | 1 | 0.6 to 2 | Party lobby: gap between the balls, multiplier of the ball size. |

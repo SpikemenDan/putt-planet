@@ -1,3 +1,4 @@
+import { reducedMotion as isReducedMotion } from './motion.js';
 import { useEffect, useRef, useState } from 'react';
 import { TIPS, TIP_MS, tipAt } from './tips.js';
 import { useUiContext } from './context.js';
@@ -26,7 +27,7 @@ export function PlanetStage() {
     const canvas = canvasRef.current;
     if (!canvas || !createLoadingScene) return undefined;
     const win = canvas.ownerDocument.defaultView;
-    const reducedMotion = !!win.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const reducedMotion = isReducedMotion(win);
     let scene = null;
     const build = setTimeout(() => { // after the first paint, so the title and form show at once
       try { scene = createLoadingScene({ canvas, display, random: seeded(load * 7919 + 1), reducedMotion, win }); stage?.attach(scene); if (import.meta.env?.DEV) win.__ppPlanetScene = scene; scene.start(); } catch { scene = null; } // decoration only: the CSS sky stays
@@ -34,6 +35,28 @@ export function PlanetStage() {
     return () => { clearTimeout(build); stage?.detach(scene); scene?.dispose(); };
   }, [display, load, createLoadingScene, stage]);
   return <div className={styles.stage} aria-hidden="true" data-ui="planet-stage"><canvas ref={canvasRef} className={styles.planet} data-ui="loading-planet" /></div>;
+}
+
+/**
+ * Copies `display.loading.ballPulse` and `ballBounce` onto the loading screen as CSS variables for the progress balls. The shipped
+ * DISPLAY is frozen, so that is done once; the development tuner's live object is re-read every frame while the screen shows.
+ */
+function useBallLook(ref, display) {
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    const apply = () => {
+      el.style.setProperty('--ball-pulse', display.loading.ballPulse + 's');
+      el.style.setProperty('--ball-bounce', display.loading.ballBounce + 'px');
+    };
+    apply();
+    const win = el.ownerDocument.defaultView;
+    if (Object.isFrozen(display.loading) || !win?.requestAnimationFrame) return undefined;
+    let id = 0;
+    const tick = () => { apply(); id = win.requestAnimationFrame(tick); };
+    id = win.requestAnimationFrame(tick);
+    return () => win.cancelAnimationFrame(id);
+  }, [ref, display]);
 }
 
 /**
@@ -46,6 +69,8 @@ export function Loading({ done = false, onDone }) {
   const { display } = useUiContext();
   const [load] = useState(() => loads++);
   const [step, setStep] = useState(0);
+  const root = useRef(null);
+  useBallLook(root, display);
   const doneRef = useRef(onDone);
   doneRef.current = onDone;
   useEffect(() => {
@@ -58,7 +83,7 @@ export function Loading({ done = false, onDone }) {
     return () => clearTimeout(id);
   }, [done, display]);
   return (
-    <div className={styles.loading} role="status" aria-live="polite" data-ui="loading" data-state={done ? 'done' : 'loading'}>
+    <div ref={root} className={styles.loading} role="status" aria-live="polite" data-ui="loading" data-state={done ? 'done' : 'loading'}>
       <div className={styles.copy}>
         <h2 className={styles.brand} data-ui="loading-title">Putt Planet</h2>
         <p className={styles.status}>Setting up your game…</p>
