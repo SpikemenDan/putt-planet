@@ -2,7 +2,7 @@
    Each category is an inked card with a coloured header tab (Match pink, Shots blue, Worlds green); the colour also
    fills its slider tracks and chosen chips. Values sit in semi-white inked chips. Rows are label | control | value |
    reset and share their card's columns (subgrid), so every label stays on one line. A changed rule is highlighted
-   with a star and its reset button appears. The Play buttons stay pinned to the bottom of the panel while it scrolls.
+   with an asterisk and its reset button appears. The Play buttons stay pinned to the bottom of the panel while it scrolls.
    Button text has no drop shadow: the pixel font stays readable on the solid fills. */
 .editor{display:flex;flex-direction:column;gap:12px}
 
@@ -20,7 +20,7 @@
 .row + .row{border-top:2px dotted rgba(20,16,42,.18)}
 .row[data-changed]{background:rgba(255,210,63,.28)}
 .label{margin:0;white-space:nowrap;font:800 13px/1.15 var(--pp-body,'Nunito',sans-serif);color:var(--ink)}
-.row[data-changed] .label::after{content:'★';margin-left:5px;color:var(--pink-d)}
+.row[data-changed] .label::after{content:'*';margin-left:3px;font:900 15px/0 var(--pp-body,'Nunito',sans-serif);vertical-align:-2px;color:var(--pink-d)} /* an asterisk, not a star (owner, 2026-11-16) */
 .control{min-width:0}
 /* Value chip: semi-white with an ink outline (owner, 2026-11-13), as wide as its column with the text centred, so every
    chip lines up and the widest value (+0 strokes) fits without clipping or meeting the slider. */
@@ -29,12 +29,16 @@
 .row[data-kind=select] .value,.row[data-kind=toggle] .value,.row[data-kind=number] .value{display:none}
 
 /* Sliders: an inked track filled with the card colour up to a yellow comic thumb. The global input rule gives inputs
-   padding and a frame; undo that here. --fill is set per slider from its value. */
+   padding and a frame; undo that here. --fill is the slider's position from 0 to 1, set per slider from its value.
+   The fill must end under the thumb's centre, not at --fill of the track width (that left a white gap beside the thumb,
+   owner 2026-11-16): the 22px thumb's centre travels from 11px to width - 11px, which inside the track's 2px border is
+   9px + (100% - 18px) * --fill. Firefox draws its own fill (::-moz-range-progress), which always meets its thumb. */
 .slider{-webkit-appearance:none;appearance:none;width:100%;height:24px;margin:0;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;cursor:pointer}
-.slider::-webkit-slider-runnable-track{height:10px;border:2px solid var(--ink);border-radius:6px;background:linear-gradient(to right,var(--cat) var(--fill,50%),#fff var(--fill,50%))}
-.slider::-moz-range-track{height:10px;border:2px solid var(--ink);border-radius:6px;background:linear-gradient(to right,var(--cat) var(--fill,50%),#fff var(--fill,50%))}
-.slider::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;margin-top:-8px;border:3px solid var(--ink);border-radius:50%;background:var(--yellow);box-shadow:2px 2px 0 var(--ink)}
-.slider::-moz-range-thumb{width:16px;height:16px;border:3px solid var(--ink);border-radius:50%;background:var(--yellow);box-shadow:2px 2px 0 var(--ink)}
+.slider::-webkit-slider-runnable-track{box-sizing:border-box;height:14px;border:2px solid var(--ink);border-radius:7px;background:linear-gradient(to right,var(--cat) calc(9px + (100% - 18px) * var(--fill,.5)),#fff 0)}
+.slider::-moz-range-track{box-sizing:border-box;height:14px;border:2px solid var(--ink);border-radius:7px;background:#fff}
+.slider::-moz-range-progress{box-sizing:border-box;height:14px;border:2px solid var(--ink);border-right:0;border-radius:7px 0 0 7px;background:var(--cat)}
+.slider::-webkit-slider-thumb{-webkit-appearance:none;box-sizing:border-box;width:22px;height:22px;margin-top:-6px;border:3px solid var(--ink);border-radius:50%;background:var(--yellow);box-shadow:2px 2px 0 var(--ink)}
+.slider::-moz-range-thumb{box-sizing:border-box;width:22px;height:22px;border:3px solid var(--ink);border-radius:50%;background:var(--yellow);box-shadow:2px 2px 0 var(--ink)}
 .slider:focus-visible{outline:3px solid var(--cat);outline-offset:2px}
 
 /* Typed number entry (Game Length): the unit sits right after the box, a hint or long-game warning goes under it. */

@@ -63,5 +63,30 @@ const assert = require('node:assert/strict');
   assert.equal(quick.transitioning, false);
   assert.ok(q <= 2, 'reduced motion ends at once');
 
+  // Player camera preferences (owner, 2026-11-16): rotation speed, inverted up/down and a chosen view.
+  const base = createCameraRig(), fast = createCameraRig(), inverted = createCameraRig();
+  fast.state.orbitSpeed = 2; inverted.state.invertY = true;
+  const drag = { x: 0, y: 0, azimuth: 1, elevation: 0.5 };
+  for (const r of [base, fast, inverted]) r.orbitDrag(drag, 50, 20);
+  assert.ok(Math.abs(base.state.azimuth - 1.3) < 1e-12 && Math.abs(base.state.elevation - 0.62) < 1e-12, 'default speed keeps the legacy 0.006 rad per px');
+  assert.ok(Math.abs((fast.state.azimuth - 1) - 2 * (base.state.azimuth - 1)) < 1e-12, 'double speed turns twice as far');
+  assert.ok(Math.abs((inverted.state.elevation - 0.5) + (base.state.elevation - 0.5)) < 1e-12, 'inverted up/down tilts the other way');
+  assert.ok(Math.abs(inverted.state.azimuth - base.state.azimuth) < 1e-12, 'inverting leaves left/right alone');
+  const keys = createCameraRig(); keys.state.invertY = true; keys.state.orbitSpeed = 0.5;
+  const el0 = keys.state.elevation; keys.orbitKey('ArrowUp');
+  assert.ok(Math.abs(keys.state.elevation - (el0 + 0.03)) < 1e-12, 'arrow keys follow speed and inversion');
+  const views = createCameraRig();
+  assert.deepEqual(views.setView(2), { changed: true, view: 'strategic', label: 'World view' });
+  assert.equal(views.setView(2).changed, false, 'same view: no change');
+  assert.equal(views.setView(7).changed, false, 'unknown index ignored');
+  assert.equal(views.mode, 'strategic');
+
+  const { normalizeCameraPrefs, normalizeMotionPref } = await import('../src/shared/preferences.js');
+  assert.deepEqual({ ...normalizeCameraPrefs(null) }, { view: 0, orbitSpeed: 1, invertY: false }, 'defaults');
+  assert.deepEqual({ ...normalizeCameraPrefs({ view: 1, orbitSpeed: 1.53, invertY: true }) }, { view: 1, orbitSpeed: 1.5, invertY: true }, 'valid values kept, speed rounded to its 0.1 step');
+  assert.deepEqual({ ...normalizeCameraPrefs({ view: 9, orbitSpeed: 40, invertY: 'yes' }) }, { view: 0, orbitSpeed: 1, invertY: false }, 'junk falls back');
+  assert.equal(normalizeMotionPref('reduce'), 'reduce');
+  assert.equal(normalizeMotionPref('<img>'), 'auto');
+
   console.log('ALL CAMERA TRANSITION TESTS PASSED');
 })().catch(error => { console.error('FAILED with error:', error); process.exitCode = 1; });

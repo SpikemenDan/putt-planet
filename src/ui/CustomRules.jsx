@@ -41,7 +41,7 @@ export function CustomRules({ rules, onChange, onPlaySolo, onHostParty, busy = f
     const name = 'rule-' + rule.id;
     if (rule.kind === 'slider') return (
       <input id={name} type="range" className={css.slider} min={rule.min} max={rule.max} step={rule.step} value={value}
-        style={{ '--fill': ((value - rule.min) / (rule.max - rule.min)) * 100 + '%' }}
+        style={{ '--fill': (value - rule.min) / (rule.max - rule.min) }}
         aria-valuetext={ruleValueText(rule.id, value)} onChange={e => set(rule.id, Number(e.target.value))} />
     );
     if (rule.kind === 'number') return <NumberEntry rule={rule} value={value} onCommit={v => set(rule.id, v)} />;

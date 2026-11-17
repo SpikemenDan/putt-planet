@@ -25,3 +25,7 @@ details{font-size:13px;color:var(--ink);margin-top:16px;padding:8px 12px;backgro
 summary{cursor:pointer;font-weight:700}
 @media (max-width:640px){h1{font-size:26px}}
 @media (prefers-reduced-motion:reduce){button{transition:none}}
+/* Settings → Reduce motion (owner, 2026-11-16): the app sets data-motion="reduce" on <html>, which stills every CSS
+   animation and transition like the system setting does; components that need a specific resting pose say so next
+   to their own prefers-reduced-motion rule. */
+:root[data-motion=reduce] *,:root[data-motion=reduce] *::before,:root[data-motion=reduce] *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
