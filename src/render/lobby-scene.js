@@ -83,12 +83,67 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', re
     return mesh;
   };
   const glow = new THREE.Group();
-  glow.add(halo(2.25, 0.85));
+  const ring = halo(2.25, 1); // opaque, so the sky's blue never muddies it (owner, 2026-11-17: less khaki)
+  ring.material.color.set(0xffeb8a);
+  ring.material.transparent = false;
+  // Slight rays (owner, 2026-11-17): twelve slim rounded spikes, mostly see-through, slowly turning, long and short in turn.
+  const rays = new THREE.Group();
+  // Solid sunny yellow at the base, fading to clear at the tip: colourful by the sun, see-through beyond it, on sky or space alike.
+  const rayMaterial = own(new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false,
+    vertexShader: 'varying float h; void main(){ h = length(position.xy); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: 'varying float h; void main(){ gl_FragColor = vec4(1.0, 0.78, 0.12, 0.95 * (1.0 - smoothstep(2.5, 3.9, h))); }',
+  }));
+  for (let k = 0; k < 12; k++) {
+    const long = k % 2 === 0, shape = new THREE.Shape();
+    const w = long ? 0.26 : 0.2, from = 2.45, to = long ? 3.9 : 3.3;
+    shape.moveTo(-w, from);
+    shape.quadraticCurveTo(-w * 0.5, (from + to) / 2, 0, to);
+    shape.quadraticCurveTo(w * 0.5, (from + to) / 2, w, from);
+    shape.lineTo(-w, from);
+    const ray = new THREE.Mesh(own(new THREE.ShapeGeometry(shape, 8)), rayMaterial);
+    ray.rotation.z = k / 12 * Math.PI * 2;
+    rays.add(ray);
+  }
+  glow.add(rays, ring);
   sun.add(glow, photosphere);
   camera.add(sun);
 
   const rig = new THREE.Group(); // sways and bobs
   scene.add(rig);
+
+  // ---- Flying (owner, 2026-11-17: the vehicles should look like they are really flying): the air streams past from nose to tail.
+  // Slim wind streaks rush by around the vehicle (pale blue starlight streaks in space), and over Gaia a few puffy toon clouds drift
+  // past below and behind it. The vehicles face left, so the air moves to the right. Still with reduced motion.
+  const flight = new THREE.Group();
+  scene.add(flight);
+  const SPAN = 30; // streaks and clouds wrap across this width (scene units) around the vehicle
+  const seeded = k => { const x = Math.sin(k * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+  const streakMaterial = own(new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.45, depthWrite: false }));
+  const streakGeometry = own(new THREE.CapsuleGeometry(0.025, 2.0, 2, 6).rotateZ(Math.PI / 2));
+  const streaks = Array.from({ length: 12 }, (_, k) => {
+    const mesh = new THREE.Mesh(streakGeometry, streakMaterial);
+    mesh.userData = { x0: seeded(k) * SPAN, y: (seeded(k + 40) - 0.5) * 7, z: -1 - seeded(k + 80) * 7, speed: 22 + seeded(k + 120) * 14, length: 0.6 + seeded(k + 160) * 0.9 };
+    mesh.scale.x = mesh.userData.length;
+    flight.add(mesh);
+    return mesh;
+  });
+  const cloudMaterial = toon(0xffffff);
+  const puff = (k) => {
+    const parts = [[0, 0, 0, 1.3], [1.3, -0.2, 0.1, 1.0], [-1.25, -0.25, 0, 0.95], [0.5, 0.65, -0.1, 0.9], [-0.55, 0.5, 0.15, 0.8]];
+    const group = new THREE.Group();
+    for (const [x, y, z, r] of parts) {
+      const geometry = own(new THREE.SphereGeometry(r, 18, 12));
+      group.add(ink(new THREE.Mesh(geometry, cloudMaterial)));
+      group.children[group.children.length - 1].position.set(x, y, z);
+    }
+    group.scale.set(0.75, 0.5, 0.6);
+    group.userData = { x0: seeded(k + 200) * SPAN, y: -5.5 - seeded(k + 240) * 2, z: -12 - seeded(k + 280) * 10, speed: 3 + seeded(k + 320) * 2 };
+    return group;
+  };
+  const clouds = Array.from({ length: 4 }, (_, k) => puff(k));
+  for (const c of clouds) flight.add(c);
+  const wrap = (x0, speed, t) => ((x0 + speed * t) % SPAN + SPAN) % SPAN - SPAN / 2;
   const ballGeometry = own(new THREE.SphereGeometry(BALL_RADIUS, 32, 22));
   const ballHull = own(smoothHullGeometry(THREE, ballGeometry));
   let model = null, built = null, balls = [], spinners = [], flame = null, colors = [];
@@ -146,6 +201,9 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', re
     built.add(glass); // no ink hull: through clear glass it would read as a dark tint
     rig.add(built);
     stats.vehicle = kind;
+    const space = kind === 'rocket';
+    for (const c of clouds) c.visible = !space; // clouds over Gaia only
+    streakMaterial.color.set(space ? 0xbfe3ff : 0xffffff);
     buildBalls();
   };
   build(vehicle);
@@ -181,10 +239,16 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', re
     camera.updateProjectionMatrix();
     // The sun sits at the top right of the free area, far behind the vehicle.
     const sunZ = dist * 2.4, halfH = sunZ * tan, halfW = halfH * camera.aspect;
-    sun.position.set((-1 + 2 * (insets.left + freeW * 0.76 + offX) / width) * halfW, (1 - 2 * (insets.top + freeH * 0.14 + offY) / height) * halfH, -sunZ);
+    // In the top-left corner of the free area (owner, 2026-11-17), ahead of the vehicle's nose, its rays clear of the edges.
+    const corner = Math.max(56, Math.min(width, height) * 0.08);
+    sun.position.set((-1 + 2 * (insets.left + corner + offX) / width) * halfW, (1 - 2 * (insets.top + corner + offY) / height) * halfH, -sunZ);
     sun.scale.setScalar(sunZ / 90); // small in the sky (owner, 2026-11-17)
     glow.position.copy(sun.position).normalize().multiplyScalar(1.8); // the halo sits behind the ball on the line of sight, centred on it
     glow.scale.setScalar(1 + Math.sin(t * 1.3) * 0.04); // the halo breathes
+    rays.rotation.z = t * 0.12;
+    const rush = stats.vehicle === 'rocket' ? 1.8 : stats.vehicle === 'helicopter' ? 0.7 : 1;
+    for (const s of streaks) { const u = s.userData; s.position.set(wrap(u.x0, u.speed * rush, t), u.y, u.z); }
+    for (const c of clouds) { const u = c.userData; c.position.set(wrap(u.x0, u.speed * rush, t), u.y, u.z); }
     rig.rotation.y = TURN + Math.sin(t * 0.6) * l.sway * Math.PI / 180;
     rig.position.y = Math.sin(t * 1.7) * l.bob;
     rig.rotation.x = Math.sin(t * 1.1) * 0.02;

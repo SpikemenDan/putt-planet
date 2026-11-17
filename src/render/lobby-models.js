@@ -130,6 +130,7 @@ export function makeHelicopter(THREE) {
       { geometry: blades(7.2, 0.38, 0.65), position: new THREE.Vector3(-0.45, Y + 1.7, 0), axis: 'y', speed: 1 },
       { geometry: tail, position: new THREE.Vector3(-4.45, Y + 0.55, -0.22), axis: 'z', speed: 1.6 },
     ],
+    tilt: -0.12, // nose down, as a helicopter flies forward
     drop: Y + 0.12 - 0.05, // the skids below the ball
     rise: Y + 1.7 - (Y + 0.12) - 0.5, // the rotor above it
   };
