@@ -1015,7 +1015,7 @@ function fakeClock() {
     await t.send({ type: 'JOIN_ROOM', playerId: 'g1', name: 'Ben' });
     assert.equal(lobby.querySelector('p').textContent, 'Room ABCD · 2 players · You are the host');
     assert.equal(chosen(), 'standard', 'a second player resets a solo-only mode');
-    assert.deepEqual([...lobby.querySelectorAll('[data-ui=mode-picker] [data-mode]')].filter(b => b.disabled).map(b => b.dataset.mode), ['practice', 'putt_practice']);
+    assert.deepEqual([...lobby.querySelectorAll('[data-ui=mode-picker] [data-mode]')].map(b => b.dataset.mode).filter(m => m.includes('practice')), [], 'solo-only practice leaves the tiles once a friend boards');
     {
       const plane = [...lobby.querySelectorAll('[data-ui=lobby-passengers] [role=listitem]')];
       const players = t.session.getSnapshot().players;
@@ -1033,9 +1033,9 @@ function fakeClock() {
     await t.teardown();
     // Guest view: no mode choice, no Start; solo: no invite.
     const g = await setup({ localId: 'host', isHost: false });
-    assert.equal(g.within('[data-ui=room-lobby] label').hidden, true);
+    assert.equal(g.within('[data-ui=room-lobby] [data-ui=mode-picker]'), null, 'guests get no mode tiles');
     assert.equal(button('Start Game'), undefined);
-    assert.equal(g.within('[data-ui=room-lobby] p:nth-of-type(2)').textContent, 'The host will pick the mode and start map voting.');
+    assert.equal(g.within('[data-ui=room-lobby] [data-ui=lobby-status]').textContent, 'The host will pick the mode and start map voting.');
     await act(async () => g.store.setLocal({ roomCode: '' }));
     assert.equal(button('Copy invite'), undefined);
     assert.equal(g.within('[data-ui=room-lobby] p').textContent, 'Solo practice');
@@ -1119,12 +1119,12 @@ function fakeClock() {
     for (const kind of LOBBY_VEHICLES) {
       const v = makeLobbyVehicle(THREE, kind);
       assert.equal(v.seats.length, kind === 'helicopter' ? 1 : 8, kind + ' seats');
-      assert.ok(v.body.attributes.color.count === v.body.attributes.position.count && v.radius > 0, kind + ' is one vertex-coloured body');
+      assert.ok(v.body.attributes.color.count === v.body.attributes.position.count && v.drop > 0 && v.glass, kind + ' is one vertex-coloured body under glass');
       const top = v.seats.map(p => p.y);
       assert.ok(top.every(y => Math.abs(y - top[0]) < 1e-9), kind + ': every seat at one height');
     }
     assert.equal(makeLobbyVehicle(THREE, 'helicopter').spinners.length, 2, 'main and tail rotors');
-    assert.equal(makeLobbyVehicle(THREE, 'plane').spinners.length, 4, 'four propellers');
+    assert.equal(makeLobbyVehicle(THREE, 'plane').spinners.length, 2, 'two jet fans');
     assert.ok(makeLobbyVehicle(THREE, 'rocket').flame, 'the rocket has a flame');
     assert.deepEqual([lobbyVehicleFor({ solo: true, destination: 'ares' }), lobbyVehicleFor({ destination: 'gaia' }), lobbyVehicleFor({ destination: 'ares' }), lobbyVehicleFor({ destination: 'luna' }), lobbyVehicleFor({})], ['helicopter', 'plane', 'rocket', 'rocket', 'plane']);
     const sd = new JSDOM('<canvas></canvas>', { pretendToBeVisual: true });
@@ -1181,7 +1181,7 @@ function fakeClock() {
     await t.send({ type: 'CAST_VOTE', playerId: 'g1', mapIndex: 8 });
     assert.equal(t.session.getSnapshot().phase, 'play');
     assert.ok(shown(t.within('[data-ui=room-lobby]')), 'countdown shows on the lobby card');
-    assert.equal(t.within('[data-ui=room-lobby] p:nth-of-type(2)').textContent, 'Dune Serpent · putt 1/6 starts in 3…');
+    assert.equal(t.within('[data-ui=room-lobby] [data-ui=lobby-status]').textContent, 'Dune Serpent · putt 1/6 starts in 3…');
     await act(async () => t.store.setLocal({ mode: 'play', strokes: 0 }));
     await t.step(2600);
     assert.ok(shown(t.within('[data-ui=game]')));
@@ -1534,7 +1534,7 @@ function fakeClock() {
     assert.ok(t.within('[data-ui=tie-picker]'), 'tie picker mounted in lobby');
     const options = [...t.within('[data-ui=tie-picker]').querySelectorAll('[data-ui=tie-option]')];
     assert.equal(options.length, 2);
-    assert.match(t.within('[data-ui=room-lobby] p:nth-of-type(2)').textContent, /^Vote tied! Random pick: /);
+    assert.match(t.within('[data-ui=room-lobby] [data-ui=lobby-status]').textContent, /^Vote tied! Random pick: /);
     await t.step(2600);
     await t.teardown();
   });

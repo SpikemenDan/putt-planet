@@ -60,7 +60,7 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
           const setter = Object.getOwnPropertyDescriptor(win.w.HTMLInputElement.prototype, 'value').set;
           await act(async () => { setter.call(input, value); input.dispatchEvent(new win.w.Event('input', { bubbles: true })); });
         },
-        async select(value) { const s = doc.querySelector('[data-ui=room-lobby] select'); await act(async () => { s.value = value; s.dispatchEvent(new win.w.Event('change', { bubbles: true })); }); },
+        async select(value) { const b = doc.querySelector(`[data-ui=room-lobby] [data-ui=mode-picker] [data-mode=${value}]`); await act(async () => { b.click(); }); },
         /** Main menu (VIS-M2): open Solo, Party, Custom or Settings, stepping back first from another sub-menu. */
         async menu(id) {
           const view = doc.querySelector('[data-ui=landing]')?.dataset.view;
@@ -271,9 +271,9 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
       const balls = [...c.doc.querySelectorAll('[data-ui=lobby-passengers] [role=listitem]')].map(b => Number(b.dataset.color));
       assert.deepEqual(balls.sort((a, b) => a - b), [colorOf(anaId), pick].sort((a, b) => a - b), c.name + ': both balls on the plane, in their colours');
     }
-    assert.ok([...ana.doc.querySelectorAll('[data-ui=room-lobby] select option')].some(o => o.value === 'pong'), 'two players: Putt Pong is offered');
+    assert.ok([...ana.doc.querySelectorAll('[data-ui=room-lobby] [data-ui=mode-picker] [data-mode]')].some(b => b.dataset.mode === 'pong'), 'two players: Putt Pong is offered');
     await cy.joinCode(code);
-    assert.ok(![...ana.doc.querySelectorAll('[data-ui=room-lobby] select option')].some(o => o.value === 'pong'), 'three players: it is not');
+    assert.ok(![...ana.doc.querySelectorAll('[data-ui=room-lobby] [data-ui=mode-picker] [data-mode]')].some(b => b.dataset.mode === 'pong'), 'three players: it is not');
     const colors = Object.values(ana.snapshot.players).map(p => p.color);
     assert.equal(new Set(colors).size, 3, 'colours are unique in the party');
     for (const c of [ana, ben, cy]) await c.dispose();
@@ -289,7 +289,7 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
     assert.ok(ana.shown('[data-ui=map-select]'));
     await ana.click(ana.$('[data-ui=map-select] button[data-v]'));
     await W.run(100);
-    assert.equal(ana.text('[data-ui=room-lobby] p:nth-of-type(2)'), 'Switchback Garden · putt 1/6 starts in 3…');
+    assert.equal(ana.text('[data-ui=room-lobby] [data-ui=lobby-status]'), 'Switchback Garden · putt 1/6 starts in 3…');
     await W.until(() => ana.shown('[data-ui=game]'), 5000, 'game screen');
     assert.equal(ana.text('[data-ui=hud-info]'), 'Switchback Garden · PUTT 1/6 · PAR 2 · STROKES 0 · 2:00');
     assert.equal(W.renderers.instances.length, 1, 'one WebGL renderer for the app');
@@ -481,7 +481,7 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
     await W.run(300);
     assert.equal(ana.text('[data-ui=room-lobby] p'), 'Room ' + W.code('party').toUpperCase() + ' · 4 players · You are the host');
     assert.equal(ben.text('[data-ui=room-lobby] p'), 'Room ' + W.code('party').toUpperCase() + ' · 4 players · Waiting for host');
-    assert.equal(ben.$('[data-ui=room-lobby] label').hidden, true, 'guests cannot choose the mode');
+    assert.equal(ben.$('[data-ui=room-lobby] [data-ui=mode-picker]'), null, 'guests cannot choose the mode');
     await ana.select('tournament_3');
     await ana.click('Start Game');
     await W.until(() => guests.every(g => g.shown('[data-ui=map-select]')), 3000, 'guests voting');

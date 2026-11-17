@@ -44,15 +44,15 @@ test('putt pong 2-player lobby: Putt Pong is offered with exactly two players; c
 
     await ana.join(code);
     // Owner, 2026-11-11: a party offers Putt Pong only with exactly two players.
-    await expect(ana.ui('room-lobby').locator('select option[value=pong]')).toHaveCount(0);
+    await expect(ana.ui('room-lobby').locator('[data-ui=mode-picker] [data-mode=pong]')).toHaveCount(0);
     await ben.join(code);
-    await expect(ana.ui('room-lobby').locator('select option[value=pong]')).toHaveCount(1);
+    await expect(ana.ui('room-lobby').locator('[data-ui=mode-picker] [data-mode=pong]')).toHaveCount(1);
 
     await expect(ana.ui('room-lobby').locator('p').first()).toHaveText(`Room ${partyCode(code)} · 2 players · You control the room`, { timeout: 30_000 });
     await expect(ben.ui('room-lobby').locator('p').first()).toHaveText(`Room ${partyCode(code)} · 2 players · Waiting for room controller`);
 
     // Host selects Putt Pong
-    await ana.ui('room-lobby').locator('select').selectOption('pong');
+    await ana.ui('room-lobby').locator('[data-ui=mode-picker] [data-mode=pong]').click();
 
     // Host starts voting
     await ana.button('Start Game').click();

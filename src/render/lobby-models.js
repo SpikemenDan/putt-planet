@@ -6,7 +6,8 @@
  * The plane and rocket seat their passengers in a row under a long glass canopy along the top, each ball in front of its own seat
  * back, so every ball is easy to see. Units: a ball is 1 across (radius 0.5). Local axes: +x forward (nose), +y up, +z toward the
  * viewer's side. Each builder returns { body, glass, seats, spinners, flame?, flameAt?, tilt?, drop }: `seats` are ball centres,
- * `spinners` parts that turn about `axis` (rotors and fans), `flame` the rocket's exhaust, `drop` how far below a seat the belly is.
+ * `spinners` parts that turn about `axis` (rotors and fans), `flame` the rocket's exhaust, `drop` how far below a seat the belly is,
+ * `rise` how far above it the roof is (0 when the ball rides on top).
  * `THREE` is injected.
  */
 import { mergeParts } from './sky-models.js';
@@ -77,6 +78,7 @@ export function makeHelicopter(THREE) {
       { geometry: rotor(THREE, 1.5, 0.18, 0x3b3557).rotateX(Math.PI / 2), position: new THREE.Vector3(-4.95, 2.35, 0.2), axis: 'z', speed: 1.6 },
     ],
     drop: 1.6,
+    rise: 1.55, // the cabin roof above the ball
   };
 }
 

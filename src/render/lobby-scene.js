@@ -48,11 +48,9 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', re
   const inkMaterial = own(createInkMaterial(THREE, inkUniforms));
   const ink = mesh => { mesh.add(new THREE.Mesh(own(smoothHullGeometry(THREE, mesh.geometry)), inkMaterial)); return mesh; };
 
-  // ---- The sun: a 3D disc-faced sphere with turning rays, fixed to the camera at the top right of the free area.
+  // ---- The sun: a 3D sphere with turning rays, fixed to the camera at the top right of the free area.
   const sun = new THREE.Group();
   const sunBody = ink(new THREE.Mesh(own(new THREE.SphereGeometry(1.6, 32, 24)), own(new THREE.MeshBasicMaterial({ color: 0xffd23f }))));
-  const halo = new THREE.Mesh(own(new THREE.CircleGeometry(3.4, 48)), own(new THREE.MeshBasicMaterial({ color: 0xfff3b0, transparent: true, opacity: 0.35, depthWrite: false })));
-  halo.position.z = -0.6;
   const rays = new THREE.Group();
   const rayGeometry = own(new THREE.ConeGeometry(0.34, 1.2, 4));
   const rayMaterial = own(new THREE.MeshBasicMaterial({ color: 0xffa62b }));
@@ -63,7 +61,7 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', re
     ray.rotation.z = a - Math.PI / 2;
     rays.add(ray);
   }
-  sun.add(halo, rays, sunBody);
+  sun.add(rays, sunBody);
   camera.add(sun);
 
   const rig = new THREE.Group(); // sways and bobs
@@ -122,7 +120,7 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', re
     model.half = { x: size.x * 0.5 + size.z * 0.12, y: size.y * 0.5 + size.z * 0.1 };
     const glass = new THREE.Mesh(mine(model.glass), glassMaterial); // after the box: glass never sets the frame
     glass.renderOrder = 2;
-    built.add(inkMine(glass));
+    built.add(glass); // no ink hull: through clear glass it would read as a dark tint
     rig.add(built);
     stats.vehicle = kind;
     buildBalls();
@@ -160,8 +158,8 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', re
     camera.updateProjectionMatrix();
     // The sun sits at the top right of the free area, far behind the vehicle.
     const sunZ = dist * 2.4, halfH = sunZ * tan, halfW = halfH * camera.aspect;
-    sun.position.set((-1 + 2 * (insets.left + freeW * 0.86 + offX) / width) * halfW, (1 - 2 * (insets.top + freeH * 0.16 + offY) / height) * halfH, -sunZ);
-    sun.scale.setScalar(sunZ / 40);
+    sun.position.set((-1 + 2 * (insets.left + freeW * 0.76 + offX) / width) * halfW, (1 - 2 * (insets.top + freeH * 0.14 + offY) / height) * halfH, -sunZ);
+    sun.scale.setScalar(sunZ / 58);
     rays.rotation.z = reducedMotion ? 0 : t * 0.25;
     rig.rotation.y = TURN + Math.sin(t * 0.6) * l.sway * Math.PI / 180;
     rig.position.y = Math.sin(t * 1.7) * l.bob;
@@ -181,7 +179,8 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', re
         const centre = toScreen(b.getWorldPosition(v));
         const top = toScreen(b.getWorldPosition(v).add(new THREE.Vector3(0, BALL_RADIUS, 0)));
         const below = toScreen(b.getWorldPosition(v).add(new THREE.Vector3(0, -model.drop, 0)));
-        out.push({ seat: b.userData.seat, x: centre.x, y: centre.y, r: Math.max(4, centre.y - top.y), below });
+        const above = toScreen(b.getWorldPosition(v).add(new THREE.Vector3(0, BALL_RADIUS + (model.rise ?? 0), 0)));
+        out.push({ seat: b.userData.seat, x: centre.x, y: centre.y, r: Math.max(4, centre.y - top.y), below, above });
       }
       anchorListener(out, { width, height });
     }

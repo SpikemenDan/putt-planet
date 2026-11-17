@@ -80,7 +80,7 @@ test('party flow: Create shows the code afterwards, Join by code, plane lobby wi
       await expect.poll(async () => (await balls.evaluateAll(els => els.map(e => Number(e.dataset.color)))).sort((a, b) => a - b))
         .toEqual([start.Ana, pick].sort((a, b) => a - b));
     }
-    await expect(ana.ui('room-lobby').locator('select option[value=pong]')).toHaveCount(1);
+    await expect(ana.ui('room-lobby').locator('[data-ui=mode-picker] [data-mode=pong]')).toHaveCount(1);
     await expect(ana.ui('room-lobby').locator('[data-ui=no-powerups]')).toHaveCount(0);
     expect(sockets.ben.filter(url => url.includes('/api/rooms/_new/')), 'joining never creates').toEqual([]);
     for (const p of [ana, ben]) expect(p.errors, p.name + ': no page or console errors').toEqual([]);

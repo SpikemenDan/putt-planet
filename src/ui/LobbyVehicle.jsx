@@ -14,20 +14,30 @@ export const tagSide = seat => (seat % 2 === 0 ? 'top' : 'bottom');
 /** Gap between a lane and the nearest ball (top) or the belly (bottom), in CSS px. */
 const LANE_GAP = { top: 34, bottom: 26 };
 
+/** Height of one row of tags, and the smallest gap between two tags on a row, in CSS px. */
+const ROW = 36, ROOM = 8;
+
 /**
- * Where the tags go this frame: one lane above the highest ball and one below the lowest belly point, each tag at its ball's x
- * (kept on screen), with a leader line from the tag to its ball (top) or to the belly under it (bottom). Pure, for tests.
+ * Where the tags go this frame: a lane above the highest ball and a lane below the lowest belly point, each tag at its ball's x
+ * (kept on screen), with a leader line from the tag to its ball (top) or to the belly under it (bottom). When the vehicle is small
+ * and two tags of a lane would touch, the later one moves out to the next row, so tags never overlap. `widths[seat]` is each tag's
+ * width in px (100 when unknown). Pure, for tests.
  */
-export function layoutTags(anchors, width) {
+export function layoutTags(anchors, width, widths = []) {
   if (!anchors.length) return [];
-  const top = Math.min(...anchors.map(a => a.y - a.r)) - LANE_GAP.top;
-  const bottom = Math.max(...anchors.map(a => (a.below ? a.below.y : a.y + a.r * 4))) + LANE_GAP.bottom;
-  return anchors.map(a => {
-    const side = tagSide(a.seat), x = Math.min(Math.max(a.x, 64), Math.max(64, width - 64));
+  const lane = { top: Math.min(...anchors.map(a => (a.above ? a.above.y : a.y - a.r))) - LANE_GAP.top, bottom: Math.max(...anchors.map(a => (a.below ? a.below.y : a.y + a.r * 4))) + LANE_GAP.bottom };
+  const rows = { top: [], bottom: [] }; // the right edge of the last tag on each row
+  return [...anchors].sort((a, b) => a.x - b.x).map(a => {
+    const side = tagSide(a.seat), w = widths[a.seat] || 100;
+    const x = Math.min(Math.max(a.x, w / 2 + 8), Math.max(w / 2 + 8, width - w / 2 - 8));
+    let row = rows[side].findIndex(edge => edge + ROOM <= x - w / 2);
+    if (row < 0) row = rows[side].push(-Infinity) - 1;
+    rows[side][row] = x + w / 2;
+    const y = side === 'top' ? lane.top - row * ROW : lane.bottom + row * ROW;
     return side === 'top'
-      ? { seat: a.seat, side, x, y: top, line: [x, top, a.x, a.y - a.r - 3] }
-      : { seat: a.seat, side, x, y: bottom, line: [x, bottom, a.below ? a.below.x : a.x, a.below ? a.below.y : a.y + a.r] };
-  });
+      ? { seat: a.seat, side, row, x, y, line: [x, y, a.x, a.y - a.r - 3] }
+      : { seat: a.seat, side, row, x, y, line: [x, y, a.below ? a.below.x : a.x, a.below ? a.below.y : a.y + a.r] };
+  }).sort((a, b) => a.seat - b.seat);
 }
 
 /**
@@ -67,7 +77,8 @@ export function LobbyVehicle({ vehicle = 'plane', passengers = [], hidden = fals
     fit();
     const refit = win.setInterval(fit, 400); // panels can grow (a picker opens, a player joins): keep the framing current
     made.onAnchors((anchors, { width }) => {
-      for (const t of layoutTags(anchors, width)) {
+      const widths = tags.current.map(tag => tag?.offsetWidth ?? 0); // read every width before any write, so layout runs once
+      for (const t of layoutTags(anchors, width, widths)) {
         const tag = tags.current[t.seat], line = lines.current[t.seat];
         if (!tag) continue;
         tag.style.transform = `translate(${t.x.toFixed(1)}px, ${t.y.toFixed(1)}px) translate(-50%, ${t.side === 'top' ? '-100%' : '0'})`;

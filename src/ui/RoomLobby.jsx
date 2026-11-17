@@ -88,7 +88,7 @@ export function RoomLobby({ hidden }) {
         </LobbyTicket>
       </div>
       <div ref={dock} className={styles.dock}>
-        <p className={app.status + ' ' + styles.status}>{lobby?.status}</p>
+        <p className={app.status + ' ' + styles.status} data-ui="lobby-status">{lobby?.status}</p>
         <TiePicker tie={lobby?.tie} />
         {lobby?.showModes && <div className={styles.controls}>
           <ModePicker modes={offered} value={mode} onChange={setMode} />

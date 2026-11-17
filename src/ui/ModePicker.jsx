@@ -15,13 +15,12 @@ export const MODE_LOOK = Object.freeze({
 
 /**
  * The host's game mode choice as colourful tiles (owner, 2026-11-16): one per mode the room offers, each in its own colour with an
- * icon. Modes the room cannot run now (solo practice with friends aboard) are greyed with the reason. A radio group: arrow keys work
- * through the native buttons' focus order.
+ * icon. Modes the room cannot run now (solo practice with friends aboard) are left out. A radio group of native buttons.
  */
 export function ModePicker({ modes = [], value, onChange, hidden = false }) {
   return (
     <div className={styles.picker} role="radiogroup" aria-label="Game mode" data-ui="mode-picker" hidden={hidden}>
-      {modes.map(o => {
+      {modes.filter(o => !o.disabled).map(o => {
         const look = MODE_LOOK[o.value] ?? { tone: '#27c8ff', icon: 'flag', title: o.label, sub: '' };
         const on = o.value === value;
         return (

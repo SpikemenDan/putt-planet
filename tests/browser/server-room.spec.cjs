@@ -14,7 +14,7 @@ test('server rooms: tournament, late spectator and controller departure preserve
   const code = roomCode('N4F');
   const ana = await openPlayer(browser, info, 'Ana', { contexts }); await ana.join(code);
   const ben = await openPlayer(browser, info, 'Ben', { contexts }); await ben.join(code);
-  await ana.ui('room-lobby').getByLabel('Game mode').selectOption('tournament_3');
+  await ana.ui('room-lobby').locator('[data-ui=mode-picker] [data-mode=tournament_3]').click();
   await ana.button('Start Game').click();
   for (const p of [ana, ben]) await pickMap(p.page);
   await until(() => ben.ready(), { label: 'first map starts' });
