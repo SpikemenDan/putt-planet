@@ -16,9 +16,8 @@ import styles from './RoomLobby.module.css';
 function PartyCode({ code, send }) {
   return (
     <div className={styles.code} data-ui="party-code">
-      <span className={styles.codeLabel}>Party code</span>
-      <strong className={styles.codeValue}>{code}</strong>
-      <button type="button" className={buttons.ghost} onClick={() => send(UiCommands.INVITE)}>Copy invite</button>
+      <span className={styles.codeText}><span className={styles.codeLabel}>Party code</span><strong className={styles.codeValue}>{code}</strong></span>
+      <button type="button" className={styles.copy} onClick={() => send(UiCommands.INVITE)}>Copy invite</button>
     </div>
   );
 }
@@ -26,7 +25,7 @@ function PartyCode({ code, send }) {
 /**
  * Party lobby (VIS-M3 #175; vehicles, ticket and manifest, owner 2026-11-16), full screen over the planet sky: everyone's ball rides
  * one 3D vehicle, the plane through Gaia's air or the rocket in space for Ares and Luna, with name tags alternating above and below.
- * On the left, the title, the room's status and the passenger manifest; on the right, your boarding pass (your name and colour badge,
+ * On the left, the passenger manifest (no title board; the start countdown shows above the mode bar); on the right, your boarding pass (your name and colour badge,
  * the destination, the party code, the host's Start Game, Leave room on the stub); along the bottom, one bar of colourful mode tiles.
  * In a party everyone votes for the mode (the tiles) and the planet (the pass) (owner, 2026-11-17): each voter's ball sits in the
  * corner of their choice, the vehicle follows the leading planet, and Start Game plays the leading mode. Players arrive with a free
@@ -82,10 +81,10 @@ export function RoomLobby({ hidden }) {
     <div className={styles.lobby} hidden={hidden} data-ui="room-lobby">
       <LobbyVehicle vehicle={vehicle} passengers={roster} hidden={hidden || !lobby} insets={insets} />
       <div ref={left} className={styles.left}>
-        <div className={styles.titleCard}>
+        {/* No title board (owner, 2026-11-17): the heading and room line stay for screen readers only. */}
+        <div className={styles.hiddenText}>
           <h1>{party ? 'Party lobby' : 'Room lobby'}</h1>
-          <p className={styles.label}>{lobby?.label}</p>
-          <p className={styles.status} data-ui="lobby-status">{lobby?.status}</p>
+          <p>{lobby?.label}</p>
         </div>
         <LobbyManifest passengers={roster} seats={VEHICLE_SEATS[vehicle] ?? 8} flight={flight} destination={planet} />
       </div>
@@ -100,6 +99,8 @@ export function RoomLobby({ hidden }) {
         </LobbyTicket>
       </div>
       <div ref={dock} className={styles.dock}>
+        {/* The room's status: read out to screen readers; shown only for the start countdown ("… starts in 3…"). */}
+        <p className={lobby?.countdown ? styles.countdown : styles.hiddenText} data-ui="lobby-status" aria-live="polite">{lobby?.status}</p>
         <TiePicker tie={lobby?.tie} />
         {(voting || lobby?.showModes) && <div className={styles.controls}>
           {voting

@@ -162,6 +162,7 @@ export function lobbyView(room, local, now, courses) {
     leadingMode: lobbyWinner(ballots, 'mode', ids, hostId, open, open.includes(GameModes.STANDARD) ? GameModes.STANDARD : open[0] ?? GameModes.STANDARD),
     leadingWorld: lobbyWinner(ballots, 'world', ids, hostId, WORLD_IDS, isWorldId(room.destination) ? room.destination : 'gaia'),
     multiplayer: n > 1,
+    countdown: inCountdown(room, now),
     status,
     tie,
   };

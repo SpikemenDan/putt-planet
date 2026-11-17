@@ -6,11 +6,6 @@
 .left{left:clamp(12px,2vw,32px);top:clamp(12px,3vh,32px);display:flex;flex-direction:column;gap:14px;width:min(340px,30vw)}
 .right{right:clamp(12px,2vw,32px);top:clamp(12px,3vh,32px);width:min(360px,30vw)}
 .dock{left:50%;bottom:clamp(10px,2vh,24px);translate:-50% 0;display:flex;flex-direction:column;align-items:center;gap:8px;max-width:calc(100vw - 2 * min(360px,30vw) - 64px)}
-.titleCard{padding:12px 16px;background:var(--paper);border:4px solid var(--ink);border-radius:18px;box-shadow:6px 6px 0 var(--ink);rotate:-1deg}
-.titleCard h1{margin:0;font:400 clamp(30px,3.2vw,44px)/1 var(--font);letter-spacing:1.5px;color:var(--yellow);-webkit-text-stroke:3px var(--ink);paint-order:stroke fill;text-shadow:3px 4px 0 var(--ink)}
-.label{margin:6px 0 0;font-size:15px;font-weight:800;letter-spacing:.5px;color:var(--pink-d)}
-.status{margin:8px 0 0;padding:5px 12px;font-size:14px;font-weight:800;line-height:1.25;color:var(--ink);background:#fff;border:3px solid var(--ink);border-radius:12px}
-.status:empty{display:none}
 /* The host's bar: the mode tiles and Start Game, all on one line. */
 .controls{display:flex;align-items:center;gap:14px;padding:14px 14px 16px 16px;background:linear-gradient(100deg,#fffdf4,#fff3c4);border:4px solid var(--ink);border-radius:22px;box-shadow:6px 6px 0 var(--ink)}
 .go{flex:none;display:flex;align-items:center;justify-content:center;gap:10px;margin:0;padding:12px 20px;font:400 26px/1 var(--font);letter-spacing:1px;text-transform:none;white-space:nowrap;color:#fff;text-shadow:2px 2px 0 var(--ink);
@@ -21,10 +16,20 @@
 .go[hidden]{display:none}
 @keyframes nudge{0%,80%,100%{scale:1}88%{scale:1.06}}
 /* The party code in a caption box on the ticket. */
-.code{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:8px 10px;background:var(--yellow);border:var(--line) solid var(--ink);border-radius:10px;box-shadow:3px 3px 0 var(--ink)}
-.codeLabel{font:900 12px var(--font);letter-spacing:.6px;text-transform:uppercase;color:var(--ink)}
-.codeValue{flex:1;font:400 26px/1 var(--font);letter-spacing:3px;color:var(--ink);user-select:all}
-.code button{margin:0}
+.code{display:flex;align-items:center;gap:10px;padding:7px 8px 7px 12px;background:var(--yellow);border:3px solid var(--ink);border-radius:14px;box-shadow:0 4px 0 var(--ink)}
+.codeText{display:flex;flex:1;flex-direction:column;min-width:0;line-height:1}
+.codeLabel{font:900 10px var(--font);letter-spacing:1.5px;text-transform:uppercase;color:var(--ink);opacity:.75}
+.codeValue{margin-top:3px;font:400 24px/1 var(--font);letter-spacing:2.5px;color:var(--ink);user-select:all;white-space:nowrap}
+/* Copy invite: a small white pill with a copy glyph. */
+.copy{flex:none;display:inline-flex;align-items:center;gap:6px;margin:0;padding:6px 11px 6px 8px;font:900 13px var(--font);letter-spacing:.3px;text-transform:none;text-shadow:none;color:var(--ink);
+  background:#fff;border:2px solid var(--ink);border-radius:999px;box-shadow:0 3px 0 var(--ink);cursor:pointer;transition:translate .1s,box-shadow .1s}
+.copy::before{content:'';width:14px;height:14px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23141029' stroke-width='2.6' stroke-linejoin='round'%3E%3Crect x='8' y='8' width='12' height='12' rx='3'/%3E%3Cpath d='M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2'/%3E%3C/svg%3E") center/contain no-repeat}
+.copy:hover{translate:0 -1px;box-shadow:0 4px 0 var(--ink)}
+.copy:active{translate:0 2px;box-shadow:0 1px 0 var(--ink)}
+/* Text kept for screen readers only. */
+.hiddenText{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+/* The start countdown, in a pill above the mode bar. */
+.countdown{margin:0;padding:6px 16px;font:900 16px var(--font);letter-spacing:.4px;color:var(--ink);background:#fff;border:3px solid var(--ink);border-radius:999px;box-shadow:0 4px 0 var(--ink);text-align:center}
 /* Narrow windows: panels stack and scroll over the vehicle. */
 @media (max-width:900px){.left,.right,.dock{position:static;translate:none;width:auto;margin:12px}.lobby{display:flex;flex-direction:column}}
 @media (prefers-reduced-motion:reduce){.go{animation:none}}

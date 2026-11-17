@@ -152,21 +152,21 @@ export function SoloSteps({ name, onName, colorField, connecting, send, onExit, 
 
       {step === 'ready' && (() => {
         const { flight, gate } = flightOf('solo-' + mode + '-' + world);
-        // The helicopter is framed between the title card at the top left and the pass on the right.
+        // The helicopter is framed between the left edge, the pass on the right and the mode bar below.
         const insets = () => {
           const view = body.current?.ownerDocument.defaultView;
           if (!view) return null;
           const box = sel => view.document.querySelector('[data-ui=solo-lobby] ' + sel)?.getBoundingClientRect();
-          const title = box('[data-ui=solo-title]'), pass = box('[data-ui=lobby-ticket]');
+          const pass = box('[data-ui=lobby-ticket]');
           const bar = box('[data-ui=solo-modes]');
-          return { left: 24, right: pass ? view.innerWidth - pass.left + 16 : 0, top: title ? title.bottom + 8 : 8, bottom: bar ? view.innerHeight - bar.top + 8 : 8 };
+          return { left: 24, right: pass ? view.innerWidth - pass.left + 16 : 0, top: 8, bottom: bar ? view.innerHeight - bar.top + 8 : 8 };
         };
         const lobby = (
           <div data-ui="solo-lobby" onKeyDown={e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); back(); } }}>
             <LobbyVehicle vehicle="helicopter" passengers={[{ id: 'you', name: name.trim() || 'Player', color: color ?? 0, you: true }]} insets={insets} />
-            <div className={solo.titleCard} data-ui="solo-title">
+            <div className={room.hiddenText} data-ui="solo-title">
               <h1>Solo lobby</h1>
-              <p data-ui="solo-summary">{SOLO_MODES[mode]} on {WORLDS.find(w => w.id === world)?.name}</p>
+              <p data-ui="solo-summary" aria-live="polite">{SOLO_MODES[mode]} on {WORLDS.find(w => w.id === world)?.name}</p>
             </div>
             <div className={solo.pass}>
               <LobbyTicket vehicle="helicopter" solo name={name} onName={onName} color={color} onPick={c => send(UiCommands.SET_COLOR, { color: c })} destination={world}
