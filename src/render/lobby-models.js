@@ -41,8 +41,11 @@ function rotor(THREE, span, chord, color, count = 2) {
   return mergeParts(THREE, parts);
 }
 
-/** `count` seats in a row, `SEAT_STEP` apart, centred on `cx`, balls resting at height `y`. */
-const seatRow = (THREE, count, cx, y) => Array.from({ length: count }, (_, i) => new THREE.Vector3(cx + (i - (count - 1) / 2) * SEAT_STEP, y, 0));
+/**
+ * `count` seats in a row, `SEAT_STEP` apart, centred on `cx`, balls resting at height `y`. Seat 1 is at the front (nose, +x) and the
+ * row fills toward the tail (owner, 2026-11-17), so the first player to join sits up front.
+ */
+const seatRow = (THREE, count, cx, y) => Array.from({ length: count }, (_, i) => new THREE.Vector3(cx - (i - (count - 1) / 2) * SEAT_STEP, y, 0));
 
 /** The cabin under a canopy: a dark floor strip, and a coloured seat back behind each ball. */
 function cabin(THREE, seats, floorY, length, seatColor) {

@@ -1,6 +1,6 @@
 /**
  * The lobby vehicle scene (owner, 2026-11-16): one 3D vehicle (helicopter, plane or rocket, lobby-models.js) carrying the players'
- * balls in their colours, with a 3D cartoon sun, drawn full screen on a transparent canvas over the planet sky of the main menu
+ * balls in their colours, with a glowing sun, drawn full screen on a transparent canvas over the planet sky of the main menu
  * (src/render/planet-scene.js, shown by the UI's planet stage). Clean cel shading with ink outlines. Presentation only: it never reads
  * or changes room state. The UI places each name tag from `anchors`, reported once per frame: every occupied seat's screen position,
  * and the point under the vehicle's belly below it.
@@ -13,8 +13,11 @@ import { createInkMaterial, createInkUniforms, sizeInk, smoothHullGeometry } fro
 
 const defaultRenderer = (THREE, canvas) => new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
 const FOV = 30;
-/** How far the vehicle is turned toward the viewer (radians), before the sway. */
-const TURN = -0.24;
+/**
+ * The vehicle's heading (radians about y), before the sway: nose to the left, turned 0.24 toward the viewer. Gaia's horizon turns
+ * left to right behind the lobby, so a nose pointing left flies forward over it (owner, 2026-11-17: pointing right it flew backwards).
+ */
+const TURN = Math.PI + 0.24;
 
 /**
  * @param {object} options
@@ -48,39 +51,53 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', re
   const inkMaterial = own(createInkMaterial(THREE, inkUniforms));
   const ink = mesh => { mesh.add(new THREE.Mesh(own(smoothHullGeometry(THREE, mesh.geometry)), inkMaterial)); return mesh; };
 
-  // ---- The sun: a 3D ball with a soft highlight, ringed by rounded petals that slowly turn (long orange ones and short yellow ones
-  // between them, turning the other way), fixed to the camera at the top right of the free area. Unlit: it is the light.
+  // ---- The sun (owner, 2026-11-17: realistic, not cartoon): a glowing photosphere with slowly boiling granulation and limb darkening
+  // (white-hot in the middle, deep orange at the edge), wrapped in a soft corona with faint streamers that drift. No outline: it is
+  // the light. Fixed to the camera at the top right of the free area.
   const sun = new THREE.Group();
-  const flat = color => own(new THREE.MeshBasicMaterial({ color }));
-  const sunBody = ink(new THREE.Mesh(own(new THREE.SphereGeometry(1.6, 40, 28)), flat(0xffd23f)));
-  const shine = new THREE.Mesh(own(new THREE.CircleGeometry(1, 32)), own(new THREE.MeshBasicMaterial({ color: 0xfff6c8, transparent: true, opacity: 0.85 })));
-  shine.position.set(-0.55, 0.6, 1.62);
-  shine.scale.set(0.55, 0.36, 1);
-  shine.rotation.z = 0.6;
-  const rim = new THREE.Mesh(own(new THREE.RingGeometry(1.6, 1.78, 48)), flat(0xffb02e)); // a warm rim between the ball and its petals
-  rim.position.z = -0.05;
-  const petal = (length, width) => {
-    const shape = new THREE.Shape();
-    shape.moveTo(-width, 0);
-    shape.quadraticCurveTo(-width * 0.9, length * 0.55, 0, length);
-    shape.quadraticCurveTo(width * 0.9, length * 0.55, width, 0);
-    shape.lineTo(-width, 0);
-    return own(new THREE.ExtrudeGeometry(shape, { depth: 0.12, bevelEnabled: true, bevelThickness: 0.04, bevelSize: 0.04, bevelSegments: 2, curveSegments: 10 }));
-  };
-  const ring = (count, length, width, radius, color, offset) => {
-    const group = new THREE.Group(), geometry = petal(length, width), material = flat(color);
-    for (let k = 0; k < count; k++) {
-      const a = (k + offset) / count * Math.PI * 2, mesh = ink(new THREE.Mesh(geometry, material));
-      mesh.position.set(Math.cos(a) * radius, Math.sin(a) * radius, -0.4);
-      mesh.rotation.z = a - Math.PI / 2;
-      group.add(mesh);
-    }
-    return group;
-  };
-  const rays = ring(8, 1.25, 0.42, 1.55, 0xff9a1f, 0);
-  const shortRays = ring(8, 0.8, 0.3, 1.55, 0xffc23a, 0.5);
-  shortRays.position.z = 0.05;
-  sun.add(rays, shortRays, rim, sunBody, shine);
+  const sunTime = { value: 0 };
+  const NOISE = `
+    float h3(vec3 p){ p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
+    float n3(vec3 x){ vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
+      return mix(mix(mix(h3(i), h3(i + vec3(1,0,0)), f.x), mix(h3(i + vec3(0,1,0)), h3(i + vec3(1,1,0)), f.x), f.y),
+                 mix(mix(h3(i + vec3(0,0,1)), h3(i + vec3(1,0,1)), f.x), mix(h3(i + vec3(0,1,1)), h3(i + vec3(1,1,1)), f.x), f.y), f.z); }
+    float fbm(vec3 p){ float v = 0.0, a = 0.5; for (int k = 0; k < 4; k++) { v += a * n3(p); p = p * 2.03 + 1.7; a *= 0.5; } return v; }`;
+  const photosphere = new THREE.Mesh(own(new THREE.SphereGeometry(1.6, 64, 48)), own(new THREE.ShaderMaterial({
+    uniforms: { time: sunTime },
+    vertexShader: 'varying vec3 vN; varying vec3 vP; void main(){ vP = position; vN = normalize(normalMatrix * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: `uniform float time; varying vec3 vN; varying vec3 vP; ${NOISE}
+      void main(){
+        float mu = clamp(vN.z, 0.0, 1.0);
+        float cells = fbm(vP * 4.2 + vec3(0.0, time * 0.05, time * 0.03));
+        float fine = n3(vP * 13.0 - time * 0.1);
+        float g = cells * 0.75 + fine * 0.25;
+        float limb = 0.55 + 0.45 * pow(mu, 0.4);
+        vec3 hot = vec3(1.0, 0.98, 0.9), warm = vec3(1.0, 0.84, 0.42), edge = vec3(1.0, 0.52, 0.12);
+        vec3 col = mix(edge, mix(warm, hot, smoothstep(0.45, 1.0, mu)), smoothstep(0.0, 0.55, mu));
+        col *= 0.9 + 0.2 * g;
+        gl_FragColor = vec4(min(col * limb * 1.08, vec3(1.0)), 1.0);
+      }`,
+  })));
+  const corona = new THREE.Mesh(own(new THREE.PlaneGeometry(9, 9)), own(new THREE.ShaderMaterial({
+    uniforms: { time: sunTime },
+    transparent: true, depthWrite: false, premultipliedAlpha: true,
+    blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor, blendSrcAlpha: THREE.OneFactor, blendDstAlpha: THREE.OneMinusSrcAlphaFactor,
+    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv * 2.0 - 1.0; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: `uniform float time; varying vec2 vUv; ${NOISE}
+      void main(){
+        float r = length(vUv) * 4.5 / 1.6;
+        if (r < 0.98) discard;
+        float a = atan(vUv.y, vUv.x);
+        float streak = fbm(vec3(cos(a) * 3.0, sin(a) * 3.0, time * 0.08)) ;
+        float glow = exp(-(r - 1.0) * 2.6) * 0.85 + exp(-(r - 1.0) * 0.9) * 0.22 * (0.55 + streak);
+        glow *= smoothstep(2.8, 1.6, r) * 0.6 + 0.4 * smoothstep(2.8, 1.0, r);
+        glow = clamp(glow, 0.0, 1.0);
+        vec3 col = mix(vec3(1.0, 0.7, 0.3), vec3(1.0, 0.95, 0.78), exp(-(r - 1.0) * 3.0));
+        gl_FragColor = vec4(col * glow, glow);
+      }`,
+  })));
+  corona.position.z = -0.01;
+  sun.add(corona, photosphere);
   camera.add(sun);
 
   const rig = new THREE.Group(); // sways and bobs
@@ -179,9 +196,8 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', re
     const sunZ = dist * 2.4, halfH = sunZ * tan, halfW = halfH * camera.aspect;
     sun.position.set((-1 + 2 * (insets.left + freeW * 0.76 + offX) / width) * halfW, (1 - 2 * (insets.top + freeH * 0.14 + offY) / height) * halfH, -sunZ);
     sun.scale.setScalar(sunZ / 58);
-    rays.rotation.z = reducedMotion ? 0 : t * 0.18;
-    shortRays.rotation.z = reducedMotion ? 0 : -t * 0.12;
-    sunBody.scale.setScalar(reducedMotion ? 1 : 1 + Math.sin(t * 1.3) * 0.025); // a gentle glow pulse
+    sunTime.value = t; // the granulation boils and the corona streamers drift (still with reduced motion)
+    photosphere.rotation.y = t * 0.02;
     rig.rotation.y = TURN + Math.sin(t * 0.6) * l.sway * Math.PI / 180;
     rig.position.y = Math.sin(t * 1.7) * l.bob;
     rig.rotation.x = Math.sin(t * 1.1) * 0.02;

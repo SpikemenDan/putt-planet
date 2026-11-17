@@ -378,8 +378,8 @@ function fakeClock() {
     assert.equal(ticket.querySelector('[data-ui=ticket-destination]').textContent, 'Gaia');
     assert.equal(ticket.querySelector('[data-ui=destination-pick]'), null, 'Solo chose its planet already');
     assert.deepEqual([...ticket.querySelectorAll('dt')].map(d => d.textContent), ['Flight', 'Helipad', 'Seat'], 'flight, helipad and seat only');
-    assert.equal(ticket.querySelector('[data-gate]').dataset.gate, 'helipad', 'the helicopter lifts off from the H of its helipad');
-    assert.equal(ticket.querySelector('[data-gate]').textContent, 'H');
+    assert.equal(ticket.querySelector('[data-gate]').dataset.gate, 'lily', 'the helicopter lifts off from a lily pad');
+    assert.match(ticket.querySelector('[data-gate]').textContent, /^Lily Pad [1-9]$/);
     const bar = stage.querySelector('[data-ui=solo-modes] [data-ui=mode-picker]');
     assert.deepEqual([...bar.querySelectorAll('[data-mode]')].map(b => b.dataset.mode), ['standard', 'tournament_3', 'tournament_5', 'tournament_7', 'practice', 'putt_practice', 'pong'], 'the mode bar has every Solo mode');
     assert.equal(bar.querySelector('[aria-checked=true]').dataset.mode, 'standard', 'the mode chosen in the steps');
@@ -1019,7 +1019,19 @@ function fakeClock() {
     assert.ok(shown(lobby));
     assert.equal(lobby.querySelector('p').textContent, 'Room ABCD · 1 player · You are the host');
     assert.deepEqual([...lobby.querySelectorAll('[data-ui=lobby-passengers] [role=listitem]')].map(b => b.textContent), ['Anayou'], 'the lobby vehicle holds my ball, tagged as me');
-    assert.equal(lobby.querySelector('[data-ui=ticket-name]').textContent, 'Ana', 'my ticket names me');
+    assert.equal(lobby.querySelector('[data-ui=ticket-name]').value, 'Ana', 'my ticket names me');
+    {
+      // Rename on the pass (owner, 2026-11-17): typing sends nothing; leaving the field sends one SET_NAME with the cleaned name.
+      const field = lobby.querySelector('[data-ui=ticket-name]');
+      t.commands.length = 0;
+      await act(async () => { const set = Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype, 'value').set; set.call(field, '  Anabel '); field.dispatchEvent(new dom.window.Event('input', { bubbles: true })); });
+      assert.equal(t.commands.length, 0, 'no command per key');
+      await act(async () => { field.dispatchEvent(new dom.window.FocusEvent('focusout', { bubbles: true })); });
+      assert.deepEqual(t.commands, [{ type: ui.UiCommands.SET_NAME, name: 'Anabel' }], 'one rename when editing ends');
+      t.commands.length = 0;
+      await act(async () => { field.dispatchEvent(new dom.window.FocusEvent('focusout', { bubbles: true })); });
+      assert.equal(t.commands.length, 0, 'leaving the field again without typing sends nothing');
+    }
     assert.equal(lobby.querySelector('[data-ui=party-code] strong').textContent, 'ABCD');
     assert.equal(lobby.querySelector('[data-ui=lobby-ticket] [data-ui=barcode]').dataset.value, 'ABCD', 'the barcode is the party code');
     const tile = v => lobby.querySelector(`[data-ui=mode-picker] [data-mode=${v}]`);

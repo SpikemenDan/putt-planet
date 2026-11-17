@@ -7,9 +7,9 @@
 .head{position:relative;display:flex;flex-direction:column;gap:2px;padding:12px 18px 11px;overflow:hidden;border-bottom:4px solid var(--ink);border-radius:16px 16px 0 0;
   background:linear-gradient(110deg,var(--pink) 0%,#ff8a1f 58%,var(--yellow) 100%);color:#fff}
 .head::after{content:'';position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.5) 45%,transparent 60%);translate:-120% 0;animation:shine 5s ease-in-out infinite}
-.brand{font:900 12px var(--font);letter-spacing:3px;text-transform:uppercase;color:var(--ink)}
-.title{font:900 25px/1.05 var(--font);letter-spacing:.8px;text-transform:uppercase;text-shadow:2px 2px 0 var(--ink)}
-.passenger small,.route small,.details dt{display:block;font:900 11px var(--font);letter-spacing:1.5px;text-transform:uppercase;color:var(--mut)}
+.brand{font:900 12px var(--font);letter-spacing:1px;text-transform:none;color:var(--ink)}
+.title{font:900 25px/1.05 var(--font);letter-spacing:.8px;text-transform:none;text-shadow:2px 2px 0 var(--ink)}
+.passenger small,.route small,.details dt{display:block;font:900 11px var(--font);letter-spacing:.5px;text-transform:none;color:var(--mut)}
 .passenger{position:relative;margin:0 12px;padding:9px 12px;border:3px dashed var(--ink);border-radius:14px;background:color-mix(in srgb,var(--sea) 14%,#fff)}
 .who{display:flex;align-items:center;gap:12px;margin-top:3px}
 .name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:900 27px var(--font);letter-spacing:.5px;color:var(--ink)}
@@ -46,11 +46,11 @@
 .details{display:grid;grid-template-columns:repeat(3,1fr);gap:6px 10px;margin:0;padding:0 18px}
 .details dd{margin:0;font:900 18px var(--font);letter-spacing:.5px;overflow-wrap:anywhere}
 .details [data-field=Seat] dd{color:var(--pink)}
-/* Themed gates: Cloud 9 in sky blue, a Luna crater in violet, an Ares canyon in red, and the helipad's H in its circle. */
+/* Themed gates: Cloud 9 in sky blue, a Luna crater in violet, an Ares canyon in red, a Gaia lily pad in green. */
 .details dd[data-gate=cloud]{color:#1f9fe0}
 .details dd[data-gate=crater]{color:#8e4ec6}
 .details dd[data-gate=canyon]{color:#e5484d}
-.helipad{display:inline-grid;place-items:center;width:28px;height:28px;font:900 17px/1 var(--font);color:#fff;background:#2fbf5b;border:3px solid var(--ink);border-radius:50%;box-shadow:inset 0 0 0 2px #fff}
+.details dd[data-gate=lily]{color:#2fa84f}
 .actions{display:flex;flex-direction:column;gap:8px;padding:0 16px}
 .actions > button,.actions > label{width:100%;margin:0}
 /* Perforation, barcode and the stub's small print. */
@@ -61,7 +61,7 @@
 .barcode{display:block;flex:1;min-width:0;height:34px;fill:var(--ink)}
 /* The party code under the barcode, like a booking reference, with a small copy-invite icon. */
 .code{display:flex;flex:1 0 100%;align-items:center;justify-content:center;gap:10px;min-width:0;padding-top:2px}
-.code small{flex:none;translate:0 3px;white-space:nowrap;font:900 10px/1 var(--font);letter-spacing:1.5px;text-transform:uppercase;color:var(--mut)}
+.code small{flex:none;translate:0 3px;white-space:nowrap;font:900 10px/1 var(--font);letter-spacing:.5px;text-transform:none;color:var(--mut)}
 .code strong{display:block;padding-top:2px;font:400 19px/1 var(--font);letter-spacing:2px;color:var(--ink);user-select:all;white-space:nowrap}
 .copy{flex:none;width:24px;height:24px;margin:0;padding:0;border:2px solid var(--ink);border-radius:7px;background:#fff center/14px no-repeat;cursor:pointer;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23141029' stroke-width='2.6' stroke-linejoin='round'%3E%3Crect x='8' y='8' width='12' height='12' rx='3'/%3E%3Cpath d='M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2'/%3E%3C/svg%3E");transition:background-color .15s,scale .1s}
