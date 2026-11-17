@@ -125,7 +125,8 @@ export function lobbyView(room, local, now, courses) {
   }
   return {
     label: roomLabel(room, local),
-    roster: players.map(p => ({ id: p.id, name: p.name, color: colorOf(room, local, p.id), you: p.id === local.id })), // the lobby marks you with a YOU chip
+    // The lobby marks you with a YOU chip and the room's host (or controller) on the manifest.
+    roster: players.map(p => ({ id: p.id, name: p.name, color: colorOf(room, local, p.id), you: p.id === local.id, host: p.id === (room.controllerId ?? room.hostId) })),
     // VIS-M3: the party code, shown only once a party exists.
     code: local.roomCode ? local.roomCode.toUpperCase() : '',
     // The party's planet (owner, 2026-11-16): the host picks it on the ticket; the lobby shows a plane for Gaia, a rocket for Ares and Luna.

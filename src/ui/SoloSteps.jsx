@@ -5,7 +5,7 @@ import { WORLDS } from '../shared/worlds.js';
 import { OFFWORLD_REGIONS } from '../shared/world-regions.js';
 import { NAME_LIMIT, UiCommands } from './commands.js';
 import { useUiContext, useView } from './context.js';
-import { LobbyTicket } from './LobbyTicket.jsx';
+import { flightOf, LobbyTicket } from './LobbyTicket.jsx';
 import { LobbyVehicle } from './LobbyVehicle.jsx';
 import solo from './SoloLobby.module.css';
 import menu from './Landing.module.css';
@@ -59,10 +59,12 @@ export function SoloSteps({ name, onName, colorField, connecting, send, onExit, 
   const [world, setWorld] = useState('gaia');
   const body = useRef(null);
   useEffect(() => { body.current?.querySelector('button:not(:disabled), input')?.focus(); }, [step, pick]);
-  // The destination and ready steps show space; the first step and leaving Solo bring the horizon back.
-  const inSpace = step === 'world' || step === 'ready';
+  // The destination step shows space; the Solo lobby flies the helicopter through Gaia's air (owner, 2026-11-16); the first step and
+  // leaving Solo bring the horizon back. The big title steps aside for both the destination and the lobby.
+  const inSpace = step === 'world';
+  const titleAside = step === 'world' || step === 'ready';
   useEffect(() => { stage?.setView({ space: inSpace, target: inSpace ? focus : 'gaia' }); }, [stage, inSpace, focus]);
-  useEffect(() => { if (overlay) overlay.toggleAttribute('data-space', inSpace); return () => overlay?.removeAttribute('data-space'); }, [overlay, inSpace]); // the title steps aside for space
+  useEffect(() => { if (overlay) overlay.toggleAttribute('data-space', titleAside); return () => overlay?.removeAttribute('data-space'); }, [overlay, titleAside]);
   useEffect(() => () => stage?.setView({ space: false, target: 'gaia' }), [stage]);
   const turn = dir => setFocus(f => WORLD_ORDER[(WORLD_ORDER.indexOf(f) + (dir === 'left' ? 1 : WORLD_ORDER.length - 1)) % WORLD_ORDER.length]);
   const onKeyDown = e => {
@@ -135,14 +137,23 @@ export function SoloSteps({ name, onName, colorField, connecting, send, onExit, 
       })()}
 
       {step === 'ready' && (() => {
-        const [kind, plan] = SOLO_MODES[mode].split(' · ');
+        const { flight, gate } = flightOf('solo-' + mode + '-' + world);
+        // The helicopter is framed between the menu card on the left and the pass on the right.
+        const insets = () => {
+          const card = body.current?.closest('[data-menu-view]') ?? body.current, view = card?.ownerDocument.defaultView;
+          const pass = view?.document.querySelector('[data-ui=solo-lobby] [data-ui=lobby-ticket]');
+          if (!view) return null;
+          return { left: (card?.getBoundingClientRect().right ?? 0) + 16, right: pass ? view.innerWidth - pass.getBoundingClientRect().left + 16 : 0, top: 8, bottom: 8 };
+        };
         const stage = (
-          <div className={solo.stage} data-ui="solo-lobby">
-            <div className={solo.vehicle}><LobbyVehicle vehicle="helicopter" passengers={[{ id: 'you', name: name.trim() || 'Player', color: color ?? 0, you: true }]} /></div>
-            <LobbyTicket vehicle="helicopter" solo name={name} color={color} onPick={c => send(UiCommands.SET_COLOR, { color: c })} destination={world}
-              details={[['Mode', kind], ['Plan', plan], ['Seat', '01']]}>
-              <button type="button" className={solo.go} disabled={connecting} onClick={() => send(UiCommands.PLAY_SOLO, { name, mode, world })}>Play solo</button>
-            </LobbyTicket>
+          <div data-ui="solo-lobby">
+            <LobbyVehicle vehicle="helicopter" passengers={[{ id: 'you', name: name.trim() || 'Player', color: color ?? 0, you: true }]} insets={insets} />
+            <div className={solo.pass}>
+              <LobbyTicket vehicle="helicopter" solo name={name} color={color} onPick={c => send(UiCommands.SET_COLOR, { color: c })} destination={world}
+                flight={flight} gate={gate} seat={1} extra={[['Mode', SOLO_MODES[mode]]]}>
+                <button type="button" className={solo.go} disabled={connecting} onClick={() => send(UiCommands.PLAY_SOLO, { name, mode, world })}>Play solo</button>
+              </LobbyTicket>
+            </div>
           </div>
         );
         return <>

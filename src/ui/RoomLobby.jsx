@@ -1,10 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { GameModes } from '../shared/session.js';
+import { WORLDS } from '../shared/worlds.js';
 import { lobbyVehicleFor } from '../render/lobby-models.js';
 import { MODE_OPTIONS, UiCommands } from './commands.js';
-import { useCommands, useView } from './context.js';
-import { LobbyTicket } from './LobbyTicket.jsx';
-import { LobbyVehicle } from './LobbyVehicle.jsx';
+import { useCommands, useUiContext, useView } from './context.js';
+import { LobbyManifest } from './LobbyManifest.jsx';
+import { flightOf, LobbyTicket } from './LobbyTicket.jsx';
+import { LobbyVehicle, VEHICLE_SEATS } from './LobbyVehicle.jsx';
+import { ModePicker } from './ModePicker.jsx';
 import { TiePicker } from './TiePicker.jsx';
 import app from './App.module.css';
 import buttons from './buttons.module.css';
@@ -22,13 +25,15 @@ function PartyCode({ code, send }) {
 }
 
 /**
- * Party lobby (VIS-M3 #175; vehicles and ticket, owner 2026-11-16): everyone's ball rides one 3D vehicle, the plane for Gaia or the
- * rocket for Ares and Luna, with name tags alternating above and below it. The boarding pass on the right holds the party code, the
- * destination (the host switches it), the host's mode choice, your name and colour badge, Start Game and Leave. Players arrive with
- * a free colour and change it from the badge on their ticket.
+ * Party lobby (VIS-M3 #175; vehicles, ticket and manifest, owner 2026-11-16), full screen over the planet sky: everyone's ball rides
+ * one 3D vehicle, the plane through Gaia's air or the rocket in space for Ares and Luna, with name tags alternating above and below.
+ * On the left, the title and the passenger manifest; on the right, your boarding pass (party code, destination the host switches,
+ * your name and colour badge, Leave); along the bottom, the host's colourful mode tiles and Start Game. Players arrive with a free
+ * colour and change it from the badge on their pass.
  */
 export function RoomLobby({ hidden }) {
   const { send, session } = useCommands();
+  const { stage } = useUiContext();
   const lobby = useView(v => v.lobby);
   const [mode, setMode] = useState(GameModes.STANDARD);
   const offered = lobby?.modes || MODE_OPTIONS;
@@ -43,28 +48,53 @@ export function RoomLobby({ hidden }) {
   const party = !!lobby?.code;
   const roster = lobby?.roster ?? [];
   const me = roster.find(p => p.you);
-  const vehicle = lobbyVehicleFor({ solo: !party, destination: lobby?.destination });
-  const seat = roster.findIndex(p => p.you);
+  const destination = lobby?.destination ?? 'gaia';
+  const vehicle = lobbyVehicleFor({ solo: !party, destination });
+  const seat = roster.findIndex(p => p.you) + 1;
+  const { flight, gate } = flightOf(lobby?.code || 'solo');
+  const planet = WORLDS.find(w => w.id === destination)?.name ?? 'Gaia';
+  // The sky behind: Gaia's air for the plane, space around the destination for the rocket.
+  const shown = !hidden && !!lobby;
+  useEffect(() => {
+    if (!shown) return undefined;
+    stage?.setView({ space: vehicle === 'rocket', target: vehicle === 'rocket' ? destination : 'gaia' });
+    return () => stage?.setView({ space: false, target: 'gaia' });
+  }, [stage, shown, vehicle, destination]);
+  const left = useRef(null), right = useRef(null), dock = useRef(null);
+  const insets = () => {
+    const view = left.current?.ownerDocument.defaultView;
+    if (!view) return null;
+    const box = el => el?.getBoundingClientRect();
+    const l = box(left.current), r = box(right.current), d = box(dock.current);
+    return { left: l ? l.right + 16 : 0, right: r ? view.innerWidth - r.left + 16 : 0, top: 8, bottom: d && d.height ? view.innerHeight - d.top + 8 : 0 };
+  };
   return (
-    <div className={app.card + ' ' + styles.lobby} hidden={hidden} data-ui="room-lobby">
-      <section className={styles.main}>
-        <h1>{party ? 'Party lobby' : 'Room lobby'}</h1>
-        <p className={styles.label}>{lobby?.label}</p>
-        <LobbyVehicle vehicle={vehicle} passengers={roster} hidden={hidden || !lobby} />
-        <p className={app.status}>{lobby?.status}</p>
+    <div className={styles.lobby} hidden={hidden} data-ui="room-lobby">
+      <LobbyVehicle vehicle={vehicle} passengers={roster} hidden={hidden || !lobby} insets={insets} />
+      <div ref={left} className={styles.left}>
+        <div className={styles.titleCard}>
+          <h1>{party ? 'Party lobby' : 'Room lobby'}</h1>
+          <p className={styles.label}>{lobby?.label}</p>
+        </div>
+        <LobbyManifest passengers={roster} seats={VEHICLE_SEATS[vehicle] ?? 8} flight={flight} destination={planet} />
+      </div>
+      <div ref={right} className={styles.right}>
+        <LobbyTicket vehicle={vehicle} name={me?.name ?? ''} color={lobby?.myColor ?? null} taken={lobby?.takenColors} hidden={hidden || !lobby}
+          onPick={c => send(UiCommands.SET_COLOR, { color: c })} destination={destination}
+          onDestination={lobby?.canPickDestination ? world => session({ type: 'SET_DESTINATION', world }) : null}
+          flight={flight} gate={gate} seat={seat > 0 ? seat : 1}>
+          {party && <PartyCode code={lobby.code} send={send} />}
+          <button type="button" className={buttons.ghost} onClick={() => send(UiCommands.LEAVE)}>Leave room</button>
+        </LobbyTicket>
+      </div>
+      <div ref={dock} className={styles.dock}>
+        <p className={app.status + ' ' + styles.status}>{lobby?.status}</p>
         <TiePicker tie={lobby?.tie} />
-      </section>
-      <LobbyTicket vehicle={vehicle} name={me?.name ?? ''} color={lobby?.myColor ?? null} taken={lobby?.takenColors} hidden={hidden || !lobby}
-        onPick={c => send(UiCommands.SET_COLOR, { color: c })} destination={lobby?.destination ?? 'gaia'}
-        onDestination={lobby?.canPickDestination ? world => session({ type: 'SET_DESTINATION', world }) : null}
-        details={[['Seat', seat >= 0 ? String(seat + 1).padStart(2, '0') : '--'], ['Aboard', roster.length + '/8'], ['Class', 'First']]}>
-        {party && <PartyCode code={lobby.code} send={send} />}
-        <label hidden={!lobby?.showModes}>Game mode<select value={mode} onChange={e => setMode(e.target.value)}>
-          {offered.map(o => <option key={o.value} value={o.value} disabled={!!o.disabled}>{o.label}</option>)}
-        </select></label>
-        <button type="button" className={styles.go} hidden={!lobby?.showStart} onClick={start}>Start Game</button>
-        <button type="button" className={buttons.ghost} onClick={() => send(UiCommands.LEAVE)}>Leave room</button>
-      </LobbyTicket>
+        {lobby?.showModes && <div className={styles.controls}>
+          <ModePicker modes={offered} value={mode} onChange={setMode} />
+          <button type="button" className={styles.go} hidden={!lobby?.showStart} onClick={start}>Start Game</button>
+        </div>}
+      </div>
     </div>
   );
 }

@@ -1,13 +1,25 @@
-/* Party lobby (VIS-M3 #175; vehicles and ticket, owner 2026-11-16): the vehicle on the left, the boarding pass on the right. */
-.lobby.lobby{max-width:1100px;display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,360px);gap:24px;align-items:start}
-.main{min-width:0}
-.main h1{margin-top:0}
-.label{margin:0 0 10px;font-size:18px;font-weight:700;letter-spacing:1px;color:var(--pink-d)}
-@media (max-width:860px){.lobby.lobby{grid-template-columns:1fr;justify-items:center}.main{width:100%}}
+/* Party lobby (VIS-M3 #175; full screen, owner 2026-11-16): the vehicle fills the screen over the planet sky; the title and manifest
+   sit on the left, the boarding pass on the right, the host's mode tiles and Start Game along the bottom. */
+.lobby{position:fixed;inset:0;z-index:3;overflow:hidden auto}
+.lobby[hidden]{display:none}
+.left,.right,.dock{position:absolute;z-index:2}
+.left{left:clamp(12px,2vw,32px);top:clamp(12px,3vh,32px);display:flex;flex-direction:column;gap:14px;width:min(340px,30vw)}
+.right{right:clamp(12px,2vw,32px);top:clamp(12px,3vh,32px);width:min(360px,30vw)}
+.dock{left:50%;bottom:clamp(10px,2vh,24px);translate:-50% 0;display:flex;flex-direction:column;align-items:center;gap:8px;width:min(760px,calc(100vw - 2 * min(360px,30vw) - 80px))}
+.titleCard{padding:12px 16px;background:var(--paper);border:4px solid var(--ink);border-radius:18px;box-shadow:6px 6px 0 var(--ink);rotate:-1deg}
+.titleCard h1{margin:0;font:400 clamp(30px,3.2vw,44px)/1 var(--font);letter-spacing:1.5px;color:var(--yellow);-webkit-text-stroke:3px var(--ink);paint-order:stroke fill;text-shadow:3px 4px 0 var(--ink)}
+.label{margin:6px 0 0;font-size:15px;font-weight:800;letter-spacing:.5px;color:var(--pink-d)}
+.status{margin:0;padding:6px 14px;background:rgba(255,253,244,.92);border:3px solid var(--ink);border-radius:999px;box-shadow:0 3px 0 var(--ink);text-align:center}
+.controls{display:flex;align-items:stretch;gap:12px;width:100%;padding:10px;background:rgba(255,253,244,.94);border:4px solid var(--ink);border-radius:20px;box-shadow:6px 6px 0 var(--ink)}
+.controls > [data-ui=mode-picker]{flex:1;grid-template-columns:repeat(auto-fill,minmax(92px,1fr))}
+.go{flex:none;align-self:stretch;margin:0;padding:10px 22px;font-size:24px;letter-spacing:1.5px;line-height:1.05;background:var(--pink);color:#fff;border-radius:16px;animation:nudge 2.4s ease-in-out infinite}
+.go[hidden]{display:none}
+@keyframes nudge{0%,80%,100%{scale:1}88%{scale:1.06}}
 /* The party code in a caption box on the ticket. */
 .code{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:8px 10px;background:var(--yellow);border:var(--line) solid var(--ink);border-radius:10px;box-shadow:3px 3px 0 var(--ink)}
 .codeLabel{font:900 12px var(--font);letter-spacing:.6px;text-transform:uppercase;color:var(--ink)}
 .codeValue{flex:1;font:400 26px/1 var(--font);letter-spacing:3px;color:var(--ink);user-select:all}
 .code button{margin:0}
-.go{padding:12px 16px;font-size:22px;letter-spacing:1.5px;background:var(--pink);color:#fff}
-.lobby[hidden]{display:none}
+/* Narrow windows: panels stack and scroll over the vehicle. */
+@media (max-width:900px){.left,.right,.dock{position:static;translate:none;width:auto;margin:12px}.lobby{display:flex;flex-direction:column}}
+@media (prefers-reduced-motion:reduce){.go{animation:none}}

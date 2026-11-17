@@ -1,43 +1,47 @@
 /* Lobby ticket (owner, 2026-11-16): a colourful comic boarding pass. Ink outlines and hard shadows like the rest of the menus; the
-   header and route take the destination's colours (--sea, --land), and the whole pass floats gently. */
+   route and fields take the destination's colours (--sea, --land), and the whole pass floats gently. */
 .ticket{--sea:#27c8ff;--land:#2fbf5b;position:relative;display:flex;flex-direction:column;gap:10px;width:100%;max-width:360px;padding:0 0 12px;color:var(--ink);text-align:left;
-  background:radial-gradient(circle at 92% 12%,rgba(255,210,63,.35) 0 18%,transparent 19%),#fffdf4;border:4px solid var(--ink);border-radius:20px;box-shadow:7px 7px 0 var(--ink);
-  rotate:1.2deg;animation:float 4s ease-in-out infinite}
+  background:#fffdf4;border:4px solid var(--ink);border-radius:20px;box-shadow:7px 7px 0 var(--ink);rotate:1deg;animation:float 4s ease-in-out infinite}
 .ticket[data-world=ares]{--sea:#ff8a1f;--land:#e5484d}
 .ticket[data-world=luna]{--sea:#8e4ec6;--land:#25d1e6}
-.head{position:relative;display:grid;grid-template-columns:1fr auto;align-items:center;gap:2px 8px;padding:12px 16px 10px;overflow:hidden;border-bottom:4px solid var(--ink);border-radius:16px 16px 0 0;
-  background:linear-gradient(110deg,var(--pink) 0%,#ff8a1f 55%,var(--yellow) 100%);color:#fff}
-.head::after{content:'';position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.55) 45%,transparent 60%);translate:-120% 0;animation:shine 5s ease-in-out infinite}
-.brand{font:900 22px var(--font);letter-spacing:1px;text-transform:uppercase;text-shadow:2px 2px 0 var(--ink)}
-.kind{grid-column:1;font:900 12px var(--font);letter-spacing:2px;text-transform:uppercase;color:var(--ink)}
-.vehicle{grid-row:1 / span 2;grid-column:2;padding:4px 10px;font:900 13px var(--font);letter-spacing:1px;text-transform:uppercase;color:var(--ink);background:#fff;border:3px solid var(--ink);border-radius:10px;box-shadow:3px 3px 0 var(--ink);rotate:-4deg}
-.route{display:grid;grid-template-columns:auto 1fr auto;align-items:end;gap:10px;padding:0 16px}
-.route small,.passenger small,.details dt{display:block;font:900 11px var(--font);letter-spacing:1.5px;text-transform:uppercase;color:var(--mut)}
-.route b{font:900 26px var(--font);letter-spacing:1px;text-transform:uppercase}
+.head{position:relative;display:flex;flex-direction:column;gap:2px;padding:12px 18px 11px;overflow:hidden;border-bottom:4px solid var(--ink);border-radius:16px 16px 0 0;
+  background:linear-gradient(110deg,var(--pink) 0%,#ff8a1f 58%,var(--yellow) 100%);color:#fff}
+.head::after{content:'';position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.5) 45%,transparent 60%);translate:-120% 0;animation:shine 5s ease-in-out infinite}
+.brand{font:900 12px var(--font);letter-spacing:3px;text-transform:uppercase;color:var(--ink)}
+.title{font:900 25px/1.05 var(--font);letter-spacing:.8px;text-transform:uppercase;text-shadow:2px 2px 0 var(--ink)}
+.passenger small,.route small,.details dt{display:block;font:900 11px var(--font);letter-spacing:1.5px;text-transform:uppercase;color:var(--mut)}
+.passenger{position:relative;margin:0 12px;padding:9px 12px;border:3px dashed var(--ink);border-radius:14px;background:color-mix(in srgb,var(--sea) 14%,#fff)}
+.who{display:flex;align-items:center;gap:12px;margin-top:3px}
+.who strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:900 27px var(--font);letter-spacing:.5px}
+.tip{display:block;margin-top:3px;font-size:12px;color:var(--mut)}
+/* The route, in airport-style codes. */
+.route{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;padding:0 18px}
+.route b{display:block;font:900 34px/1 var(--font);letter-spacing:2px}
+.to{text-align:right}
 .to b{color:var(--land);text-shadow:2px 2px 0 var(--ink)}
-.path{height:14px;margin-bottom:10px;background:radial-gradient(circle,var(--ink) 2px,transparent 2.5px) 0 50%/12px 12px repeat-x;position:relative}
-.path::after{content:'➜';position:absolute;right:-4px;top:50%;translate:0 -55%;font:900 18px var(--font);color:var(--sea)}
+.path{position:relative;height:14px;background:radial-gradient(circle,var(--ink) 2px,transparent 2.5px) 0 50%/12px 12px repeat-x}
+.path::after{content:'➜';position:absolute;right:-4px;top:50%;translate:0 -56%;font:900 20px var(--font);color:var(--sea);text-shadow:1px 1px 0 var(--ink)}
 .worlds{display:flex;gap:6px;padding:0 16px}
-.world{flex:1;margin:0;padding:6px 4px;font:900 14px var(--font);letter-spacing:.5px;color:var(--ink);background:#fff;border:3px solid var(--ink);border-radius:10px;box-shadow:2px 2px 0 var(--ink);cursor:pointer}
+.world{flex:1;margin:0;padding:6px 4px;font:900 14px var(--font);letter-spacing:.5px;color:var(--ink);background:#fff;border:3px solid var(--ink);border-radius:10px;box-shadow:0 3px 0 var(--ink);cursor:pointer;transition:translate .1s}
 .world[data-world=gaia]{--tone:#2fbf5b}
 .world[data-world=ares]{--tone:#e5484d}
 .world[data-world=luna]{--tone:#8e4ec6}
 .world:hover{background:color-mix(in srgb,var(--tone) 22%,#fff)}
-.world[aria-checked=true]{background:var(--tone);color:#fff;text-shadow:1px 1px 0 var(--ink);translate:0 2px;box-shadow:0 0 0 var(--ink)}
-.passenger{position:relative;margin:0 12px;padding:10px 12px;border:3px dashed var(--ink);border-radius:14px;background:color-mix(in srgb,var(--sea) 14%,#fff)}
-.who{display:flex;align-items:center;gap:12px;margin-top:4px}
-.who strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:900 26px var(--font);letter-spacing:.5px}
-.tip{display:block;margin-top:4px;font-size:12px;color:var(--mut)}
-.details{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0;padding:0 16px}
-.details dd{margin:0;font:900 16px var(--font);letter-spacing:.5px;overflow-wrap:anywhere}
+.world[aria-checked=true]{background:var(--tone);color:#fff;text-shadow:1px 1px 0 var(--ink);translate:0 3px;box-shadow:0 0 0 var(--ink)}
+/* Flight details, three across, as on a real pass. */
+.details{display:grid;grid-template-columns:repeat(3,1fr);gap:6px 10px;margin:0;padding:0 18px}
+.details dd{margin:0;font:900 18px var(--font);letter-spacing:.5px;overflow-wrap:anywhere}
+.details [data-field=Seat] dd,.details [data-field=Gate] dd,.details [data-field=Helipad] dd,.details [data-field='Launch pad'] dd{color:var(--pink)}
 .actions{display:flex;flex-direction:column;gap:8px;padding:0 16px}
 .actions > button,.actions > label{width:100%;margin:0}
-/* Perforation and barcode: the tear-off stub. */
-.stub{position:relative;margin-top:4px;padding:12px 16px 0;border-top:3px dashed var(--ink)}
-.stub::before,.stub::after{content:'';position:absolute;top:-14px;width:24px;height:24px;border-radius:50%;background:var(--paper,#fff8e4);border:4px solid var(--ink)}
+/* Perforation, barcode and the stub's small print. */
+.stub{position:relative;display:flex;flex-direction:column;gap:4px;margin-top:2px;padding:12px 18px 0;border-top:3px dashed var(--ink)}
+.stub::before,.stub::after{content:'';position:absolute;top:-14px;width:24px;height:24px;border-radius:50%;background:#fffdf4;border:4px solid var(--ink)}
 .stub::before{left:-16px;clip-path:inset(0 0 0 50%)}
 .stub::after{right:-16px;clip-path:inset(0 50% 0 0)}
 .barcode{display:block;height:30px;background:repeating-linear-gradient(90deg,var(--ink) 0 3px,transparent 3px 5px,var(--ink) 5px 6px,transparent 6px 9px,var(--ink) 9px 13px,transparent 13px 15px)}
-@keyframes float{0%,100%{translate:0 0;rotate:1.2deg}50%{translate:0 -5px;rotate:.4deg}}
+.stubText{font:900 11px var(--font);letter-spacing:2px;color:var(--mut)}
+@keyframes float{0%,100%{translate:0 0;rotate:1deg}50%{translate:0 -5px;rotate:.3deg}}
 @keyframes shine{0%,70%{translate:-120% 0}100%{translate:120% 0}}
 @media (prefers-reduced-motion:reduce){.ticket,.head::after{animation:none}}
+.details [data-field=Mode]{grid-column:1 / -1}

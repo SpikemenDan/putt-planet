@@ -22,7 +22,7 @@ function Screens({ onCanvas, initialName, initialRoomCode, initialView }) {
     <div className={app.app}>
       <div className={app.netnotice} hidden={!webglUnavailable} role="status" data-ui="webgl-notice">{webglUnavailable ? MESSAGES.webglUnavailable : ''}</div>
       <Landing hidden={!screens.landing} initialName={initialName} initialRoomCode={initialRoomCode} initialView={initialView} />
-      <LoadingGate connecting={landing.connecting} failed={!!landing.error} menu={screens.landing} />
+      <LoadingGate connecting={landing.connecting} failed={!!landing.error} menu={screens.landing || screens.lobby} />
       <RoomLobby hidden={!screens.lobby} />
       <MapSelect hidden={!screens.voting} />
       <div className={app.netnotice} hidden={!screens.netNotice} role="alert">{screens.netNotice ? (screens.reconnecting ? MESSAGES.reconnecting : screens.connectionReason || MESSAGES.connectionLost) : ''}</div>

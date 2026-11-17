@@ -311,7 +311,7 @@ function fakeClock() {
     // Ready step: summary, name, colour, Play solo
     await click(choose());
     assert.equal(step(), 'ready');
-    assert.deepEqual(views.at(-1), { space: true, target: 'gaia' }, 'the ready step stays in space');
+    assert.deepEqual(views.at(-1), { space: false, target: 'gaia' }, 'the Solo lobby flies the helicopter through Gaia\'s air');
     assert.equal($('[data-ui=solo-summary]').textContent, 'Tournament · 5 maps on Gaia');
     assert.equal(doc.activeElement, first(), 'focus lands on the first field');
     assert.ok(button('Play solo'));
@@ -384,7 +384,7 @@ function fakeClock() {
     const tag = vehicle.querySelector('[data-ui=lobby-passengers] [role=listitem]');
     assert.equal(tag.textContent, 'Anayou', 'the ball carries a name tag');
     await act(async () => heli.emit([{ seat: 0, x: 120, y: 80, r: 12 }], { width: 400, height: 300 }));
-    assert.match(tag.style.transform, /translate\(120\.0px, 62\.0px\)/, 'the tag sits just above its ball');
+    assert.match(tag.style.transform, /translate\(120\.0px, 34\.0px\) translate\(-50%, -100%\)/, 'the tag sits in the lane above its ball');
     const badge = ticket.querySelector('[data-ui=my-color-badge]');
     assert.equal(badge.dataset.color, '4');
     await click(badge);
@@ -1007,14 +1007,15 @@ function fakeClock() {
     assert.deepEqual([...lobby.querySelectorAll('[data-ui=lobby-passengers] [role=listitem]')].map(b => b.textContent), ['Anayou'], 'the lobby vehicle holds my ball, tagged as me');
     assert.equal(lobby.querySelector('[data-ui=ticket-name]').textContent, 'Ana', 'my ticket names me');
     assert.equal(lobby.querySelector('[data-ui=party-code] strong').textContent, 'ABCD');
-    const select = lobby.querySelector('select');
-    const setMode = async v => { await act(async () => { select.value = v; select.dispatchEvent(new dom.window.Event('change', { bubbles: true })); }); };
+    const tile = v => lobby.querySelector(`[data-ui=mode-picker] [data-mode=${v}]`);
+    const chosen = () => lobby.querySelector('[data-ui=mode-picker] [aria-checked=true]').dataset.mode;
+    const setMode = async v => { await click(tile(v)); };
     await setMode('practice');
-    assert.equal(select.value, 'practice');
+    assert.equal(chosen(), 'practice');
     await t.send({ type: 'JOIN_ROOM', playerId: 'g1', name: 'Ben' });
     assert.equal(lobby.querySelector('p').textContent, 'Room ABCD · 2 players · You are the host');
-    assert.equal(select.value, 'standard', 'a second player resets a solo-only mode');
-    assert.deepEqual([...select.options].filter(o => o.disabled).map(o => o.value), ['practice', 'putt_practice']);
+    assert.equal(chosen(), 'standard', 'a second player resets a solo-only mode');
+    assert.deepEqual([...lobby.querySelectorAll('[data-ui=mode-picker] [data-mode]')].filter(b => b.disabled).map(b => b.dataset.mode), ['practice', 'putt_practice']);
     {
       const plane = [...lobby.querySelectorAll('[data-ui=lobby-passengers] [role=listitem]')];
       const players = t.session.getSnapshot().players;
@@ -1045,21 +1046,20 @@ function fakeClock() {
     const t = await setup();
     const lobby = t.within('[data-ui=room-lobby]');
     assert.equal(lobby.querySelector('[data-ui=no-powerups]'), null, 'no lobby toggle: rules are fixed when the party is created');
-    const modes = () => [...lobby.querySelectorAll('select option')].map(o => o.value);
+    const modes = () => [...lobby.querySelectorAll('[data-ui=mode-picker] [data-mode]')].map(b => b.dataset.mode);
     assert.ok(!modes().includes('pong'), 'one player: no Putt Pong');
     await t.send({ type: 'JOIN_ROOM', playerId: 'g1', name: 'Ben' });
     assert.ok(modes().includes('pong'), 'exactly two players: Putt Pong is offered');
-    const select = lobby.querySelector('select');
-    await act(async () => { select.value = 'pong'; select.dispatchEvent(new dom.window.Event('change', { bubbles: true })); });
+    await click(lobby.querySelector('[data-ui=mode-picker] [data-mode=pong]'));
     await t.send({ type: 'JOIN_ROOM', playerId: 'g2', name: 'Cy' });
     assert.ok(!modes().includes('pong'), 'three players: Putt Pong is gone');
-    assert.equal(select.value, 'standard', 'a Pong choice falls back to Standard');
+    assert.equal(lobby.querySelector('[data-ui=mode-picker] [aria-checked=true]').dataset.mode, 'standard', 'a Pong choice falls back to Standard');
     t.commands.length = 0;
     await click(button('Start Game'));
     assert.deepEqual(t.commands.map(c => c.event), [{ type: 'SET_MODE', mode: 'standard' }, { type: 'START_VOTING' }], 'Start never sends SET_POWERUPS');
     await t.teardown();
     const solo = await setup({ roomCode: '' });
-    assert.ok([...solo.within('[data-ui=room-lobby]').querySelectorAll('select option')].some(o => o.value === 'pong'), 'solo keeps Putt Pong as practice');
+    assert.ok([...solo.within('[data-ui=room-lobby]').querySelectorAll('[data-ui=mode-picker] [data-mode]')].some(b => b.dataset.mode === 'pong'), 'solo keeps Putt Pong as practice');
     await solo.teardown();
   });
 
@@ -1080,8 +1080,13 @@ function fakeClock() {
     const tags = () => [...lobby.querySelectorAll('[data-ui=lobby-passengers] [role=listitem]')];
     assert.equal(tags()[1].querySelector('span + span').textContent, 'Bartholomew-', 'a long name is cut to 12 characters');
     await act(async () => sc.emit([{ seat: 0, x: 100, y: 120, r: 10 }, { seat: 1, x: 160, y: 120, r: 10 }], { width: 600, height: 300 }));
-    assert.match(tags()[0].style.transform, /translate\(100\.0px, 104\.0px\) translate\(-50%, -100%\)/, 'seat 1: the tag sits above its ball');
-    assert.match(tags()[1].style.transform, /translate\(160\.0px, 164\.0px\) translate\(-50%, 0\)/, 'seat 2: the tag hangs below the vehicle');
+    assert.match(tags()[0].style.transform, /translate\(100\.0px, 76\.0px\) translate\(-50%, -100%\)/, 'seat 1: the tag sits in the lane above the balls');
+    assert.match(tags()[1].style.transform, /translate\(160\.0px, 186\.0px\) translate\(-50%, 0\)/, 'seat 2: the tag hangs in the lane below the vehicle');
+    const lines = [...lobby.querySelectorAll('[data-ui=lobby-vehicle] svg path')];
+    assert.equal(lines[0].getAttribute('d'), 'M100.0 76.0 L100.0 107.0', 'a leader line joins each tag to its ball');
+    const manifest = [...lobby.querySelectorAll('[data-ui=lobby-manifest] li')];
+    assert.equal(manifest.length, 8, 'the manifest lists every seat');
+    assert.deepEqual(manifest.slice(0, 3).map(li => li.textContent), ['01AnaHostYouBoarded', '02Bartholomew-Boarded', '03Open seat'], 'who is aboard, the host and me, then open seats');
     const ticket = lobby.querySelector('[data-ui=lobby-ticket]');
     const worlds = [...ticket.querySelectorAll('[data-ui=destination-pick] button')];
     assert.deepEqual(worlds.map(b => b.dataset.world), ['gaia', 'luna', 'ares'], 'the host can switch the destination on the ticket');
@@ -1092,7 +1097,8 @@ function fakeClock() {
     assert.equal(t.session.getSnapshot().destination, 'ares');
     assert.equal(sc.vehicle, 'rocket', 'Ares takes the rocket');
     assert.equal(ticket.querySelector('[data-ui=ticket-destination]').textContent, 'Ares');
-    assert.equal(ticket.querySelector('[data-ui=ticket-vehicle]').textContent, 'Rocket');
+    assert.equal(ticket.querySelector('[data-ui=ticket-title]').textContent, 'Rocket Boarding Pass');
+    assert.equal(ticket.querySelector('[data-ui=ticket-code]').textContent, 'ARS');
     assert.equal(lobby.querySelector('[data-ui=lobby-vehicle]').dataset.vehicle, 'rocket');
     await t.send({ type: 'SET_DESTINATION', playerId: 'g1', world: 'luna' });
     assert.equal(t.session.getSnapshot().destination, 'ares', 'a guest cannot switch it');
