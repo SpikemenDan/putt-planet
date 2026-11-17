@@ -133,6 +133,7 @@ const FLAT = { tee: [0, 0], hole: [10000, 10000], tiles: [[-20000, -20000, 40000
   const startMap0 = f => {
     f.send('SET_MODE', { mode: GameModes.STANDARD }); f.send('START_VOTING');
     for (const id of Object.keys(f.state().players)) f.send('CAST_VOTE', { mapIndex: 0 }, id);
+    for (const id of Object.keys(f.state().players)) f.send('ARRIVAL_READY', {}, id);
     f.clock.increment(2500);
   };
   assert.throws(() => open({ rules: { ...STD, shotPower: 7 } }), /Invalid rules/);
