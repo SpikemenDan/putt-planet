@@ -1,7 +1,7 @@
 import { WORLDS } from '../shared/worlds.js';
 import { NAME_LIMIT } from './commands.js';
 import { ColorBadge } from './BadgePicker.jsx';
-import { MenuIcon } from './MenuIcons.jsx';
+import { Voters } from './ModePicker.jsx';
 import styles from './LobbyTicket.module.css';
 
 /** The planets a ticket can name, in the destination carousel's order, with airport-style codes. */
@@ -41,11 +41,11 @@ function PassengerName({ name, onName }) {
 /**
  * The lobby ticket (owner, 2026-11-16, 2026-11-17): a bright boarding pass on the right of the Solo and party lobbies, laid out like a
  * real one: the vehicle's pass title, the passenger with their colour badge (click it to change colour: the same picker and palette
- * everywhere) and name (`onName`: click it to edit), the route in airport-style codes, the game mode (`mode`: a coloured strip), then
- * flight, gate and seat, the lobby's buttons (`children`) and, on the stub, Back (`onBack`). In a party the host switches the
- * destination on the pass (`onDestination`); everyone else sees it change. Names render as React text only, cut to NAME_LIMIT.
+ * everywhere) and name (`onName`: click it to edit), the route in airport-style codes, then flight, gate and seat, the lobby's buttons (`children`: Play or Start Game) and, on the stub, Back (`onBack`). In a party everyone
+ * votes for the destination on the pass (`onDestination`, `worldVoters`: each voter's ball sits on their planet; `myWorld` is checked);
+ * the route shows the planet the vote leads with. Names render as React text only, cut to NAME_LIMIT.
  */
-export function LobbyTicket({ vehicle = 'plane', name = '', onName = null, color = null, taken = {}, onPick, solo = false, destination = 'gaia', onDestination = null, flight = 'PP 1000', gate = 'A1', seat = 1, mode = null, onBack = null, backLabel = 'Back', hidden = false, children }) {
+export function LobbyTicket({ vehicle = 'plane', name = '', onName = null, color = null, taken = {}, onPick, solo = false, destination = 'gaia', onDestination = null, worldVoters = null, myWorld = null, flight = 'PP 1000', gate = 'A1', seat = 1, onBack = null, backLabel = 'Back', hidden = false, children }) {
   const planet = WORLDS.find(w => w.id === destination)?.name ?? 'Gaia';
   const pass = PASS[vehicle] ?? PASS.plane;
   const fields = [['Flight', flight], [pass.gate, gate], ['Seat', String(seat).padStart(2, '0')]];
@@ -68,18 +68,14 @@ export function LobbyTicket({ vehicle = 'plane', name = '', onName = null, color
         <div className={styles.to}><b data-ui="ticket-code">{CODES[destination] ?? 'GAI'}</b><small data-ui="ticket-destination">{planet}</small></div>
       </div>
       {onDestination && (
-        <div className={styles.worlds} role="radiogroup" aria-label="Destination" data-ui="destination-pick">
-          {TICKET_WORLDS.map(id => (
-            <button key={id} type="button" role="radio" aria-checked={id === destination} data-world={id} className={styles.world}
-              onClick={() => { if (id !== destination) onDestination(id); }}>{WORLDS.find(w => w.id === id).name}</button>
-          ))}
-        </div>
-      )}
-      {mode && (
-        <div className={styles.mode} style={{ '--tone': mode.tone }} data-ui="ticket-mode">
-          <MenuIcon name={mode.icon} className={styles.modeIcon} />
-          <span className={styles.modeText}><small>Game mode</small><b>{mode.title}</b></span>
-          {mode.sub && <span className={styles.modeSub}>{mode.sub}</span>}
+        <div className={styles.worlds} role="radiogroup" aria-label="Destination" data-ui="destination-pick" data-voting={worldVoters ? '' : undefined}>
+          {TICKET_WORLDS.map(id => {
+            const mine = worldVoters ? id === myWorld : id === destination;
+            return (
+              <button key={id} type="button" role="radio" aria-checked={mine} data-world={id} data-leading={(worldVoters && id === destination) || undefined} className={styles.world}
+                onClick={() => { if (!mine) onDestination(id); }}>{WORLDS.find(w => w.id === id).name}{worldVoters && <Voters list={worldVoters[id]} />}</button>
+            );
+          })}
         </div>
       )}
       <dl className={styles.details}>

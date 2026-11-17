@@ -16,8 +16,20 @@
 /* The Tournament tile: its lengths are small round chips. */
 .group{cursor:default}
 .chips{display:flex;gap:5px;pointer-events:auto}
-.chip{display:grid;place-items:center;width:28px;height:24px;margin:0;padding:0;font:900 14px var(--font);color:var(--ink);text-shadow:none;cursor:pointer;
+.chip{display:grid;place-items:center;min-width:28px;height:24px;margin:0;padding:0 7px;font:900 14px var(--font);color:var(--ink);text-shadow:none;cursor:pointer;
   background:#fff;border:2px solid var(--ink);border-radius:999px;box-shadow:0 2px 0 var(--ink);transition:translate .1s,background .15s}
 .chip:hover{background:color-mix(in srgb,var(--tone) 35%,#fff)}
 .chip[aria-checked=true]{background:var(--yellow);translate:0 2px;box-shadow:0 0 0 var(--ink)}
-@media (prefers-reduced-motion:reduce){.tile,.chip{transition:none}}
+/* Votes (party, owner 2026-11-17): each voter's ball sits in the corner of their choice; the choice the vote leads with wears a star. */
+.chip{position:relative}
+.voters{position:absolute;top:-12px;right:-8px;display:flex;flex-direction:row-reverse;pointer-events:none}
+.voter{width:20px;height:20px;margin-left:-7px;border-radius:50%;border:2px solid var(--ink);box-shadow:0 2px 0 var(--ink);animation:hop .35s cubic-bezier(.2,1.6,.4,1) both;
+  background:radial-gradient(circle at 34% 30%,rgba(255,255,255,.85) 0 16%,transparent 17%),var(--ball)}
+.mine{box-shadow:0 0 0 2px #fff,0 2px 0 3px var(--ink)}
+.chip .voters{top:auto;bottom:-11px;right:50%;translate:50% 0}
+.chip .voter{width:14px;height:14px;margin-left:-5px;border-width:2px;box-shadow:none}
+.picker[data-voting] .tile::after{display:none}
+.picker[data-voting] .tile[data-leading]::before,.picker[data-voting] .group[data-leading]::before{content:'★';position:absolute;top:-12px;left:-10px;display:grid;place-items:center;width:24px;height:24px;
+  font:900 14px/1 var(--font);color:var(--ink);background:var(--yellow);border:3px solid var(--ink);border-radius:50%;animation:hop .35s cubic-bezier(.2,1.6,.4,1) both}
+@keyframes hop{from{scale:0;translate:0 6px}to{scale:1;translate:0 0}}
+@media (prefers-reduced-motion:reduce){.tile,.chip{transition:none}.voter,.tile::before{animation:none}}

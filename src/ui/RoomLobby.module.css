@@ -12,8 +12,8 @@
 .status{margin:8px 0 0;padding:5px 12px;font-size:14px;font-weight:800;line-height:1.25;color:var(--ink);background:#fff;border:3px solid var(--ink);border-radius:12px}
 .status:empty{display:none}
 /* The host's bar: the mode tiles and Start Game, all on one line. */
-.controls{display:flex;align-items:center;gap:14px;padding:12px 12px 14px 14px;background:linear-gradient(100deg,#fffdf4,#fff3c4);border:4px solid var(--ink);border-radius:22px;box-shadow:6px 6px 0 var(--ink)}
-.go{flex:none;display:flex;align-items:center;gap:10px;margin:0;padding:12px 20px;font:400 26px/1 var(--font);letter-spacing:1px;text-transform:none;white-space:nowrap;color:#fff;text-shadow:2px 2px 0 var(--ink);
+.controls{display:flex;align-items:center;gap:14px;padding:14px 14px 16px 16px;background:linear-gradient(100deg,#fffdf4,#fff3c4);border:4px solid var(--ink);border-radius:22px;box-shadow:6px 6px 0 var(--ink)}
+.go{flex:none;display:flex;align-items:center;justify-content:center;gap:10px;margin:0;padding:12px 20px;font:400 26px/1 var(--font);letter-spacing:1px;text-transform:none;white-space:nowrap;color:#fff;text-shadow:2px 2px 0 var(--ink);
   background:linear-gradient(100deg,var(--pink),#ff8a1f);border:4px solid var(--ink);border-radius:16px;box-shadow:0 6px 0 var(--ink);cursor:pointer;transition:translate .1s,box-shadow .1s,filter .15s;animation:nudge 2.4s ease-in-out infinite}
 .go::after{content:'';border-left:14px solid #fff;border-top:10px solid transparent;border-bottom:10px solid transparent;filter:drop-shadow(2px 2px 0 var(--ink))}
 .go:hover{translate:0 -2px;box-shadow:0 8px 0 var(--ink);filter:saturate(1.15) brightness(1.05)}

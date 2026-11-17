@@ -33,20 +33,13 @@
 .path{position:relative;height:14px;background:radial-gradient(circle,var(--ink) 2px,transparent 2.5px) 0 50%/12px 12px repeat-x}
 .path::after{content:'➜';position:absolute;right:-4px;top:50%;translate:0 -56%;font:900 20px var(--font);color:var(--sea);text-shadow:1px 1px 0 var(--ink)}
 .worlds{display:flex;gap:6px;padding:0 16px}
-.world{flex:1;margin:0;padding:6px 4px;font:900 14px var(--font);letter-spacing:.5px;color:var(--ink);background:#fff;border:3px solid var(--ink);border-radius:10px;box-shadow:0 3px 0 var(--ink);cursor:pointer;transition:translate .1s}
+.world{position:relative;flex:1;margin:0;padding:6px 4px;font:900 14px var(--font);letter-spacing:.5px;color:var(--ink);background:#fff;border:3px solid var(--ink);border-radius:10px;box-shadow:0 3px 0 var(--ink);cursor:pointer;transition:translate .1s}
 .world[data-world=gaia]{--tone:#2fbf5b}
 .world[data-world=ares]{--tone:#e5484d}
 .world[data-world=luna]{--tone:#8e4ec6}
 .world:hover{background:color-mix(in srgb,var(--tone) 22%,#fff)}
+.worlds[data-voting] .world[data-leading]{outline:3px dashed var(--tone);outline-offset:2px}
 .world[aria-checked=true]{background:var(--tone);color:#fff;text-shadow:1px 1px 0 var(--ink);translate:0 3px;box-shadow:0 0 0 var(--ink)}
-/* The game mode (Solo): one bright strip in the mode's colour, with its icon, name and a length chip. */
-.mode{display:flex;align-items:center;gap:10px;margin:0 12px;padding:7px 10px;border:3px solid var(--ink);border-radius:14px;box-shadow:0 4px 0 var(--ink);
-  background:linear-gradient(100deg,var(--tone),color-mix(in srgb,var(--tone) 55%,#fff))}
-.modeIcon{flex:none;width:34px;height:34px;padding:3px;background:#fff;border:3px solid var(--ink);border-radius:50%}
-.modeText{display:flex;flex:1;flex-direction:column;min-width:0;line-height:1.05}
-.modeText small{font:900 10px var(--font);letter-spacing:1.5px;text-transform:uppercase;color:var(--ink);opacity:.75}
-.modeText b{font:900 21px var(--font);letter-spacing:.5px;color:#fff;text-shadow:2px 2px 0 var(--ink)}
-.modeSub{flex:none;padding:3px 9px;font:900 13px var(--font);letter-spacing:.5px;color:var(--ink);background:#fff;border:2px solid var(--ink);border-radius:999px}
 /* Flight details, three across, as on a real pass. */
 .details{display:grid;grid-template-columns:repeat(3,1fr);gap:6px 10px;margin:0;padding:0 18px}
 .details dd{margin:0;font:900 18px var(--font);letter-spacing:.5px;overflow-wrap:anywhere}

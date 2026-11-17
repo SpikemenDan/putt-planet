@@ -13,8 +13,8 @@ import { hazardVariant, isPrecipitationItem, itemName, precipitationVariant } fr
 import { STARTER_COURSE_INDICES } from '../shared/constants.js';
 import { CUSTOM_RULES, changedRules, ruleValueText, seriesMaps, validRules } from '../shared/rules.js';
 import { PLAYER_COLOR_COUNT, isColorIndex } from '../shared/colors.js';
-import { GameModes, SessionPhases } from '../shared/session.js';
-import { courseWorld, isWorldId } from '../shared/worlds.js';
+import { GameModes, lobbyWinner, SessionPhases } from '../shared/session.js';
+import { courseWorld, isWorldId, WORLD_IDS } from '../shared/worlds.js';
 import { MODE_OPTIONS, VOTE_SECONDS } from './commands.js';
 
 /** HUD names by power-up id, from the gameplay catalog. */
@@ -117,12 +117,27 @@ export function lobbyView(room, local, now, courses) {
     const course = courses[room.mapIndex];
     status = (tie ? 'Vote tied! Random pick: ' : '') + course.name + (course.putts.length > 1 ? ' · putt ' + ((room.puttIndex | 0) + 1) + '/' + course.putts.length : '') + ' starts in ' + Math.ceil((room.roundStartTime - now) / 1000) + '…';
   } else {
-    status = local.isHost ? 'Pick a game mode, then start to open map voting.' : (local.serverOwned ? 'The room controller will pick the mode and start map voting.' : 'The host will pick the mode and start map voting.');
+    status = !local.roomCode ? 'Pick a game mode, then start to open map voting.' : local.isHost ? 'Everyone votes for the mode and the planet; you start the game.' : (local.serverOwned ? 'Vote for the mode and the planet; the room controller starts the game.' : 'Vote for the mode and the planet; the host starts the game.');
     if (room.powerups === false) status += ' Power-ups are off.';
     // The room's Custom rules (VIS-U), fixed when it was created; power-ups are already reported above.
     const custom = validRules(room.rules) ? changedRules(room.rules).filter(id => id !== 'powerups') : [];
     if (custom.length) status += ' Custom rules: ' + custom.map(id => CUSTOM_RULES.find(r => r.id === id).label + ' ' + ruleValueText(id, room.rules[id])).join(', ') + '.';
   }
+  // Lobby votes (owner, 2026-11-17): in a party everyone votes for the mode and the planet; each option shows its voters' balls.
+  const modes = MODE_OPTIONS.filter(o => o.value !== GameModes.PONG || !local.roomCode || n === 2)
+    .map(o => ({ value: o.value, label: o.label, disabled: o.soloOnly && n > 1 }));
+  const ballots = room.lobbyVotes && typeof room.lobbyVotes === 'object' ? room.lobbyVotes : {};
+  const hostId = room.controllerId ?? room.hostId;
+  const voters = key => {
+    const out = {};
+    for (const p of players) {
+      const pick = ballots[p.id]?.[key];
+      if (typeof pick === 'string') (out[pick] ??= []).push({ id: p.id, name: p.name, color: colorOf(room, local, p.id), you: p.id === local.id });
+    }
+    return out;
+  };
+  const open = modes.filter(o => !o.disabled).map(o => o.value);
+  const ids = players.map(p => p.id);
   return {
     label: roomLabel(room, local),
     // The lobby marks you with a YOU chip and the room's host (or controller) on the manifest.
@@ -139,8 +154,13 @@ export function lobbyView(room, local, now, courses) {
     showStart: !!local.isHost && room.phase === SessionPhases.LOBBY,
     showInvite: !!local.roomCode,
     // Putt Pong is 1v1: a party offers it only with exactly two players (owner, 2026-11-11); solo keeps it as practice.
-    modes: MODE_OPTIONS.filter(o => o.value !== GameModes.PONG || !local.roomCode || n === 2)
-      .map(o => ({ value: o.value, label: o.label, disabled: o.soloOnly && n > 1 })),
+    modes,
+    voting: !!local.roomCode && room.phase === SessionPhases.LOBBY,
+    votes: { mode: voters('mode'), world: voters('world') },
+    myVote: { mode: ballots[local.id]?.mode ?? null, world: ballots[local.id]?.world ?? null },
+    // The mode the vote has chosen so far (most votes, a tie to the host's pick); Standard until anyone votes.
+    leadingMode: lobbyWinner(ballots, 'mode', ids, hostId, open, open.includes(GameModes.STANDARD) ? GameModes.STANDARD : open[0] ?? GameModes.STANDARD),
+    leadingWorld: lobbyWinner(ballots, 'world', ids, hostId, WORLD_IDS, isWorldId(room.destination) ? room.destination : 'gaia'),
     multiplayer: n > 1,
     status,
     tie,

@@ -20,7 +20,9 @@ import { isWorldId } from '../../shared/worlds.js';
 // 11: MAP_COUNT is 40 with the Ares and Luna maps (VIS-G #165).
 // 12: SET_DESTINATION (controller, lobby) and an optional `destination` in the session context: the party's planet, shown as the
 //     lobby's plane (Gaia) or rocket (Ares, Luna) (owner, 2026-11-16).
-export const SERVER_ROOM_VERSION = 12;
+// 13: LOBBY_VOTE (any member, lobby: { mode, world }, each a value or null) and an optional `lobbyVotes` in the session context: every
+//     player votes for the mode and the planet; the planet follows the vote (owner, 2026-11-17).
+export const SERVER_ROOM_VERSION = 13;
 /** Hello intents (VIS-M3): only the host's Create makes a room; a Join never does. */
 export const HELLO_INTENTS = Object.freeze(['create', 'join']);
 /** Socket path that asks the Worker for a new room under a code it generates (VIS-M3). Never a valid room code (`_`). */
@@ -87,7 +89,7 @@ export function validServerCommand(c) {
     const { type, ...command } = c;
     return allowed(c, ['type', 'kind', 'direction', 'targetId', 'x', 'y']) && validGlobalHazardCommand(command);
   }
-  const fields = { LEAVE_ROOM: [], SET_COLOR: ['color'], SET_MODE: ['mode'], SET_POWERUPS: ['enabled'], SET_DESTINATION: ['world'], START_VOTING: [], CAST_VOTE: ['mapIndex'], START_ROUND: ['puttIndex'],
+  const fields = { LEAVE_ROOM: [], SET_COLOR: ['color'], SET_MODE: ['mode'], SET_POWERUPS: ['enabled'], SET_DESTINATION: ['world'], LOBBY_VOTE: ['mode', 'world'], START_VOTING: [], CAST_VOTE: ['mapIndex'], START_ROUND: ['puttIndex'],
     RETURN_TO_LOBBY: [], PRACTICE_STEP: ['step'], PRACTICE_MAPS: [], UPDATE_STROKES: ['strokes'], REPORT_SCORE: ['strokes', 'timedOut'],
     DEPLOY_OBJECT: ['kind', 'x', 'y'], DEPLOY_HIT: ['id'], PONG_SHOT: ['hit', 'cupId', 'timedOut'] }[c.type];
   if (!Array.isArray(fields) || !exact(c, ['type', ...fields])) return false;
@@ -96,6 +98,7 @@ export function validServerCommand(c) {
     case 'SET_MODE': return modes.includes(c.mode);
     case 'SET_POWERUPS': return typeof c.enabled === 'boolean';
     case 'SET_DESTINATION': return isWorldId(c.world);
+    case 'LOBBY_VOTE': return nullable(c.mode, m => modes.includes(m)) && nullable(c.world, isWorldId) && (c.mode !== null || c.world !== null);
     case 'CAST_VOTE': return STARTER_COURSE_INDICES.includes(c.mapIndex);
     case 'START_ROUND': return index(c.puttIndex, 6);
     case 'PRACTICE_STEP': return [-1, 0, 1].includes(c.step);
@@ -144,6 +147,12 @@ export function validSessionContext(c) {
   const hasDestination = object(c) && Object.hasOwn(c, 'destination'); // optional: checkpoints from before version 12 have none
   const extraKeys = [];
   if (hasDestination) { if (!isWorldId(c.destination)) return false; extraKeys.push('destination'); }
+  const hasLobbyVotes = object(c) && Object.hasOwn(c, 'lobbyVotes'); // optional: from version 13
+  if (hasLobbyVotes) {
+    if (!object(c.lobbyVotes) || Object.keys(c.lobbyVotes).length > MAX_PLAYERS || !Object.entries(c.lobbyVotes).every(([id, v]) => validRoomId(id) && object(v) && allowed(v, ['mode', 'world'])
+      && (v.mode === undefined || modes.includes(v.mode)) && (v.world === undefined || isWorldId(v.world)))) return false;
+    extraKeys.push('lobbyVotes');
+  }
   if (hasPong) extraKeys.push('pong');
   if (hasTie) extraKeys.push('tie');
   if (hasPong) {

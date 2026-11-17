@@ -1,21 +1,23 @@
-/* Passenger manifest (owner, 2026-11-16): a departures board in the comic style. Dark board, split-flap seat numbers, each row edged
-   in its player's ball colour; rows flip in one after another. */
-.board{width:100%;max-width:340px;padding:12px;color:#fff;background:linear-gradient(#211a4a,#15102f);border:4px solid var(--ink);border-radius:18px;box-shadow:6px 6px 0 var(--ink);rotate:-.8deg}
-.head{display:flex;flex-direction:column;gap:2px;margin-bottom:8px;padding:0 4px}
-.head b{font:900 18px var(--font);letter-spacing:2px;text-transform:uppercase;color:var(--yellow);text-shadow:2px 2px 0 var(--ink)}
-.head span{font:900 11px var(--font);letter-spacing:2px;text-transform:uppercase;color:#a99ee0}
-.rows{display:flex;flex-direction:column;gap:5px;margin:0;padding:0;list-style:none}
-.row{--ball:#6d63a8;display:flex;align-items:center;gap:8px;min-height:34px;padding:3px 8px 3px 3px;background:#2d2563;border:2px solid #0b0820;border-left:6px solid var(--ball);border-radius:9px;
-  transform-origin:50% 0;animation:flip .5s cubic-bezier(.3,1.5,.5,1) both;animation-delay:var(--delay)}
-.seat{display:grid;place-items:center;width:30px;height:26px;font:900 15px var(--font);color:var(--yellow);background:#0b0820;border-radius:5px;
-  background-image:linear-gradient(transparent 48%,#2d2563 48% 52%,transparent 52%)} /* the split-flap seam */
-.ball{flex:none;width:22px;height:22px;border-radius:50%;border:2px solid var(--ink);background:radial-gradient(circle at 34% 30%,rgba(255,255,255,.85) 0 14%,transparent 15%),var(--ball)}
-.name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:900 16px var(--font);letter-spacing:.5px}
-.host,.you,.status{flex:none;padding:1px 6px;font:900 10px var(--font);letter-spacing:1px;text-transform:uppercase;border-radius:5px;color:var(--ink)}
+/* Passenger manifest (owner, 2026-11-16, restyled 2026-11-17): a comic paper card in the style of the boarding pass. A bright header band,
+   then one white row per seat edged in the player's ball colour, popping in one after another; open seats are dashed outlines. */
+.board{width:100%;max-width:340px;padding:0 0 12px;overflow:hidden;color:var(--ink);background:#fffdf4;border:4px solid var(--ink);border-radius:20px;box-shadow:7px 7px 0 var(--ink);rotate:-1deg}
+.head{display:flex;flex-direction:column;gap:2px;margin-bottom:10px;padding:10px 16px 9px;border-bottom:4px solid var(--ink);background:linear-gradient(110deg,#27c8ff 0%,#8e4ec6 60%,var(--pink) 100%)}
+.head b{font:900 21px/1.05 var(--font);letter-spacing:.8px;text-transform:uppercase;color:#fff;text-shadow:2px 2px 0 var(--ink)}
+.head span{font:900 11px var(--font);letter-spacing:1.5px;text-transform:uppercase;color:var(--ink);opacity:.8}
+.rows{display:flex;flex-direction:column;gap:6px;margin:0;padding:0 12px;list-style:none}
+.row{--ball:#cfc8ea;display:flex;align-items:center;gap:8px;min-height:34px;padding:3px 8px 3px 4px;background:#fff;border:3px solid var(--ink);border-left:8px solid var(--ball);border-radius:12px;box-shadow:0 3px 0 var(--ink);
+  animation:pop .45s cubic-bezier(.2,1.5,.4,1) both;animation-delay:var(--delay)}
+.seat{flex:none;display:grid;place-items:center;width:28px;height:24px;font:900 14px var(--font);color:var(--ink);background:var(--yellow);border:2px solid var(--ink);border-radius:8px}
+.ball{flex:none;width:22px;height:22px;border-radius:50%;border:2px solid var(--ink);background:radial-gradient(circle at 34% 30%,rgba(255,255,255,.85) 0 14%,transparent 15%),radial-gradient(circle at 60% 70%,rgba(0,0,0,.2),transparent 60%),var(--ball)}
+.name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:900 16px var(--font);letter-spacing:.4px}
+.host,.you{flex:none;padding:1px 7px;font:900 10px var(--font);letter-spacing:1px;text-transform:uppercase;border:2px solid var(--ink);border-radius:999px;color:var(--ink)}
 .host{background:var(--yellow)}
-.you{background:var(--pink);color:#fff}
-.status{background:#2fbf5b;color:#fff}
-.open{opacity:.55;border-left-color:#4a4280}
-.open .name{font-style:italic;color:#a99ee0;text-transform:uppercase;font-size:13px;letter-spacing:2px}
-@keyframes flip{from{opacity:0;transform:rotateX(-90deg)}to{opacity:1;transform:none}}
+.you{background:var(--pink);color:#fff;text-shadow:1px 1px 0 var(--ink)}
+/* The boarded stamp: a green check in a circle. */
+.status{flex:none;width:22px;height:22px;border-radius:50%;border:2px solid var(--ink);rotate:-8deg;
+  background:#2fbf5b url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 12.5l4 4 8-9' fill='none' stroke='white' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/16px no-repeat}
+.open{background:transparent;border:3px dashed color-mix(in srgb,var(--ink) 35%,transparent);box-shadow:none}
+.open .seat{background:#f1ecdc;border-color:color-mix(in srgb,var(--ink) 35%,transparent);color:var(--mut)}
+.open .name{font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:var(--mut)}
+@keyframes pop{from{opacity:0;scale:.85;translate:-12px 0}to{opacity:1;scale:1;translate:0 0}}
 @media (prefers-reduced-motion:reduce){.row{animation:none}}

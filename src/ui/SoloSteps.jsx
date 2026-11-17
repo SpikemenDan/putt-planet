@@ -10,7 +10,8 @@ import { LobbyVehicle } from './LobbyVehicle.jsx';
 import solo from './SoloLobby.module.css';
 import menu from './Landing.module.css';
 import { MenuIcon } from './MenuIcons.jsx';
-import { MODE_LOOK } from './ModePicker.jsx';
+import { ModePicker } from './ModePicker.jsx';
+import room from './RoomLobby.module.css';
 
 /** Colour and icon of each Solo choice (owner, 2026-11-14). Presentation only. */
 const TONES = Object.freeze({
@@ -38,8 +39,8 @@ export const SOLO_MODES = Object.freeze({
 
 const STEPS = ['mode', 'world', 'ready'];
 
-/** How the pass shows a Solo mode: the party tile's colour and icon, in Solo's words (Casual, practice Putt Pong). */
-const soloLook = mode => ({ ...MODE_LOOK[mode], ...(mode === GameModes.STANDARD && { title: 'Casual' }), ...(mode === GameModes.PONG && { sub: 'practice' }) });
+/** The Solo lobby's mode bar (owner, 2026-11-17): every Solo mode, changeable right up to Play. */
+const SOLO_MODE_OPTIONS = Object.freeze(Object.entries(SOLO_MODES).map(([value, label]) => ({ value, label })));
 
 /** Arrow order in the destination view (owner, 2026-11-12): left goes Gaia → Luna → Ares → Gaia, right goes back the other way. */
 export const WORLD_ORDER = Object.freeze(['gaia', 'luna', 'ares']);
@@ -49,7 +50,7 @@ const WORLD_BLURB = Object.freeze({ gaia: 'Home: six regions of courses', luna: 
  * Solo, one question per screen (owner, 2026-11-12, layout A): how to play (Casual, Tournament and its length, or the
  * smaller Practice button), then the destination, then the Solo lobby (owner, 2026-11-16, 2026-11-17): full screen, a 3D helicopter
  * carrying the player's ball, and on the right a boarding pass with their name (edited on the pass), the colour badge that opens the
- * party lobby's colour picker, the mode, the flight, Play Solo and Back. The menu card steps away for it. Play opens the solo room and
+ * party lobby's colour picker, the flight, Play Solo and Back; along the bottom, the same mode bar as the party lobby. The menu card steps away for it. Play opens the solo room and
  * goes straight to the level select with the chosen mode. Back (or Escape) steps back; from the first step it leaves Solo. `colorField` is no longer shown here (the ticket's badge replaces it);
  * it stays accepted so Landing.jsx needs no change.
  */
@@ -157,7 +158,8 @@ export function SoloSteps({ name, onName, colorField, connecting, send, onExit, 
           if (!view) return null;
           const box = sel => view.document.querySelector('[data-ui=solo-lobby] ' + sel)?.getBoundingClientRect();
           const title = box('[data-ui=solo-title]'), pass = box('[data-ui=lobby-ticket]');
-          return { left: 24, right: pass ? view.innerWidth - pass.left + 16 : 0, top: title ? title.bottom + 8 : 8, bottom: 8 };
+          const bar = box('[data-ui=solo-modes]');
+          return { left: 24, right: pass ? view.innerWidth - pass.left + 16 : 0, top: title ? title.bottom + 8 : 8, bottom: bar ? view.innerHeight - bar.top + 8 : 8 };
         };
         const lobby = (
           <div data-ui="solo-lobby" onKeyDown={e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); back(); } }}>
@@ -168,9 +170,14 @@ export function SoloSteps({ name, onName, colorField, connecting, send, onExit, 
             </div>
             <div className={solo.pass}>
               <LobbyTicket vehicle="helicopter" solo name={name} onName={onName} color={color} onPick={c => send(UiCommands.SET_COLOR, { color: c })} destination={world}
-                flight={flight} gate={gate} seat={1} mode={soloLook(mode)} onBack={back}>
+                flight={flight} gate={gate} seat={1} onBack={back}>
                 <button type="button" className={solo.go} disabled={connecting} onClick={() => send(UiCommands.PLAY_SOLO, { name, mode, world })} data-ui="solo-play">Play Solo</button>
               </LobbyTicket>
+            </div>
+            <div className={solo.dock} data-ui="solo-modes">
+              <div className={room.controls}>
+                <ModePicker modes={SOLO_MODE_OPTIONS} value={mode} onChange={setMode} pongIsPractice names={{ [GameModes.STANDARD]: 'Casual' }} />
+              </div>
             </div>
           </div>
         );

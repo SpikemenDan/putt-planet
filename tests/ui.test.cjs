@@ -378,7 +378,13 @@ function fakeClock() {
     assert.equal(ticket.querySelector('[data-ui=ticket-destination]').textContent, 'Gaia');
     assert.equal(ticket.querySelector('[data-ui=destination-pick]'), null, 'Solo chose its planet already');
     assert.deepEqual([...ticket.querySelectorAll('dt')].map(d => d.textContent), ['Flight', 'Helipad', 'Seat'], 'flight, helipad and seat only');
-    assert.equal(ticket.querySelector('[data-ui=ticket-mode]').textContent, 'Game modeCasual1 map', 'the mode strip');
+    const bar = stage.querySelector('[data-ui=solo-modes] [data-ui=mode-picker]');
+    assert.deepEqual([...bar.querySelectorAll('[data-mode]')].map(b => b.dataset.mode), ['standard', 'tournament_3', 'tournament_5', 'tournament_7', 'practice', 'putt_practice', 'pong'], 'the mode bar has every Solo mode');
+    assert.equal(bar.querySelector('[aria-checked=true]').dataset.mode, 'standard', 'the mode chosen in the steps');
+    assert.equal(bar.querySelector('[data-mode=standard] span span').textContent, 'Casual');
+    await click(bar.querySelector('[data-mode=tournament_5]'));
+    assert.equal($('[data-ui=solo-summary]').textContent, 'Tournament · 5 maps on Gaia', 'the bar changes the mode');
+    await click(bar.querySelector('[data-mode=standard]'));
     assert.doesNotMatch(ticket.textContent, /Tap your|Esc closes/, 'no how-to text on the pass');
     assert.equal(ticket.querySelector('[data-ui=menu-back]').textContent, 'Back', 'Back is on the pass');
     assert.equal($$('[data-ui=color-picker]').length, 0, 'no inline palette: the badge opens it');
@@ -1005,7 +1011,7 @@ function fakeClock() {
     await t.teardown();
   });
 
-  await scenario('lobby: roster, host-only controls, solo-only modes disable for two players, Start sends SET_MODE then START_VOTING', async () => {
+  await scenario('lobby (owner, 2026-11-17): everyone votes for the mode with the tiles; voters show in the corner; the host starts the leading mode (a tie goes to the host); solo-only modes leave with a second player', async () => {
     const t = await setup();
     const lobby = t.within('[data-ui=room-lobby]');
     assert.ok(shown(lobby));
@@ -1014,34 +1020,49 @@ function fakeClock() {
     assert.equal(lobby.querySelector('[data-ui=ticket-name]').textContent, 'Ana', 'my ticket names me');
     assert.equal(lobby.querySelector('[data-ui=party-code] strong').textContent, 'ABCD');
     const tile = v => lobby.querySelector(`[data-ui=mode-picker] [data-mode=${v}]`);
-    const chosen = () => lobby.querySelector('[data-ui=mode-picker] [aria-checked=true]').dataset.mode;
-    const setMode = async v => { await click(tile(v)); };
-    await setMode('practice');
+    const chosen = () => lobby.querySelector('[data-ui=mode-picker] [aria-checked=true]')?.dataset.mode ?? null;
+    const leading = () => lobby.querySelector('[data-ui=mode-picker] [data-mode][data-leading]')?.dataset.mode;
+    const voters = v => [...tile(v).querySelectorAll('[data-ui=voters] [data-color]')].map(b => Number(b.dataset.color));
+    assert.equal(chosen(), null, 'no vote yet');
+    assert.equal(leading(), 'standard', 'with no votes the vote leads with Standard');
+    t.commands.length = 0;
+    await click(tile('practice'));
+    assert.deepEqual(t.commands, [{ type: 'session', event: { type: 'LOBBY_VOTE', mode: 'practice', world: null } }], 'a tile casts my vote');
+    await t.send({ type: 'LOBBY_VOTE', playerId: 'host', mode: 'practice', world: null });
     assert.equal(chosen(), 'practice');
+    assert.deepEqual(voters('practice'), [t.session.getSnapshot().players.host.color], 'my ball sits in the corner of my choice');
     await t.send({ type: 'JOIN_ROOM', playerId: 'g1', name: 'Ben' });
     assert.equal(lobby.querySelector('p').textContent, 'Room ABCD · 2 players · You are the host');
-    assert.equal(chosen(), 'standard', 'a second player resets a solo-only mode');
     assert.deepEqual([...lobby.querySelectorAll('[data-ui=mode-picker] [data-mode]')].map(b => b.dataset.mode).filter(m => m.includes('practice')), [], 'solo-only practice leaves the tiles once a friend boards');
+    assert.equal(leading(), 'standard', 'a practice vote no longer counts');
     {
       const plane = [...lobby.querySelectorAll('[data-ui=lobby-passengers] [role=listitem]')];
       const players = t.session.getSnapshot().players;
       assert.deepEqual(plane.map(b => [b.textContent, Number(b.dataset.color), b.dataset.side]), [['Anayou', players.host.color, 'top'], ['Ben', players.g1.color, 'bottom']], 'both balls ride in their own colours; tags alternate top and bottom');
     }
     assert.ok(button('Copy invite'));
-    await setMode('tournament_3');
+    await t.send({ type: 'LOBBY_VOTE', playerId: 'g1', mode: 'tournament_5', world: null });
+    assert.equal(leading(), 'tournament_5', "Ben's vote leads");
+    assert.deepEqual(voters('tournament_5'), [t.session.getSnapshot().players.g1.color], "Ben's ball on his choice");
+    await t.send({ type: 'LOBBY_VOTE', playerId: 'host', mode: 'tournament_3', world: null });
+    assert.equal(leading(), 'tournament_3', 'one vote each: the tie goes to the host');
+    await t.send({ type: 'LOBBY_VOTE', playerId: 'g2', mode: 'tournament_7', world: null });
+    assert.equal(t.session.getSnapshot().lobbyVotes.g2, undefined, 'only players in the room vote');
+    const start = lobby.querySelector('[data-ui=lobby-ticket] [data-ui=start-game]');
+    assert.ok(start, 'Start Game is on the pass');
     t.commands.length = 0;
-    await click(button('Start Game'));
+    await click(start);
     assert.deepEqual(t.commands.map(c => c.event), [{ type: 'SET_MODE', mode: 'tournament_3' }, { type: 'START_VOTING' }]);
     assert.equal(t.session.getSnapshot().phase, 'select');
     t.commands.length = 0;
     await click(button('Leave room'));
     assert.deepEqual(t.commands, [{ type: 'leave' }], 'Leave room on the voting screen');
     await t.teardown();
-    // Guest view: no mode choice, no Start; solo: no invite.
+    // Guest view: the tiles to vote with, no Start; solo: no invite and no votes.
     const g = await setup({ localId: 'host', isHost: false });
-    assert.equal(g.within('[data-ui=room-lobby] [data-ui=mode-picker]'), null, 'guests get no mode tiles');
+    assert.ok(g.within('[data-ui=room-lobby] [data-ui=mode-picker]'), 'guests vote with the same tiles');
     assert.equal(button('Start Game'), undefined);
-    assert.equal(g.within('[data-ui=room-lobby] [data-ui=lobby-status]').textContent, 'The host will pick the mode and start map voting.');
+    assert.equal(g.within('[data-ui=room-lobby] [data-ui=lobby-status]').textContent, 'Vote for the mode and the planet; the host starts the game.');
     await act(async () => g.store.setLocal({ roomCode: '' }));
     assert.equal(button('Copy invite'), undefined);
     assert.equal(g.within('[data-ui=room-lobby] p').textContent, 'Solo practice');
@@ -1056,10 +1077,11 @@ function fakeClock() {
     assert.ok(!modes().includes('pong'), 'one player: no Putt Pong');
     await t.send({ type: 'JOIN_ROOM', playerId: 'g1', name: 'Ben' });
     assert.ok(modes().includes('pong'), 'exactly two players: Putt Pong is offered');
-    await click(lobby.querySelector('[data-ui=mode-picker] [data-mode=pong]'));
+    await t.send({ type: 'LOBBY_VOTE', playerId: 'host', mode: 'pong', world: null });
+    assert.equal(lobby.querySelector('[data-ui=mode-picker] [data-leading]').dataset.mode, 'pong');
     await t.send({ type: 'JOIN_ROOM', playerId: 'g2', name: 'Cy' });
     assert.ok(!modes().includes('pong'), 'three players: Putt Pong is gone');
-    assert.equal(lobby.querySelector('[data-ui=mode-picker] [aria-checked=true]').dataset.mode, 'standard', 'a Pong choice falls back to Standard');
+    assert.equal(lobby.querySelector('[data-ui=mode-picker] [data-leading]').dataset.mode, 'standard', 'a Pong vote falls back to Standard');
     t.commands.length = 0;
     await click(button('Start Game'));
     assert.deepEqual(t.commands.map(c => c.event), [{ type: 'SET_MODE', mode: 'standard' }, { type: 'START_VOTING' }], 'Start never sends SET_POWERUPS');
@@ -1092,15 +1114,17 @@ function fakeClock() {
     assert.equal(lines[0].getAttribute('d'), 'M100.0 76.0 L100.0 107.0', 'a leader line joins each tag to its ball');
     const manifest = [...lobby.querySelectorAll('[data-ui=lobby-manifest] li')];
     assert.equal(manifest.length, 8, 'the manifest lists every seat');
-    assert.deepEqual(manifest.slice(0, 3).map(li => li.textContent), ['01AnaHostYouBoarded', '02Bartholomew-Boarded', '03Open seat'], 'who is aboard, the host and me, then open seats');
+    assert.deepEqual(manifest.slice(0, 3).map(li => li.textContent), ['01AnaHostYou', '02Bartholomew-', '03Open seat'], 'who is aboard, the host and me, then open seats');
     const ticket = lobby.querySelector('[data-ui=lobby-ticket]');
     const worlds = [...ticket.querySelectorAll('[data-ui=destination-pick] button')];
-    assert.deepEqual(worlds.map(b => b.dataset.world), ['gaia', 'luna', 'ares'], 'the host can switch the destination on the ticket');
+    assert.deepEqual(worlds.map(b => b.dataset.world), ['gaia', 'luna', 'ares'], 'everyone votes for the destination on the ticket');
     t.commands.length = 0;
     await click(worlds[2]);
-    assert.deepEqual(t.commands, [{ type: 'session', event: { type: 'SET_DESTINATION', world: 'ares' } }]);
-    await t.send({ type: 'SET_DESTINATION', playerId: 'host', world: 'ares' });
-    assert.equal(t.session.getSnapshot().destination, 'ares');
+    assert.deepEqual(t.commands, [{ type: 'session', event: { type: 'LOBBY_VOTE', mode: null, world: 'ares' } }]);
+    await t.send({ type: 'LOBBY_VOTE', playerId: 'host', mode: null, world: 'ares' });
+    assert.equal(t.session.getSnapshot().destination, 'ares', 'the planet follows the vote');
+    assert.equal(worlds[2].getAttribute('aria-checked'), 'true', 'my vote is checked');
+    assert.deepEqual([...worlds[2].querySelectorAll('[data-ui=voters] [data-color]')].map(b => Number(b.dataset.color)), [t.session.getSnapshot().players.host.color], 'my ball sits on my planet');
     assert.equal(sc.vehicle, 'rocket', 'Ares takes the rocket');
     assert.equal(ticket.querySelector('[data-ui=ticket-destination]').textContent, 'Ares');
     assert.equal(ticket.querySelector('[data-ui=ticket-title]').textContent, 'Rocket Boarding Pass');
@@ -1109,14 +1133,23 @@ function fakeClock() {
     const sky = t.within('[data-ui=planet-stage]');
     assert.ok(sky?.hasAttribute('data-low'), 'the rocket flies over the planet: the sky puts it low');
     assert.ok(ticket.querySelector('[data-ui=pass-leave]'), 'Leave room is on the pass');
+    await t.send({ type: 'LOBBY_VOTE', playerId: 'g1', mode: null, world: 'luna' });
+    assert.equal(t.session.getSnapshot().destination, 'ares', 'one vote each: the tie goes to the host');
+    assert.equal(worlds[1].querySelectorAll('[data-ui=voters] [data-color]').length, 1, "Ben's ball sits on Luna");
     await t.send({ type: 'SET_DESTINATION', playerId: 'g1', world: 'luna' });
-    assert.equal(t.session.getSnapshot().destination, 'ares', 'a guest cannot switch it');
-    await t.send({ type: 'SET_DESTINATION', playerId: 'host', world: 'mars' });
-    assert.equal(t.session.getSnapshot().destination, 'ares', 'an unknown world is refused');
+    assert.equal(t.session.getSnapshot().destination, 'ares', 'a guest cannot set it outright');
+    await t.send({ type: 'LOBBY_VOTE', playerId: 'host', mode: null, world: 'mars' });
+    assert.equal(t.session.getSnapshot().lobbyVotes.host.world, 'ares', 'an unknown world is refused');
+    await t.send({ type: 'LOBBY_VOTE', playerId: 'host', mode: null, world: 'luna' });
+    assert.equal(t.session.getSnapshot().destination, 'luna', 'two votes for Luna');
+    assert.equal(sc.vehicle, 'rocket');
+    await t.send({ type: 'LOBBY_VOTE', playerId: 'host', mode: null, world: 'gaia' });
+    assert.equal(t.session.getSnapshot().destination, 'gaia', 'a tie again: the host');
+    assert.equal(sc.vehicle, 'plane', 'back to the plane');
     await t.teardown();
     assert.equal(sc.disposed, true, 'leaving disposes the scene');
     const guest = await setup({ localId: 'g1', isHost: false });
-    assert.equal(guest.within('[data-ui=destination-pick]'), null, 'guests see the destination but cannot pick it');
+    assert.ok(guest.within('[data-ui=destination-pick]'), 'guests vote for the destination too');
     await guest.teardown();
   });
 

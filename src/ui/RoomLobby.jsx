@@ -26,9 +26,10 @@ function PartyCode({ code, send }) {
 /**
  * Party lobby (VIS-M3 #175; vehicles, ticket and manifest, owner 2026-11-16), full screen over the planet sky: everyone's ball rides
  * one 3D vehicle, the plane through Gaia's air or the rocket in space for Ares and Luna, with name tags alternating above and below.
- * On the left, the title, the room's status and the passenger manifest; on the right, your boarding pass (party code, destination the
- * host switches, your name and colour badge, Leave room on the stub); along the bottom, one bar with the host's colourful mode tiles
- * and Start Game. Players arrive with a free
+ * On the left, the title, the room's status and the passenger manifest; on the right, your boarding pass (your name and colour badge,
+ * the destination, the party code, the host's Start Game, Leave room on the stub); along the bottom, one bar of colourful mode tiles.
+ * In a party everyone votes for the mode (the tiles) and the planet (the pass) (owner, 2026-11-17): each voter's ball sits in the
+ * corner of their choice, the vehicle follows the leading planet, and Start Game plays the leading mode. Players arrive with a free
  * colour and change it from the badge on their pass.
  */
 export function RoomLobby({ hidden }) {
@@ -40,12 +41,15 @@ export function RoomLobby({ hidden }) {
   const available = value => offered.some(o => o.value === value && !o.disabled);
   // A mode the room no longer offers (practice with a second player, Putt Pong without exactly two) falls back to Standard.
   useEffect(() => { if (lobby && !available(mode)) setMode(GameModes.STANDARD); });
+  const party = !!lobby?.code;
+  const voting = !!lobby?.voting;
+  const vote = choice => session({ type: 'LOBBY_VOTE', mode: choice.mode ?? null, world: choice.world ?? null });
   const start = () => {
-    if (!available(mode)) return;
-    session({ type: 'SET_MODE', mode });
+    const chosen = voting ? lobby.leadingMode : mode;
+    if (!available(chosen)) return;
+    session({ type: 'SET_MODE', mode: chosen });
     session({ type: 'START_VOTING' });
   };
-  const party = !!lobby?.code;
   const roster = lobby?.roster ?? [];
   const me = roster.find(p => p.you);
   const destination = lobby?.destination ?? 'gaia';
@@ -88,16 +92,19 @@ export function RoomLobby({ hidden }) {
       <div ref={right} className={styles.right}>
         <LobbyTicket vehicle={vehicle} name={me?.name ?? ''} color={lobby?.myColor ?? null} taken={lobby?.takenColors} hidden={hidden || !lobby}
           onPick={c => send(UiCommands.SET_COLOR, { color: c })} destination={destination}
-          onDestination={lobby?.canPickDestination ? world => session({ type: 'SET_DESTINATION', world }) : null}
+          onDestination={voting ? world => vote({ world }) : lobby?.canPickDestination ? world => session({ type: 'SET_DESTINATION', world }) : null}
+          worldVoters={voting ? lobby.votes.world : null} myWorld={lobby?.myVote?.world ?? null}
           flight={flight} gate={gate} seat={seat > 0 ? seat : 1} onBack={() => send(UiCommands.LEAVE)} backLabel="Leave room">
           {party && <PartyCode code={lobby.code} send={send} />}
+          {lobby?.showStart && <button type="button" className={styles.go} onClick={start} data-ui="start-game">Start Game</button>}
         </LobbyTicket>
       </div>
       <div ref={dock} className={styles.dock}>
         <TiePicker tie={lobby?.tie} />
-        {lobby?.showModes && <div className={styles.controls}>
-          <ModePicker modes={offered} value={mode} onChange={setMode} />
-          <button type="button" className={styles.go} hidden={!lobby?.showStart} onClick={start}>Start Game</button>
+        {(voting || lobby?.showModes) && <div className={styles.controls}>
+          {voting
+            ? <ModePicker modes={offered} value={lobby.myVote.mode} onChange={m => vote({ mode: m })} voters={lobby.votes.mode} leading={lobby.leadingMode} />
+            : <ModePicker modes={offered} value={mode} onChange={setMode} />}
         </div>}
       </div>
     </div>

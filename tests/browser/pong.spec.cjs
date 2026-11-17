@@ -53,6 +53,7 @@ test('putt pong 2-player lobby: Putt Pong is offered with exactly two players; c
 
     // Host selects Putt Pong
     await ana.ui('room-lobby').locator('[data-ui=mode-picker] [data-mode=pong]').click();
+    await expect(ana.ui('room-lobby').locator('[data-ui=mode-picker] [data-mode=pong]')).toHaveAttribute('data-leading', 'true'); // the vote reaches the room
 
     // Host starts voting
     await ana.button('Start Game').click();

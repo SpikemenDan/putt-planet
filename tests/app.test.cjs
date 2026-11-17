@@ -60,7 +60,11 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
           const setter = Object.getOwnPropertyDescriptor(win.w.HTMLInputElement.prototype, 'value').set;
           await act(async () => { setter.call(input, value); input.dispatchEvent(new win.w.Event('input', { bubbles: true })); });
         },
-        async select(value) { const b = doc.querySelector(`[data-ui=room-lobby] [data-ui=mode-picker] [data-mode=${value}]`); await act(async () => { b.click(); }); },
+        async select(value) {
+          const tile = () => doc.querySelector(`[data-ui=room-lobby] [data-ui=mode-picker] [data-mode=${value}]`);
+          await act(async () => { tile().click(); });
+          await until(() => tile()?.getAttribute('aria-checked') === 'true', 3000, name + ' mode vote ' + value); // a party vote travels to the room and back
+        },
         /** Main menu (VIS-M2): open Solo, Party, Custom or Settings, stepping back first from another sub-menu. */
         async menu(id) {
           const view = doc.querySelector('[data-ui=landing]')?.dataset.view;
@@ -481,7 +485,8 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
     await W.run(300);
     assert.equal(ana.text('[data-ui=room-lobby] p'), 'Room ' + W.code('party').toUpperCase() + ' · 4 players · You are the host');
     assert.equal(ben.text('[data-ui=room-lobby] p'), 'Room ' + W.code('party').toUpperCase() + ' · 4 players · Waiting for host');
-    assert.equal(ben.$('[data-ui=room-lobby] [data-ui=mode-picker]'), null, 'guests cannot choose the mode');
+    assert.ok(ben.$('[data-ui=room-lobby] [data-ui=mode-picker]'), 'guests vote for the mode too');
+    assert.equal(ben.$('[data-ui=room-lobby] [data-ui=start-game]'), null, 'only the host starts');
     await ana.select('tournament_3');
     await ana.click('Start Game');
     await W.until(() => guests.every(g => g.shown('[data-ui=map-select]')), 3000, 'guests voting');
