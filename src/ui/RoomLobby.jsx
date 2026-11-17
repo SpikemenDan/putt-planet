@@ -53,19 +53,22 @@ export function RoomLobby({ hidden }) {
   const seat = roster.findIndex(p => p.you) + 1;
   const { flight } = flightOf(lobby?.code ?? '', destination);
   const planet = WORLDS.find(w => w.id === destination)?.name ?? 'Gaia';
-  // The sky behind: Gaia's air for the plane, space around the destination for the rocket.
+  // The sky behind: Gaia's air for the plane; for the rocket, Ares's dusty air or the sky just above Luna, when the planet scene can
+  // bring its camera down there (`near`, owner, 2026-11-17), its own sun showing in place of the lobby's corner sun. A planet scene
+  // without `near` instead shows the planet from space, sitting low along the bottom of the screen.
   const shown = !hidden && !!lobby;
+  const rocket = vehicle === 'rocket';
+  const nearSky = typeof stage?.scene?.space?.near === 'number';
   useEffect(() => {
     if (!shown) return undefined;
-    stage?.setView({ space: vehicle === 'rocket', target: vehicle === 'rocket' ? destination : 'gaia' });
-    // The rocket flies over Ares or Luna: the planet sits low, along the bottom of the screen (owner, 2026-11-17).
+    stage?.setView({ space: rocket, target: rocket ? destination : 'gaia', near: rocket && nearSky });
     const sky = left.current?.ownerDocument.querySelector('[data-ui=planet-stage]');
     const view = sky?.ownerDocument.defaultView;
     const resized = () => view?.dispatchEvent(new view.Event('resize')); // a still (reduced-motion) planet scene redraws only on resize
-    sky?.toggleAttribute('data-low', vehicle === 'rocket');
+    sky?.toggleAttribute('data-low', rocket && !nearSky);
     resized();
-    return () => { stage?.setView({ space: false, target: 'gaia' }); sky?.removeAttribute('data-low'); resized(); };
-  }, [stage, shown, vehicle, destination]);
+    return () => { stage?.setView({ space: false, target: 'gaia', near: false }); sky?.removeAttribute('data-low'); resized(); };
+  }, [stage, shown, rocket, destination, nearSky]);
   const left = useRef(null), right = useRef(null), dock = useRef(null);
   const insets = () => {
     const view = left.current?.ownerDocument.defaultView;
@@ -76,7 +79,7 @@ export function RoomLobby({ hidden }) {
   };
   return (
     <div className={styles.lobby} hidden={hidden} data-ui="room-lobby">
-      <LobbyVehicle vehicle={vehicle} passengers={roster} hidden={hidden || !lobby} insets={insets} />
+      <LobbyVehicle vehicle={vehicle} passengers={roster} hidden={hidden || !lobby} insets={insets} sun={!(rocket && nearSky)} />
       <div ref={left} className={styles.left}>
         {/* No title board (owner, 2026-11-17): the heading and room line stay for screen readers only. */}
         <div className={styles.hiddenText}>

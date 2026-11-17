@@ -1297,6 +1297,10 @@ function fakeClock() {
     lobby.setVehicle('rocket');
     assert.equal(lobby.stats.vehicle, 'rocket');
     assert.equal(lobby.stats.passengers, 2, 'the balls move to the new vehicle');
+    await new Promise(r => setTimeout(r, 120));
+    assert.ok(lobby.stats.swapping, 'the switch glides: the plane leaves while the rocket arrives (owner, 2026-11-17)');
+    for (let k = 0; k < 40 && lobby.stats.swapping; k++) await new Promise(r => setTimeout(r, 100));
+    assert.equal(lobby.stats.swapping, false, 'and settles within a few seconds');
     lobby.dispose();
     const after = frames;
     await new Promise(r => setTimeout(r, 60));

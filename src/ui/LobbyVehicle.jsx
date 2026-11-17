@@ -48,7 +48,7 @@ export function layoutTags(anchors, width, widths = []) {
  * framed in the space between them. Without a scene (no WebGL, tests) the tags show as a plain row. Names render as React text only
  * and are cut to NAME_LIMIT characters.
  */
-export function LobbyVehicle({ vehicle = 'plane', passengers = [], hidden = false, insets = null }) {
+export function LobbyVehicle({ vehicle = 'plane', passengers = [], hidden = false, insets = null, sun = true }) {
   const { display, createLobbyScene } = useUiContext();
   const canvas = useRef(null);
   const scene = useRef(null);
@@ -96,6 +96,7 @@ export function LobbyVehicle({ vehicle = 'plane', passengers = [], hidden = fals
   }, [createLobbyScene, display, hidden]); // eslint-disable-line react-hooks/exhaustive-deps -- vehicle and riders are pushed below
 
   useEffect(() => { scene.current?.setVehicle(vehicle); }, [vehicle]);
+  useEffect(() => { scene.current?.setSun?.(sun); }, [sun, hidden]);
   const key = colors.join(',');
   useEffect(() => { scene.current?.setPassengers(colors); }, [key, vehicle]); // eslint-disable-line react-hooks/exhaustive-deps
 

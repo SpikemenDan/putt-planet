@@ -33,7 +33,7 @@ const CENTRE_PULL = 0.55; // 1 centres the vehicle in the free area between the 
 export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', reducedMotion = false, win = canvas.ownerDocument.defaultView, createWebGLRenderer = defaultRenderer }) {
   let renderer = null;
   try { renderer = createWebGLRenderer(THREE, canvas); } catch { renderer = null; }
-  if (!renderer) return { setVehicle() {}, setPassengers() {}, setInsets() {}, onAnchors() {}, start() {}, dispose() {}, stats: { webgl: false } };
+  if (!renderer) return { setVehicle() {}, setSun() {}, setPassengers() {}, setInsets() {}, onAnchors() {}, start() {}, dispose() {}, stats: { webgl: false } };
   renderer.setClearColor?.(0x000000, 0);
   const owned = new Set(), own = r => { owned.add(r); return r; };
   const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(FOV, 2, 0.1, 400);
@@ -150,17 +150,30 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', re
   let model = null, built = null, balls = [], spinners = [], trails = [], flame = null, colors = [];
   const TRAIL_DASHES = 3;
   const trailGeometry = own(new THREE.CapsuleGeometry(0.06, 1, 2, 6).rotateZ(Math.PI / 2).translate(-0.5, 0, 0)); // 1 long, trailing back from 0
-  const vehicleOwned = new Set();
+  let vehicleOwned = new Set();
   const mine = r => { vehicleOwned.add(r); return r; };
-  const stats = { webgl: true, vehicle: null, passengers: 0, frames: 0 };
+  // Switching vehicles (owner, 2026-11-17: a smoother switch): the old one speeds away ahead (off to the left, nose first) while the new
+  // one glides in from behind and settles, and the framing eases between their sizes. `holder` carries that slide; `leaving` is the old
+  // vehicle on its way out, disposed once it is gone.
+  const SWAP = { out: 0.9, in: 1.3, gap: 0.25, reach: 46 };
+  let holder = null, leaving = null, arriveAt = -1, frameHalf = null, lastNow = null;
+  const easeIn = x => x * x * x, easeOut = x => 1 - Math.pow(1 - x, 3);
+  const disposeLeaving = () => {
+    if (!leaving) return;
+    rig.remove(leaving.holder);
+    for (const b of leaving.balls) b.material.dispose();
+    for (const r of leaving.owned) r.dispose();
+    leaving = null;
+  };
+  const stats = { webgl: true, vehicle: null, passengers: 0, frames: 0, swapping: false };
 
   const clear = () => {
     if (!built) return;
-    rig.remove(built);
+    rig.remove(holder);
     for (const b of balls) b.material.dispose();
     for (const r of vehicleOwned) r.dispose();
     vehicleOwned.clear();
-    built = null; balls = []; spinners = []; trails = []; flame = null;
+    built = null; holder = null; balls = []; spinners = []; trails = []; flame = null;
   };
   const buildBalls = () => {
     for (const b of balls) { built.remove(b); b.material.dispose(); }
@@ -177,8 +190,14 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', re
   };
   const toonBall = color => new THREE.MeshToonMaterial({ color: new THREE.Color(color), gradientMap: bands });
   const inkMine = mesh => { mesh.add(new THREE.Mesh(mine(smoothHullGeometry(THREE, mesh.geometry)), inkMaterial)); return mesh; };
-  const build = kind => {
-    clear();
+  const build = (kind, glide = false) => {
+    if (glide && built) {
+      disposeLeaving(); // a third switch mid-swap: the one already leaving just goes
+      leaving = { holder, owned: vehicleOwned, balls, start: null };
+      vehicleOwned = new Set();
+      built = null; holder = null; balls = []; spinners = []; trails = []; flame = null;
+      arriveAt = null; // set on the next frame, from its clock
+    } else { clear(); arriveAt = -1; }
     model = makeLobbyVehicle(THREE, kind);
     built = new THREE.Group();
     built.rotation.z = model.tilt ?? 0;
@@ -192,7 +211,7 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', re
       return mesh;
     });
     if (model.flame) {
-      flame = new THREE.Mesh(mine(model.flame), own(new THREE.MeshBasicMaterial({ vertexColors: true })));
+      flame = new THREE.Mesh(mine(model.flame), mine(new THREE.MeshBasicMaterial({ vertexColors: true })));
       flame.position.copy(model.flameAt);
       built.add(flame);
     }
@@ -213,7 +232,10 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', re
       built.add(dash);
       return dash;
     }));
-    rig.add(built);
+    holder = new THREE.Group();
+    holder.add(built);
+    holder.visible = arriveAt !== null; // a gliding arrival shows once its slide begins
+    rig.add(holder);
     stats.vehicle = kind;
     const space = kind === 'rocket';
     for (const c of clouds) c.visible = !space; // clouds over Gaia only
@@ -223,6 +245,7 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', re
   build(vehicle);
 
   let anchorListener = null;
+  let sunWanted = true, sunLevel = 1; // the corner sun, shrunk away when the sky behind already has one
   const v = new THREE.Vector3();
   let width = 0, height = 0;
   const insets = { left: 0, right: 0, top: 0, bottom: 0 };
@@ -240,12 +263,33 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', re
   const toScreen = p => { p.project(camera); return { x: (p.x + 1) / 2 * width, y: (1 - p.y) / 2 * height }; };
   const frame = time => {
     resize();
-    const l = display.lobby, t = reducedMotion ? 0 : time / 1000;
+    const l = display.lobby, t = reducedMotion ? 0 : time / 1000, now = time / 1000;
+    const dt = lastNow === null ? 0 : Math.min(0.1, Math.max(0, now - lastNow));
+    lastNow = now;
+    // The swap: the old vehicle speeds off ahead, the new one glides in from behind once it has started to go.
+    if (leaving) {
+      if (leaving.start === null) leaving.start = now;
+      const p = (now - leaving.start) / SWAP.out;
+      leaving.holder.position.x = easeIn(Math.min(1, p)) * SWAP.reach;
+      if (p >= 1) disposeLeaving();
+    }
+    if (arriveAt === null) arriveAt = now + SWAP.gap;
+    if (holder && arriveAt > 0) {
+      const p = (now - arriveAt) / SWAP.in;
+      holder.visible = p >= 0;
+      holder.position.x = -(1 - easeOut(Math.max(0, Math.min(1, p)))) * SWAP.reach;
+      if (p >= 1) { holder.position.x = 0; arriveAt = -1; }
+    }
+    stats.swapping = !!leaving || arriveAt !== -1;
+    // The framing eases to the new vehicle's size rather than jumping.
+    if (!frameHalf) frameHalf = { ...model.half };
+    const ease = Math.min(1, dt * 2.2);
+    frameHalf.x += (model.half.x - frameHalf.x) * ease; frameHalf.y += (model.half.y - frameHalf.y) * ease;
     // Fit the vehicle into the free area between the panels, then shift the view so it is centred there.
     const freeW = Math.max(120, width - insets.left - insets.right), freeH = Math.max(120, height - insets.top - insets.bottom);
     const tan = Math.tan((FOV * Math.PI / 180) / 2);
     // At distance d the view is 2·d·tan tall and 2·d·tan·aspect wide; the free area is that much of it.
-    const dist = Math.max(model.half.x / (tan * freeW / height), model.half.y / (tan * freeH / height)) * 1.08 / l.zoom;
+    const dist = Math.max(frameHalf.x / (tan * freeW / height), frameHalf.y / (tan * freeH / height)) * 1.08 / l.zoom;
     // Centred between the panels, pulled part of the way toward the middle of the screen (owner, 2026-11-17: more centred).
     const offX = (insets.right - insets.left) / 2 * CENTRE_PULL, offY = (insets.bottom - insets.top) / 2 * CENTRE_PULL;
     camera.setViewOffset(width, height, offX, offY, width, height);
@@ -257,7 +301,9 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', re
     // In the top-left corner of the free area (owner, 2026-11-17), ahead of the vehicle's nose, its rays clear of the edges.
     const corner = Math.max(56, Math.min(width, height) * 0.08);
     sun.position.set((-1 + 2 * (insets.left + corner + offX) / width) * halfW, (1 - 2 * (insets.top + corner + offY) / height) * halfH, -sunZ);
-    sun.scale.setScalar(sunZ / 90); // small in the sky (owner, 2026-11-17)
+    sunLevel += ((sunWanted ? 1 : 0) - sunLevel) * (reducedMotion ? 1 : Math.min(1, dt * 3));
+    sun.visible = sunLevel > 0.01;
+    sun.scale.setScalar(sunZ / 90 * sunLevel); // small in the sky (owner, 2026-11-17)
     glow.position.copy(sun.position).normalize().multiplyScalar(1.8); // the halo sits behind the ball on the line of sight, centred on it
     glow.scale.setScalar(1 + Math.sin(t * 1.3) * 0.04); // the halo breathes
     rays.rotation.z = t * 0.12;
@@ -304,7 +350,9 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', re
   const loop = time => { if (disposed) return; frame(time); raf = win.requestAnimationFrame(loop); };
   return {
     stats,
-    setVehicle(kind) { if (kind !== stats.vehicle) build(kind); },
+    setVehicle(kind) { if (kind !== stats.vehicle) build(kind, !reducedMotion && stats.frames > 0); },
+    /** Shows or hides the corner sun (it shrinks away): off when the planet sky behind draws its own sun, as in Ares's air. */
+    setSun(on) { sunWanted = !!on; },
     /** One colour (CSS hex) per seat, null for an empty seat. */
     setPassengers(list) { colors = [...list]; if (built) buildBalls(); },
     /** Pixels the lobby's panels cover on each side; the vehicle is framed in the rest. */
@@ -314,6 +362,7 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', re
     dispose() {
       disposed = true;
       if (raf) win.cancelAnimationFrame(raf);
+      disposeLeaving();
       clear();
       for (const r of owned) r.dispose?.();
       renderer.dispose?.();
