@@ -17,6 +17,8 @@ export const InputCommands = Object.freeze({
   USE_ITEM: 'use-item',
   /** { type } — M key or the Sound button. */
   TOGGLE_SOUND: 'toggle-sound',
+  /** { type } — reset ball when stuck (R key or Reset Ball button). */
+  RESET_BALL: 'reset-ball',
   /** { type } — any pointer/key/click/touch; lets the audio adapter unlock on a user gesture. */
   USER_GESTURE: 'user-gesture',
 });

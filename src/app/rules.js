@@ -16,6 +16,10 @@ export const ROOM_PREFIX = 'puttpals-circuit-v6-';
 export const SOLO_ID = 'solo';
 /** A ball still moving after this many seconds is treated as lost (legacy frame(): me.mt > 25 → oob()). */
 export const STALL_SECONDS = 25;
+/** Seconds without significant movement before manual ball reset becomes available. */
+export const MANUAL_RESET_SECONDS = 5;
+/** Maximum position displacement (units) over the window to be considered stationary or stuck. */
+export const SIGNIFICANT_MOVE_DISTANCE = 50;
 /** Sunk players switch to waiting/free roam after this delay (legacy me.wait). */
 export const SINK_WAIT_MS = 1200;
 /** Presence publication interval (legacy pub() throttle); the room contract's presence cadence is the one default. */

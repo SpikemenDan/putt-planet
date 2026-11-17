@@ -97,6 +97,7 @@ export function createInputAdapter({ canvas, window: win = canvas.ownerDocument.
     if (e.key === 'c' || e.key === 'C') dispatch({ type: InputCommands.CYCLE_CAMERA });
     else if (e.key === 'Escape') { dispatch({ type: InputCommands.CLOSE_CARD }); cancel(); }
     else if (e.key === 'k' || e.key === 'K') dispatch({ type: InputCommands.TOGGLE_CARD });
+    else if ((e.key === 'r' || e.key === 'R') && s.canResetBall) dispatch({ type: InputCommands.RESET_BALL });
     else if (e.key >= '1' && e.key <= '3') dispatch({ type: InputCommands.USE_ITEM, index: +e.key - 1 });
     else if (!charging && s.mode === 'play' && !s.moving) {
       if (!camera.orbitKey(e.key)) {
