@@ -1,5 +1,6 @@
 import { WORLDS } from '../shared/worlds.js';
 import { NAME_LIMIT } from './commands.js';
+import { Barcode } from './Barcode.jsx';
 import { ColorBadge } from './BadgePicker.jsx';
 import { Voters } from './ModePicker.jsx';
 import styles from './LobbyTicket.module.css';
@@ -55,7 +56,8 @@ function PassengerName({ name, onName }) {
  * The lobby ticket (owner, 2026-11-16, 2026-11-17): a bright boarding pass on the right of the Solo and party lobbies, laid out like a
  * real one: the vehicle's pass title, the passenger with their colour badge (click it to change colour: the same picker and palette
  * everywhere) and name (`onName`: click it to edit), the route in airport-style codes, then flight, gate and seat, then
- * the lobby's buttons (`children`: Play or Start Game) and, on the stub, the party code under the barcode like a booking reference
+ * the lobby's buttons (`children`: Play or Start Game) and, on the stub, a real Code 39 barcode of the party code (the flight on a
+ * Solo pass) with the code printed under it like a booking reference
  * (`code`, with a copy-invite icon: `onCopy`) and Back (`onBack`). In a party everyone
  * votes for the destination on the pass (`onDestination`, `worldVoters`: each voter's ball sits on their planet; `myWorld` is checked);
  * the route shows the planet the vote leads with. Names render as React text only, cut to NAME_LIMIT.
@@ -99,7 +101,7 @@ export function LobbyTicket({ vehicle = 'plane', name = '', onName = null, color
       </dl>
       <div className={styles.actions}>{children}</div>
       <div className={styles.stub}>
-        <span className={styles.barcode} aria-hidden="true" />
+        <Barcode className={styles.barcode} value={code || flight.replace(/\s/g, '')} />
         {onBack && <button type="button" className={styles.back} onClick={onBack} data-ui={solo ? 'menu-back' : 'pass-leave'} data-kind={solo ? 'back' : 'leave'}>{backLabel}</button>}
         {code && (
           <span className={styles.code} data-ui="party-code">

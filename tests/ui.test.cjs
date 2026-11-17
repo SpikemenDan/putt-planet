@@ -1021,6 +1021,7 @@ function fakeClock() {
     assert.deepEqual([...lobby.querySelectorAll('[data-ui=lobby-passengers] [role=listitem]')].map(b => b.textContent), ['Anayou'], 'the lobby vehicle holds my ball, tagged as me');
     assert.equal(lobby.querySelector('[data-ui=ticket-name]').textContent, 'Ana', 'my ticket names me');
     assert.equal(lobby.querySelector('[data-ui=party-code] strong').textContent, 'ABCD');
+    assert.equal(lobby.querySelector('[data-ui=lobby-ticket] [data-ui=barcode]').dataset.value, 'ABCD', 'the barcode is the party code');
     const tile = v => lobby.querySelector(`[data-ui=mode-picker] [data-mode=${v}]`);
     const chosen = () => lobby.querySelector('[data-ui=mode-picker] [aria-checked=true]')?.dataset.mode ?? null;
     const leading = () => lobby.querySelector('[data-ui=mode-picker] [data-mode][data-leading]')?.dataset.mode;
@@ -1157,6 +1158,24 @@ function fakeClock() {
     const guest = await setup({ localId: 'g1', isHost: false });
     assert.ok(guest.within('[data-ui=destination-pick]'), 'guests vote for the destination too');
     await guest.teardown();
+  });
+
+  await scenario('pass barcode (owner, 2026-11-17): the bars are a real Code 39 barcode of the party code', async () => {
+    const { code39 } = await import('../src/ui/code39.js');
+    const { bars, width, text } = code39('upcpw5za');
+    assert.equal(text, 'UPCPW5ZA', 'letters are upper-cased');
+    // Decode the bars back: every character is 5 bars and 4 gaps, 3 of the 9 wide, then a narrow gap.
+    const elements = [];
+    bars.forEach(([x, w], i) => { elements.push(w); const next = bars[i + 1]; if (next) elements.push(next[0] - x - w); });
+    const chars = [];
+    for (let i = 0; i < elements.length; i += 10) chars.push(elements.slice(i, i + 9).map(w => (w > 1.5 ? '1' : '0')).join(''));
+    assert.ok(chars.every(c => c.split('').filter(b => b === '1').length === 3), 'three wide elements per character');
+    assert.equal(chars[0], '010010100', 'starts with *');
+    assert.equal(chars.at(-1), '010010100', 'ends with *');
+    assert.equal(chars.length, 10, 'start, eight characters, stop');
+    assert.equal(width, 10 * 13.5 + 9, 'ten characters of 13.5 units with narrow gaps');
+    assert.equal(new Set(chars.slice(1, -1)).size, 7, 'U, P, C, W, 5, Z, A: seven different patterns (P twice)');
+    assert.equal(code39('a*b!').text, 'AB', 'characters Code 39 cannot encode are dropped');
   });
 
   await scenario('lobby seats (owner, 2026-11-17): seat numbers follow the order players joined, the server\'s join order when it sends one', async () => {
