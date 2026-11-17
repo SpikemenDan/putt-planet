@@ -90,6 +90,12 @@
 .sb>*{padding:6px 10px;font-size:12px}
 .sb>:first-child{font-size:10px}
 
+.resetPrompt{position:absolute;z-index:8;left:50%;bottom:80px;transform:translateX(-50%);display:flex;justify-content:center;align-items:center}
+.resetPrompt button{display:flex;align-items:center;gap:6px;padding:6px 14px;border:var(--line) solid var(--ink);background:var(--yellow);color:var(--ink);font:900 13px var(--font);box-shadow:3px 3px 0 var(--ink);cursor:pointer;text-transform:uppercase;letter-spacing:1px}
+.resetPrompt button:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--ink)}
+.resetPrompt button:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+@media (max-width:640px){.resetPrompt{position:static;transform:none;margin:8px auto}}
+
 /* Start-screen panorama (M1b): the always-mounted game canvas fills the page behind the menu; the HUD is hidden. */
 .backdrop{position:fixed;inset:0;z-index:0;pointer-events:none}
 .backdrop .stage{position:absolute;inset:0}

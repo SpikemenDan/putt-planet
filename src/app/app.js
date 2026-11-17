@@ -435,7 +435,7 @@ export function createApp({ worldPreview = null, soloHazards = false, root, THRE
       const cur = { round: activeRound, strokes: putt.player.strokes, mode: putt.player.mode, moving: state.moving, x: state.x, y: state.y, z: state.z, vx: state.vx, vy: state.vy, vz: putt.player.vz || 0, over: !!putt.player.over };
       for (const { event, speed } of frameSounds(lastSound, cur)) audio.handleEvent(event, { origin: [0, 0], speed });
       lastSound = cur;
-      setLocalIfChanged({ mode: state.mode, strokes: putt.player.strokes, inventory: [...putt.player.inventory] });
+      setLocalIfChanged({ mode: state.mode, strokes: putt.player.strokes, inventory: [...putt.player.inventory], canResetBall: putt.canResetBall });
       renderer.resize(renderer.canvasWidth());
       const s = room.snapshot;
       const color = colorOf(s, {}, room.localId);
@@ -505,6 +505,17 @@ export function createApp({ worldPreview = null, soloHazards = false, root, THRE
       }
       case UiCommands.CONFIRM_HAZARD: confirmGlobalHazard(command); break;
       case UiCommands.CANCEL_HAZARD: setLocal({ hazardPrompt: null }); break;
+      case UiCommands.RESET_BALL: {
+        if (!putt || !putt.canResetBall) break;
+        const out = putt.resetBall();
+        if (out.cancelInput) input?.cancel();
+        if (out.aim !== null) input?.setAimAngle(out.aim);
+        for (const message of out.toasts) toast(message);
+        audio.handleEvent({ type: 'splash' });
+        setLocalIfChanged({ mode: putt.mode, strokes: putt.player.strokes, inventory: [...putt.player.inventory], canResetBall: putt.canResetBall });
+        publish(true);
+        break;
+      }
       case UiCommands.CYCLE_CAMERA: {
         if (!view) break;
         const r = view.rig.cycleView();
@@ -589,6 +600,7 @@ export function createApp({ worldPreview = null, soloHazards = false, root, THRE
       getState: () => ({
         active: !!room, mode: putt ? putt.mode : 'lobby', moving: !!putt?.player.moving, connected: !!room?.connected,
         transitioning: view.rig.transitioning, steady: !!putt?.player.armedPowerups.steady, aimMode: putt ? aimModeOf(putt.player) : '', wobble: aimWobble,
+        canResetBall: !!putt?.canResetBall,
       }),
     });
     // Placement mode takes the pointer before the shot handlers see it (capture phase).

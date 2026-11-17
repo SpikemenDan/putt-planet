@@ -1271,6 +1271,14 @@ function fakeClock() {
     assert.equal(t.root.querySelector('[role=alert]').hidden, false);
     await act(async () => t.store.setLocal({ connected: true }));
     assert.equal(t.root.querySelector('[role=alert]').hidden, true);
+    // Reset ball button appears when canResetBall is true and dispatches reset-ball
+    assert.equal(t.root.querySelector('[data-ui=reset-ball]'), null, 'no reset button when canResetBall is false');
+    await act(async () => t.store.setLocal({ canResetBall: true }));
+    const resetBtn = t.root.querySelector('[data-ui=reset-ball]');
+    assert.ok(resetBtn, 'reset button appears when canResetBall is true');
+    t.commands.length = 0;
+    await click(resetBtn);
+    assert.deepEqual(t.commands, [{ type: 'reset-ball' }]);
     await t.teardown();
   });
 

@@ -275,6 +275,7 @@ export function hudView(room, local, now, courses) {
       time: spectating ? '' : practice ? 'FREE' : Math.floor(left / 60) + ':' + pad2(left % 60),
     },
     pong: pongHudView(room, local),
+    canResetBall: !!local.canResetBall,
     warn: local.mode === 'play' && left <= 10,
     practiceBar: !!local.isHost && practice && room.phase === SessionPhases.PLAY,
     scoreboard,

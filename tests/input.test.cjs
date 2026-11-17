@@ -33,8 +33,8 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
     ray.setFromCamera(new THREE.Vector2(clientX / 800 * 2 - 1, -clientY / 500 * 2 + 1), cam);
     return ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -5), new THREE.Vector3());
   };
-  let active = true, connected = true, forceTransition = false;
-  const getState = () => ({ active, mode: me.mode, moving: me.moving, connected, transitioning: forceTransition, steady: !!me.steady });
+  let active = true, connected = true, forceTransition = false, canResetBall = false;
+  const getState = () => ({ active, mode: me.mode, moving: me.moving, connected, transitioning: forceTransition, steady: !!me.steady, canResetBall });
   const commands = [];
   const dispatch = c => commands.push(c);
 
@@ -192,6 +192,13 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
       { type: InputCommands.USE_ITEM, index: 0 }, { type: InputCommands.USE_ITEM, index: 1 }, { type: InputCommands.USE_ITEM, index: 2 },
       { type: InputCommands.TOGGLE_SOUND },
     ]);
+    commands.length = 0;
+    canResetBall = false;
+    key('keydown', 'r'); key('keyup', 'r');
+    assert.equal(commands.filter(c => c.type === InputCommands.RESET_BALL).length, 0, 'R ignored when canResetBall is false');
+    canResetBall = true;
+    key('keydown', 'r'); key('keyup', 'r');
+    assert.deepEqual(commands.filter(c => c.type === InputCommands.RESET_BALL), [{ type: InputCommands.RESET_BALL }], 'R dispatches RESET_BALL when canResetBall is true');
     assert.ok(commands.some(c => c.type === InputCommands.USER_GESTURE), 'key presses count as user gestures (audio unlock)');
     // The adapter only dispatches CYCLE_CAMERA; the app applies it to the rig.
     rig.cycleView();

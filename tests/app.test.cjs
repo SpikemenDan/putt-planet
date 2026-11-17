@@ -768,6 +768,66 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
     assert.equal(validPresence({ ...base, colour: 1 }), false, 'unknown fields are still rejected');
   });
 
+  await scenario('ball reset: manual reset after 5s without significant movement, auto stall reset remains active at 25s', async () => {
+    const { createPutt } = await import('../src/app/putt.js');
+    const { createCourseData } = await import('../src/courses/index.js');
+    const data = createCourseData();
+    let mockTime = 1000;
+    const putt = createPutt({
+      definition: data.definitions[0],
+      rule: data.rules[0].putts[0],
+      puttIndex: 0,
+      id: 'p1',
+      name: 'Player',
+      playing: true,
+      timed: false,
+      roundStartTime: 0,
+      limitSeconds: 120,
+      roomNow: () => mockTime,
+      now: () => mockTime,
+    });
+    // On the tee before any shots
+    for (let i = 0; i < 60; i++) { mockTime += 100; putt.frame(mockTime, 0.05); }
+    assert.equal(putt.canResetBall, false, 'cannot reset on tee before any shot is taken');
+
+    // Shoot
+    putt.shoot(0, 0.5);
+    assert.equal(putt.player.strokes, 1);
+    assert.equal(putt.canResetBall, false, 'cannot reset immediately after shooting');
+
+    // High speed movement for 2s
+    for (let i = 0; i < 20; i++) { mockTime += 100; putt.frame(mockTime, 0.05); }
+    assert.equal(putt.canResetBall, false, 'cannot reset during first 2 seconds');
+
+    // Simulate ball coming to rest or stuck vibrating in a corner
+    putt.player.vx = 0;
+    putt.player.vy = 0;
+    for (let i = 0; i < 55; i++) { mockTime += 100; putt.frame(mockTime, 0.05); }
+    assert.equal(putt.canResetBall, true, 'can reset ball after 5s without significant movement');
+
+    // Execute manual reset
+    const resetOut = putt.resetBall();
+    assert.match(resetOut.toasts[0], /Ball reset to last spot/);
+    assert.equal(putt.player.moving, false);
+    assert.equal(putt.canResetBall, false, 'cannot reset immediately after reset');
+    assert.deepEqual([putt.player.x, putt.player.y], data.definitions[0].putts[0].tee, 'restores previous shot location');
+
+    // Auto reset remains active after 25s of moving stall
+    putt.player.x = 500;
+    putt.player.y = 500;
+    putt.player.prevPosition = [500, 500, 0];
+    putt.player.mode = 'play';
+    putt.player.moving = true;
+    let autoResetToast = null;
+    for (let i = 0; i < 550; i++) {
+      mockTime += 50;
+      putt.player.moving = true; // keep moving to simulate stall
+      const res = putt.frame(mockTime, 0.05);
+      if (res.toasts.length) autoResetToast = res.toasts[0];
+    }
+    assert.match(autoResetToast, /Splash! Back to your last spot/);
+  });
+
   console.log(`App: ${passed} scenarios passed (jsdom clients with stub WebGL/audio and the in-memory transport; real-browser evidence is separate).`);
   process.exit(0);
 })().catch(error => { console.error(error); process.exit(1); });
