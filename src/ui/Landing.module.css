@@ -152,19 +152,27 @@
 .inline{margin:0 0 0 4px;padding:2px 8px;font-size:12px;border-width:2px;box-shadow:2px 2px 0 var(--ink);background:#fff}
 .panel[data-menu-view=custom]{width:min(92vw,580px)}
 /* Party (VIS-M3 #175): Host's Create button, then the Join code box with its Join button beside it. Colour comes after, before the lobby. */
-/* Party (owner, 2026-11-17: cleaner): name, one big Create party with a one-line hint, an "or join with a code" divider, the code box
-   beside Join, then Back. Even spacing, no dashed rules or extra headings. */
+/* Party (owner, 2026-11-17: cleaner, then colourful): name, a sunny Host card with one big Create party, a rainbow "or join with a
+   code" divider, then a sky Join card with the code box (in the boarding pass's code font) beside Join, then Back. */
 .panel[data-menu-view=party] .heading{margin-bottom:12px}
 .panel[data-menu-view=party] label{margin:0 0 4px}
-.partyHost{margin:14px 0 0}
-.partyHost .go{margin:0}
-.partyHint{margin:8px 0 0;text-align:center;font:700 13px var(--pp-body,'Nunito',sans-serif);color:var(--mut)}
+.partyHost,.joinRow{position:relative;padding:12px;border:var(--line) solid var(--ink);border-radius:16px;box-shadow:0 4px 0 var(--ink)}
+.partyHost{margin:14px 0 0;background:radial-gradient(circle at 12% 20%,rgba(255,255,255,.55) 0 10%,transparent 11%),radial-gradient(circle at 88% 78%,rgba(255,255,255,.4) 0 7%,transparent 8%),linear-gradient(135deg,var(--yellow),#ff9a3d 60%,var(--pink))}
+.partyHost .go{margin:0;background:var(--pink);box-shadow:0 4px 0 var(--ink)}
+.partyHost .go:not(:disabled):hover{background:#ff5a9d}
+.partyHost p{margin:10px 0 0;color:var(--ink)}
 .partyJoin{margin:0}
-.or{display:flex;align-items:center;gap:10px;margin:16px 0 10px;font:900 13px var(--font);letter-spacing:.5px;text-transform:uppercase;color:var(--mut)}
-.or::before,.or::after{content:'';flex:1;height:3px;border-radius:2px;background:rgba(20,16,42,.15)}
-.joinRow{display:flex;align-items:stretch;gap:8px}
-.joinCode{flex:1;margin:0!important}
-.joinCode input{height:100%;box-sizing:border-box;margin:0;text-transform:uppercase;letter-spacing:2px}
-.joinGo{margin:0;padding:10px 20px;font-size:18px;background:var(--sky);color:#fff}
+.or{display:flex;align-items:center;gap:10px;margin:16px 0 12px;font:900 14px var(--font);letter-spacing:.5px;text-transform:uppercase;color:var(--ink)}
+.or::before,.or::after{content:'';flex:1;height:4px;border-radius:2px}
+.or::before{background:linear-gradient(90deg,transparent,var(--pink),var(--yellow))}
+.or::after{background:linear-gradient(90deg,var(--cyan),var(--green),transparent)}
+.joinRow{display:flex;align-items:stretch;gap:8px;background:radial-gradient(circle at 90% 18%,rgba(255,255,255,.5) 0 8%,transparent 9%),linear-gradient(135deg,var(--cyan),var(--sky) 70%,#6c4ff0)}
+.joinCode{flex:1;min-width:0;margin:0!important}
+/* The same face as the party code on the boarding pass (LobbyTicket .code strong): the display font at weight 400, spaced out. */
+.joinCode input{height:100%;box-sizing:border-box;margin:0;padding:8px 12px;font:400 26px/1 var(--font);letter-spacing:3px;text-transform:uppercase;color:var(--ink);background:var(--paper)}
+.joinCode input::placeholder{font:400 19px/1 var(--font);letter-spacing:1px;text-transform:none;color:#8a83a6}
+.joinGo{margin:0;padding:10px 20px;font-size:18px;background:var(--green);color:#fff;box-shadow:0 4px 0 var(--ink)}
+.joinGo:not(:disabled):hover{background:#3fd36c}
+.joinGo:disabled{background:rgba(255,248,228,.75);color:var(--mut);opacity:1}
 .hiddenLabel{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 .panel[data-menu-view=party] .back{margin-top:16px}

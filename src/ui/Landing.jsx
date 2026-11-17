@@ -116,10 +116,10 @@ export function Landing({ hidden, initialName = '', initialRoomCode = '', initia
             <h2 className={menu.heading}><MenuIcon name="party" className={menu.headingIcon} />Party</h2>
             {nameField}
             {/* VIS-M3 #175: Host creates the party and only then gets its code; opening this menu makes no room and no code. */}
-            {/* Cleaner Party menu (owner, 2026-11-17): host with one big button, then "or join with a code" and the code box beside Join. */}
+            {/* Cleaner Party menu (owner, 2026-11-17): a sunny Host card with one big button, then "or join with a code" and a sky Join
+                card whose code box uses the boarding pass's code font. */}
             <div className={menu.partyHost} data-ui="party-host">
               <button type="button" className={menu.go} disabled={connecting} onClick={() => send(UiCommands.CREATE_PARTY, { name, rules: hostRules })}>Create party</button>
-              <p className={menu.partyHint}>You get a code to share with friends.</p>
               {hostRules && <p className={app.small} data-ui="party-custom-rules">Your party uses your Custom rules ({changedRules(hostRules).length} changed); everyone who joins plays them. <button type="button" className={menu.inline} onClick={() => setHostRules(null)}>Use standard</button></p>}
             </div>
             <form className={menu.partyJoin} data-ui="party-join" onSubmit={e => { e.preventDefault(); if (!connecting && roomCode.trim()) send(UiCommands.JOIN, { name, roomCode }); }}>
