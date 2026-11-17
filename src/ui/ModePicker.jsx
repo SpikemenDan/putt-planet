@@ -13,25 +13,42 @@ export const MODE_LOOK = Object.freeze({
   [GameModes.PUTT_PRACTICE]: { tone: '#ff3d8b', icon: 'putt', title: 'Practice', sub: 'one putt' },
 });
 
+const TOURNAMENTS = Object.freeze([GameModes.TOURNAMENT_3, GameModes.TOURNAMENT_5, GameModes.TOURNAMENT_7]);
+
 /**
- * The host's game mode choice as colourful tiles (owner, 2026-11-16): one per mode the room offers, each in its own colour with an
- * icon. Modes the room cannot run now (solo practice with friends aboard) are left out. A radio group of native buttons.
+ * The host's game mode choice as colourful tiles in one row (owner, 2026-11-16, 2026-11-17): one tile per mode the room offers, each in
+ * its own colour with an icon; the three tournament lengths share one Tournament tile with 3, 5 and 7 chips. Modes the room cannot run
+ * now (solo practice with friends aboard) are left out. Every choice is a native radio button with its `data-mode`.
  */
 export function ModePicker({ modes = [], value, onChange, hidden = false }) {
-  return (
-    <div className={styles.picker} role="radiogroup" aria-label="Game mode" data-ui="mode-picker" hidden={hidden}>
-      {modes.filter(o => !o.disabled).map(o => {
-        const look = MODE_LOOK[o.value] ?? { tone: '#27c8ff', icon: 'flag', title: o.label, sub: '' };
-        const on = o.value === value;
-        return (
-          <button key={o.value} type="button" role="radio" aria-checked={on} disabled={!!o.disabled} data-mode={o.value} className={styles.tile}
-            style={{ '--tone': look.tone }} title={o.disabled ? 'Solo only' : o.label} onClick={() => onChange?.(o.value)}>
-            <MenuIcon name={look.icon} className={styles.icon} />
-            <span className={styles.title}>{look.title}</span>
-            <small>{o.disabled ? 'solo only' : look.sub}</small>
-          </button>
-        );
-      })}
-    </div>
+  const open = modes.filter(o => !o.disabled);
+  const lengths = open.filter(o => TOURNAMENTS.includes(o.value));
+  const radio = (o, className, children, tone) => (
+    <button key={o.value} type="button" role="radio" aria-checked={o.value === value} aria-label={o.label} data-mode={o.value} className={className}
+      style={tone ? { '--tone': tone } : undefined} onClick={() => onChange?.(o.value)}>{children}</button>
   );
+  const tiles = [];
+  for (const o of open) {
+    if (TOURNAMENTS.includes(o.value)) {
+      if (o !== lengths[0]) continue;
+      const look = MODE_LOOK[GameModes.TOURNAMENT_5];
+      const on = lengths.some(l => l.value === value);
+      tiles.push(
+        <div key="tournament" className={styles.tile + ' ' + styles.group} data-group="tournament" data-on={on || undefined} style={{ '--tone': look.tone }}
+          onClick={e => { if (!on && e.target === e.currentTarget) onChange?.(lengths[0].value); }}>
+          <MenuIcon name={look.icon} className={styles.icon} />
+          <span className={styles.words}><span className={styles.title}>Tournament</span>
+            <span className={styles.chips}>{lengths.map(l => radio(l, styles.chip, MODE_LOOK[l.value].sub.split(' ')[0], MODE_LOOK[l.value].tone))}</span>
+          </span>
+        </div>,
+      );
+      continue;
+    }
+    const look = MODE_LOOK[o.value] ?? { tone: '#27c8ff', icon: 'flag', title: o.label, sub: '' };
+    tiles.push(radio(o, styles.tile, <>
+      <MenuIcon name={look.icon} className={styles.icon} />
+      <span className={styles.words}><span className={styles.title}>{look.title}</span><small>{look.sub}</small></span>
+    </>, look.tone));
+  }
+  return <div className={styles.picker} role="radiogroup" aria-label="Game mode" data-ui="mode-picker" hidden={hidden}>{tiles}</div>;
 }

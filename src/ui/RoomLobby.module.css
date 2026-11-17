@@ -5,14 +5,19 @@
 .left,.right,.dock{position:absolute;z-index:2}
 .left{left:clamp(12px,2vw,32px);top:clamp(12px,3vh,32px);display:flex;flex-direction:column;gap:14px;width:min(340px,30vw)}
 .right{right:clamp(12px,2vw,32px);top:clamp(12px,3vh,32px);width:min(360px,30vw)}
-.dock{left:50%;bottom:clamp(10px,2vh,24px);translate:-50% 0;display:flex;flex-direction:column;align-items:center;gap:8px;width:min(760px,calc(100vw - 2 * min(360px,30vw) - 80px))}
+.dock{left:50%;bottom:clamp(10px,2vh,24px);translate:-50% 0;display:flex;flex-direction:column;align-items:center;gap:8px;max-width:calc(100vw - 2 * min(360px,30vw) - 64px)}
 .titleCard{padding:12px 16px;background:var(--paper);border:4px solid var(--ink);border-radius:18px;box-shadow:6px 6px 0 var(--ink);rotate:-1deg}
 .titleCard h1{margin:0;font:400 clamp(30px,3.2vw,44px)/1 var(--font);letter-spacing:1.5px;color:var(--yellow);-webkit-text-stroke:3px var(--ink);paint-order:stroke fill;text-shadow:3px 4px 0 var(--ink)}
 .label{margin:6px 0 0;font-size:15px;font-weight:800;letter-spacing:.5px;color:var(--pink-d)}
-.status{margin:0;padding:6px 14px;background:rgba(255,253,244,.92);border:3px solid var(--ink);border-radius:999px;box-shadow:0 3px 0 var(--ink);text-align:center}
-.controls{display:flex;align-items:stretch;gap:12px;width:100%;padding:10px;background:rgba(255,253,244,.94);border:4px solid var(--ink);border-radius:20px;box-shadow:6px 6px 0 var(--ink)}
-.controls > [data-ui=mode-picker]{flex:1;grid-template-columns:repeat(auto-fill,minmax(92px,1fr))}
-.go{flex:none;align-self:stretch;margin:0;padding:10px 22px;font-size:24px;letter-spacing:1.5px;line-height:1.05;background:var(--pink);color:#fff;border-radius:16px;animation:nudge 2.4s ease-in-out infinite}
+.status{margin:8px 0 0;padding:5px 12px;font-size:14px;font-weight:800;line-height:1.25;color:var(--ink);background:#fff;border:3px solid var(--ink);border-radius:12px}
+.status:empty{display:none}
+/* The host's bar: the mode tiles and Start Game, all on one line. */
+.controls{display:flex;align-items:center;gap:14px;padding:12px 12px 14px 14px;background:linear-gradient(100deg,#fffdf4,#fff3c4);border:4px solid var(--ink);border-radius:22px;box-shadow:6px 6px 0 var(--ink)}
+.go{flex:none;display:flex;align-items:center;gap:10px;margin:0;padding:12px 20px;font:400 26px/1 var(--font);letter-spacing:1px;text-transform:none;white-space:nowrap;color:#fff;text-shadow:2px 2px 0 var(--ink);
+  background:linear-gradient(100deg,var(--pink),#ff8a1f);border:4px solid var(--ink);border-radius:16px;box-shadow:0 6px 0 var(--ink);cursor:pointer;transition:translate .1s,box-shadow .1s,filter .15s;animation:nudge 2.4s ease-in-out infinite}
+.go::after{content:'';border-left:14px solid #fff;border-top:10px solid transparent;border-bottom:10px solid transparent;filter:drop-shadow(2px 2px 0 var(--ink))}
+.go:hover{translate:0 -2px;box-shadow:0 8px 0 var(--ink);filter:saturate(1.15) brightness(1.05)}
+.go:active{translate:0 4px;box-shadow:0 2px 0 var(--ink)}
 .go[hidden]{display:none}
 @keyframes nudge{0%,80%,100%{scale:1}88%{scale:1.06}}
 /* The party code in a caption box on the ticket. */

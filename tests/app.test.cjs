@@ -68,7 +68,7 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
           if (view && view !== 'home') await c.click(doc.querySelector('[data-ui=menu-back]'));
           await c.click(doc.querySelector(`[data-menu=${id}]`));
         },
-        /** Solo steps (VIS-M4): pick the mode and Gaia, name, Play solo; lands on the map select with no lobby. */
+        /** Solo steps (VIS-M4): pick the mode and Gaia, name, Play Solo; lands on the map select with no lobby. */
         async solo(mode = 'standard') {
           await c.menu('solo');
           const [kind, sub] = { standard: ['Casual'], tournament_3: ['Tournament', '3 maps'], tournament_5: ['Tournament', '5 maps'], tournament_7: ['Tournament', '7 maps'], practice: ['Practice', 'Whole map'], putt_practice: ['Practice', 'One putt'] }[mode];
@@ -78,7 +78,7 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
           if (sub) await c.click([...doc.querySelectorAll('[data-ui=solo-steps] button')].find(b => (b.getAttribute('aria-label') ?? b.textContent).startsWith(sub) && shown(b)));
           await c.click(doc.querySelector('[data-ui=solo-steps] [data-ui=world-choose]'));
           await c.fill(doc.querySelector('[data-ui=landing] input'), name);
-          await c.click('Play solo');
+          await c.click('Play Solo');
           await until(() => c.shown('[data-ui=map-select]'), 2000, name + ' map select');
         },
         /** Party menu: Create; the party opens straight on the lobby. Returns the code the party was given. */

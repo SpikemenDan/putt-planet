@@ -48,20 +48,39 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', re
   const inkMaterial = own(createInkMaterial(THREE, inkUniforms));
   const ink = mesh => { mesh.add(new THREE.Mesh(own(smoothHullGeometry(THREE, mesh.geometry)), inkMaterial)); return mesh; };
 
-  // ---- The sun: a 3D sphere with turning rays, fixed to the camera at the top right of the free area.
+  // ---- The sun: a 3D ball with a soft highlight, ringed by rounded petals that slowly turn (long orange ones and short yellow ones
+  // between them, turning the other way), fixed to the camera at the top right of the free area. Unlit: it is the light.
   const sun = new THREE.Group();
-  const sunBody = ink(new THREE.Mesh(own(new THREE.SphereGeometry(1.6, 32, 24)), own(new THREE.MeshBasicMaterial({ color: 0xffd23f }))));
-  const rays = new THREE.Group();
-  const rayGeometry = own(new THREE.ConeGeometry(0.34, 1.2, 4));
-  const rayMaterial = own(new THREE.MeshBasicMaterial({ color: 0xffa62b }));
-  for (let k = 0; k < 12; k++) {
-    const ray = ink(new THREE.Mesh(rayGeometry, rayMaterial));
-    const a = k / 12 * Math.PI * 2;
-    ray.position.set(Math.cos(a) * 2.4, Math.sin(a) * 2.4, -0.3);
-    ray.rotation.z = a - Math.PI / 2;
-    rays.add(ray);
-  }
-  sun.add(rays, sunBody);
+  const flat = color => own(new THREE.MeshBasicMaterial({ color }));
+  const sunBody = ink(new THREE.Mesh(own(new THREE.SphereGeometry(1.6, 40, 28)), flat(0xffd23f)));
+  const shine = new THREE.Mesh(own(new THREE.CircleGeometry(1, 32)), own(new THREE.MeshBasicMaterial({ color: 0xfff6c8, transparent: true, opacity: 0.85 })));
+  shine.position.set(-0.55, 0.6, 1.62);
+  shine.scale.set(0.55, 0.36, 1);
+  shine.rotation.z = 0.6;
+  const rim = new THREE.Mesh(own(new THREE.RingGeometry(1.6, 1.78, 48)), flat(0xffb02e)); // a warm rim between the ball and its petals
+  rim.position.z = -0.05;
+  const petal = (length, width) => {
+    const shape = new THREE.Shape();
+    shape.moveTo(-width, 0);
+    shape.quadraticCurveTo(-width * 0.9, length * 0.55, 0, length);
+    shape.quadraticCurveTo(width * 0.9, length * 0.55, width, 0);
+    shape.lineTo(-width, 0);
+    return own(new THREE.ExtrudeGeometry(shape, { depth: 0.12, bevelEnabled: true, bevelThickness: 0.04, bevelSize: 0.04, bevelSegments: 2, curveSegments: 10 }));
+  };
+  const ring = (count, length, width, radius, color, offset) => {
+    const group = new THREE.Group(), geometry = petal(length, width), material = flat(color);
+    for (let k = 0; k < count; k++) {
+      const a = (k + offset) / count * Math.PI * 2, mesh = ink(new THREE.Mesh(geometry, material));
+      mesh.position.set(Math.cos(a) * radius, Math.sin(a) * radius, -0.4);
+      mesh.rotation.z = a - Math.PI / 2;
+      group.add(mesh);
+    }
+    return group;
+  };
+  const rays = ring(8, 1.25, 0.42, 1.55, 0xff9a1f, 0);
+  const shortRays = ring(8, 0.8, 0.3, 1.55, 0xffc23a, 0.5);
+  shortRays.position.z = 0.05;
+  sun.add(rays, shortRays, rim, sunBody, shine);
   camera.add(sun);
 
   const rig = new THREE.Group(); // sways and bobs
@@ -160,7 +179,9 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', re
     const sunZ = dist * 2.4, halfH = sunZ * tan, halfW = halfH * camera.aspect;
     sun.position.set((-1 + 2 * (insets.left + freeW * 0.76 + offX) / width) * halfW, (1 - 2 * (insets.top + freeH * 0.14 + offY) / height) * halfH, -sunZ);
     sun.scale.setScalar(sunZ / 58);
-    rays.rotation.z = reducedMotion ? 0 : t * 0.25;
+    rays.rotation.z = reducedMotion ? 0 : t * 0.18;
+    shortRays.rotation.z = reducedMotion ? 0 : -t * 0.12;
+    sunBody.scale.setScalar(reducedMotion ? 1 : 1 + Math.sin(t * 1.3) * 0.025); // a gentle glow pulse
     rig.rotation.y = TURN + Math.sin(t * 0.6) * l.sway * Math.PI / 180;
     rig.position.y = Math.sin(t * 1.7) * l.bob;
     rig.rotation.x = Math.sin(t * 1.1) * 0.02;

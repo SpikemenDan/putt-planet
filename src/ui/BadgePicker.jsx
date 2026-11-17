@@ -9,9 +9,9 @@ export const PICKER_CLOSE_MS = 140;
 /**
  * The colour picker that opens from the player's own colour badge (owner, 2026-11-14), on the Solo and party lobby tickets. Closes
  * on Escape, on a click outside it, or from the badge again; focus moves into it on open and back to the badge on close. Colours
- * other players hold are crossed out (`taken`); alone (`solo`) nothing is.
+ * other players hold are crossed out (`taken`); alone nothing is.
  */
-function Picker({ selected, taken, onPick, onClose, badge, closing, solo }) {
+function Picker({ selected, taken, onPick, onClose, badge, closing }) {
   const root = useRef(null);
   useEffect(() => {
     const el = root.current;
@@ -25,9 +25,8 @@ function Picker({ selected, taken, onPick, onClose, badge, closing, solo }) {
   }, [onClose, badge]);
   return (
     <div ref={root} className={styles.picker + (closing ? ' ' + styles.closing : '')} role="dialog" aria-label="Your ball colour" data-ui="lobby-color-picker">
-      <p className={styles.pickerTitle}>Your ball colour</p>
+      <p className={styles.pickerTitle}>Your ball colour<span className={styles.colourName} style={{ '--ball': colorHex(selected) }} data-ui="colour-name">{PLAYER_COLOR_NAMES[selected] ?? ''}</span></p>
       <ColorPicker selected={selected} taken={taken} onPick={onPick} />
-      <p className={styles.pickerFoot}><span data-ui="colour-name">{PLAYER_COLOR_NAMES[selected] ?? ''}</span><span>{solo ? 'Esc closes' : '✕ taken · Esc closes'}</span></p>
     </div>
   );
 }
@@ -36,7 +35,7 @@ function Picker({ selected, taken, onPick, onClose, badge, closing, solo }) {
  * The player's own colour badge and the picker it opens. One colour system for Solo and party: picking calls `onPick` with the
  * palette index, which the lobbies send as SET_COLOR, so the choice is saved the same way everywhere.
  */
-export function ColorBadge({ color = null, taken = {}, onPick, hidden = false, solo = false }) {
+export function ColorBadge({ color = null, taken = {}, onPick, hidden = false }) {
   const root = useRef(null);
   const badge = useRef(null);
   const [open, setOpen] = useState(false);
@@ -58,7 +57,7 @@ export function ColorBadge({ color = null, taken = {}, onPick, hidden = false, s
       <button ref={badge} type="button" className={styles.badge} style={{ '--ball': colorHex(shown) }} data-color={shown}
         aria-label={'Change your ball colour (now ' + (PLAYER_COLOR_NAMES[shown] ?? '') + ')'} aria-haspopup="dialog" aria-expanded={open && !closing}
         onClick={() => (open ? onClose(true) : setOpen(true))} data-ui="my-color-badge" />
-      {open && <Picker selected={shown} taken={taken} onPick={onPick} onClose={onClose} badge={badge} closing={closing} solo={solo} />}
+      {open && <Picker selected={shown} taken={taken} onPick={onPick} onClose={onClose} badge={badge} closing={closing} />}
     </span>
   );
 }

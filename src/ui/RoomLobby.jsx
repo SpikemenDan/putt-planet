@@ -9,7 +9,6 @@ import { flightOf, LobbyTicket } from './LobbyTicket.jsx';
 import { LobbyVehicle, VEHICLE_SEATS } from './LobbyVehicle.jsx';
 import { ModePicker } from './ModePicker.jsx';
 import { TiePicker } from './TiePicker.jsx';
-import app from './App.module.css';
 import buttons from './buttons.module.css';
 import styles from './RoomLobby.module.css';
 
@@ -27,8 +26,9 @@ function PartyCode({ code, send }) {
 /**
  * Party lobby (VIS-M3 #175; vehicles, ticket and manifest, owner 2026-11-16), full screen over the planet sky: everyone's ball rides
  * one 3D vehicle, the plane through Gaia's air or the rocket in space for Ares and Luna, with name tags alternating above and below.
- * On the left, the title and the passenger manifest; on the right, your boarding pass (party code, destination the host switches,
- * your name and colour badge, Leave); along the bottom, the host's colourful mode tiles and Start Game. Players arrive with a free
+ * On the left, the title, the room's status and the passenger manifest; on the right, your boarding pass (party code, destination the
+ * host switches, your name and colour badge, Leave room on the stub); along the bottom, one bar with the host's colourful mode tiles
+ * and Start Game. Players arrive with a free
  * colour and change it from the badge on their pass.
  */
 export function RoomLobby({ hidden }) {
@@ -58,7 +58,13 @@ export function RoomLobby({ hidden }) {
   useEffect(() => {
     if (!shown) return undefined;
     stage?.setView({ space: vehicle === 'rocket', target: vehicle === 'rocket' ? destination : 'gaia' });
-    return () => stage?.setView({ space: false, target: 'gaia' });
+    // The rocket flies over Ares or Luna: the planet sits low, along the bottom of the screen (owner, 2026-11-17).
+    const sky = left.current?.ownerDocument.querySelector('[data-ui=planet-stage]');
+    const view = sky?.ownerDocument.defaultView;
+    const resized = () => view?.dispatchEvent(new view.Event('resize')); // a still (reduced-motion) planet scene redraws only on resize
+    sky?.toggleAttribute('data-low', vehicle === 'rocket');
+    resized();
+    return () => { stage?.setView({ space: false, target: 'gaia' }); sky?.removeAttribute('data-low'); resized(); };
   }, [stage, shown, vehicle, destination]);
   const left = useRef(null), right = useRef(null), dock = useRef(null);
   const insets = () => {
@@ -75,6 +81,7 @@ export function RoomLobby({ hidden }) {
         <div className={styles.titleCard}>
           <h1>{party ? 'Party lobby' : 'Room lobby'}</h1>
           <p className={styles.label}>{lobby?.label}</p>
+          <p className={styles.status} data-ui="lobby-status">{lobby?.status}</p>
         </div>
         <LobbyManifest passengers={roster} seats={VEHICLE_SEATS[vehicle] ?? 8} flight={flight} destination={planet} />
       </div>
@@ -82,13 +89,11 @@ export function RoomLobby({ hidden }) {
         <LobbyTicket vehicle={vehicle} name={me?.name ?? ''} color={lobby?.myColor ?? null} taken={lobby?.takenColors} hidden={hidden || !lobby}
           onPick={c => send(UiCommands.SET_COLOR, { color: c })} destination={destination}
           onDestination={lobby?.canPickDestination ? world => session({ type: 'SET_DESTINATION', world }) : null}
-          flight={flight} gate={gate} seat={seat > 0 ? seat : 1}>
+          flight={flight} gate={gate} seat={seat > 0 ? seat : 1} onBack={() => send(UiCommands.LEAVE)} backLabel="Leave room">
           {party && <PartyCode code={lobby.code} send={send} />}
-          <button type="button" className={buttons.ghost} onClick={() => send(UiCommands.LEAVE)}>Leave room</button>
         </LobbyTicket>
       </div>
       <div ref={dock} className={styles.dock}>
-        <p className={app.status + ' ' + styles.status} data-ui="lobby-status">{lobby?.status}</p>
         <TiePicker tie={lobby?.tie} />
         {lobby?.showModes && <div className={styles.controls}>
           <ModePicker modes={offered} value={mode} onChange={setMode} />

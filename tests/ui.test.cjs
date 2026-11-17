@@ -215,7 +215,7 @@ function fakeClock() {
     assert.equal(doc.activeElement?.dataset.menu, 'custom', 'focus returns to the button that opened it');
     await click(landing.querySelector('[data-menu=solo]'));
     assert.equal($('[data-ui=solo-steps]').dataset.step, 'mode', 'Solo opens on its first step');
-    assert.ok(!button('Play solo'), 'Play solo waits for the last step');
+    assert.ok(!button('Play Solo'), 'Play Solo waits for the last step');
     assert.ok(!button('Create party'), 'and not the party one');
     await t.teardown();
     const invited = await setup({ mountProps: { initialView: 'party' }, inRoom: false });
@@ -244,14 +244,14 @@ function fakeClock() {
     assert.deepEqual(labels(), ['Casual', 'Tournament', 'Practice'], 'Casual, Tournament and the smaller Practice button');
     assert.ok(inSteps('Practice').className !== inSteps('Casual').className, 'Practice is styled smaller than the main options');
     assert.equal(doc.activeElement, first(), 'focus starts on the first button');
-    assert.ok(!button('Play solo'), 'no name or Play yet');
+    assert.ok(!button('Play Solo'), 'no name or Play yet');
 
     // Tournament lengths
     await click(inSteps('Tournament'));
     assert.equal(step(), 'mode:tournament');
     assert.deepEqual([...steps().querySelectorAll('button[aria-label$=" maps"]')].map(b => b.getAttribute('aria-label')), ['3 maps', '5 maps', '7 maps']);
     assert.equal(doc.activeElement, first());
-    await click(steps().querySelector('[data-ui=menu-back]'));
+    await click($('[data-ui=menu-back]'));
     assert.equal(step(), 'mode', 'Back from the lengths returns to the first step');
     assert.deepEqual(labels(), ['Casual', 'Tournament', 'Practice']);
 
@@ -264,7 +264,7 @@ function fakeClock() {
     const cards = [...steps().querySelectorAll('button:not([data-ui=menu-back])')];
     assert.ok(cards.every(b => b.querySelector('svg[aria-hidden=true]')), 'each practice card has a decorative icon (owner, 2026-11-14)');
     assert.equal(new Set(cards.map(b => b.style.getPropertyValue('--tone'))).size, 3, 'and its own colour');
-    await click(steps().querySelector('[data-ui=menu-back]'));
+    await click($('[data-ui=menu-back]'));
     assert.equal(step(), 'mode');
 
     // World step: a carousel of planets; Ares and Luna cannot be chosen yet
@@ -299,7 +299,7 @@ function fakeClock() {
     await click(choose());
     assert.equal(step(), 'ready', 'Ares can be chosen');
     assert.equal($('[data-ui=solo-summary]').textContent, 'Tournament · 5 maps on Ares');
-    await click(steps().querySelector('[data-ui=menu-back]'));
+    await click($('[data-ui=menu-back]'));
     assert.equal(step(), 'world');
     await act(async () => { choose().focus(); });
     await key('ArrowRight');
@@ -308,16 +308,17 @@ function fakeClock() {
     assert.equal(carousel().dataset.world, 'gaia', 'ArrowLeft turns left');
     assert.equal(choose().textContent, 'Choose Gaia');
 
-    // Ready step: summary, name, colour, Play solo
+    // Ready step: summary, name, colour, Play Solo
     await click(choose());
     assert.equal(step(), 'ready');
     assert.deepEqual(views.at(-1), { space: false, target: 'gaia' }, 'the Solo lobby flies the helicopter through Gaia\'s air');
     assert.equal($('[data-ui=solo-summary]').textContent, 'Tournament · 5 maps on Gaia');
-    assert.equal(doc.activeElement, first(), 'focus lands on the first field');
-    assert.ok(button('Play solo'));
-    await click(steps().querySelector('[data-ui=menu-back]'));
+    assert.equal(doc.activeElement, $('[data-ui=solo-play]'), 'focus lands on Play Solo');
+    assert.ok(button('Play Solo'));
+    assert.ok($('[data-menu-view=solo]').hasAttribute('data-solo-lobby'), 'the menu card steps away for the full-screen lobby');
+    await click($('[data-ui=menu-back]'));
     assert.equal(step(), 'world', 'Back from ready returns to the world');
-    await click(steps().querySelector('[data-ui=menu-back]'));
+    await click($('[data-ui=menu-back]'));
     assert.equal(step(), 'mode', 'and then to the mode');
     assert.equal(doc.activeElement, first());
 
@@ -335,17 +336,17 @@ function fakeClock() {
       for (const label of path) await click(inSteps(label));
       await click(choose());
       assert.equal($('[data-ui=solo-summary]').textContent, summary);
-      const typed = steps().querySelector('input').value;
+      const typed = $('[data-ui=ticket-name]').value;
       t.commands.length = 0;
-      await click(button('Play solo'));
+      await click(button('Play Solo'));
       assert.deepEqual(t.commands, [{ type: 'play-solo', name: typed, mode, world: 'gaia' }], mode);
-      for (let i = 0; i < 2; i++) await click(steps().querySelector('[data-ui=menu-back]'));
+      for (let i = 0; i < 2; i++) await click($('[data-ui=menu-back]'));
       assert.equal(step(), 'mode');
     }
 
     // Back from the first step leaves Solo
     assert.deepEqual(views.at(-1), { space: false, target: 'gaia' }, 'the first step brings the horizon back');
-    await click(steps().querySelector('[data-ui=menu-back]'));
+    await click($('[data-ui=menu-back]'));
     assert.equal(landing.dataset.view, 'home');
     assert.equal($('[data-ui=solo-steps]'), null);
     assert.deepEqual(views.at(-1), { space: false, target: 'gaia' }, 'leaving Solo keeps the horizon');
@@ -376,11 +377,15 @@ function fakeClock() {
     assert.ok(ticket, 'the boarding pass');
     assert.equal(ticket.querySelector('[data-ui=ticket-destination]').textContent, 'Gaia');
     assert.equal(ticket.querySelector('[data-ui=destination-pick]'), null, 'Solo chose its planet already');
+    assert.deepEqual([...ticket.querySelectorAll('dt')].map(d => d.textContent), ['Flight', 'Helipad', 'Seat'], 'flight, helipad and seat only');
+    assert.equal(ticket.querySelector('[data-ui=ticket-mode]').textContent, 'Game modeCasual1 map', 'the mode strip');
+    assert.doesNotMatch(ticket.textContent, /Tap your|Esc closes/, 'no how-to text on the pass');
+    assert.equal(ticket.querySelector('[data-ui=menu-back]').textContent, 'Back', 'Back is on the pass');
     assert.equal($$('[data-ui=color-picker]').length, 0, 'no inline palette: the badge opens it');
-    const name = steps().querySelector('input');
+    const name = $('[data-ui=ticket-name]');
     assert.equal(name.maxLength, 12, 'names take at most 12 characters');
     await act(async () => { const set = Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype, 'value').set; set.call(name, 'Ana'); name.dispatchEvent(new dom.window.Event('input', { bubbles: true })); });
-    assert.equal(ticket.querySelector('[data-ui=ticket-name]').textContent, 'Ana', 'the ticket shows the name as typed');
+    assert.equal(ticket.querySelector('[data-ui=ticket-name]').value, 'Ana', 'the name is typed on the ticket');
     const tag = vehicle.querySelector('[data-ui=lobby-passengers] [role=listitem]');
     assert.equal(tag.textContent, 'Anayou', 'the ball carries a name tag');
     await act(async () => heli.emit([{ seat: 0, x: 120, y: 80, r: 12 }], { width: 400, height: 300 }));
@@ -393,14 +398,15 @@ function fakeClock() {
     const swatches = [...picker.querySelectorAll('[data-ui=color-picker] [data-color]')];
     assert.equal(swatches.length, 12, 'the same 12-colour palette');
     assert.equal(swatches.filter(b => b.disabled).length, 0, 'alone: nothing is crossed out');
+    assert.doesNotMatch(picker.textContent, /Esc closes|taken/, 'no how-to text in the picker');
     assert.equal(picker.querySelector('[aria-checked=true]').dataset.color, '4');
     t.commands.length = 0;
     await click(swatches[7]);
     assert.deepEqual(t.commands, [{ type: 'set-color', color: 7 }], 'the same SET_COLOR command as the party lobby, saved the same way');
     t.commands.length = 0;
-    await click(button('Play solo'));
+    await click(button('Play Solo'));
     assert.deepEqual(t.commands, [{ type: 'play-solo', name: 'Ana', mode: 'standard', world: 'gaia' }], 'Play starts the chosen mode and world');
-    await click(steps().querySelector('[data-ui=menu-back]'));
+    await click($('[data-ui=menu-back]'));
     assert.equal($('[data-ui=solo-lobby]'), null, 'Back leaves the lobby');
     assert.equal(heli.disposed, true, 'and disposes the 3D scene');
     await t.teardown();
@@ -924,7 +930,7 @@ function fakeClock() {
     await click([...landing.querySelectorAll('button')].find(b => b.textContent.startsWith('Casual')));
     await click(landing.querySelector('[data-ui=world-choose]'));
     assert.equal(landing.querySelector('input').value, '  Zed  ', 'the name carries from Party to Solo');
-    const solo = [...landing.querySelectorAll('button')].find(b => b.textContent === 'Play solo');
+    const solo = [...landing.querySelectorAll('button')].find(b => b.textContent === 'Play Solo');
     await click(solo);
     assert.deepEqual(t.commands, [
       { type: 'join', name: '  Zed  ', roomCode: 'Fun-Room!' },
@@ -1100,6 +1106,9 @@ function fakeClock() {
     assert.equal(ticket.querySelector('[data-ui=ticket-title]').textContent, 'Rocket Boarding Pass');
     assert.equal(ticket.querySelector('[data-ui=ticket-code]').textContent, 'ARS');
     assert.equal(lobby.querySelector('[data-ui=lobby-vehicle]').dataset.vehicle, 'rocket');
+    const sky = t.within('[data-ui=planet-stage]');
+    assert.ok(sky?.hasAttribute('data-low'), 'the rocket flies over the planet: the sky puts it low');
+    assert.ok(ticket.querySelector('[data-ui=pass-leave]'), 'Leave room is on the pass');
     await t.send({ type: 'SET_DESTINATION', playerId: 'g1', world: 'luna' });
     assert.equal(t.session.getSnapshot().destination, 'ares', 'a guest cannot switch it');
     await t.send({ type: 'SET_DESTINATION', playerId: 'host', world: 'mars' });

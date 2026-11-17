@@ -3,13 +3,14 @@ import { createPortal } from 'react-dom';
 import { GameModes } from '../shared/session.js';
 import { WORLDS } from '../shared/worlds.js';
 import { OFFWORLD_REGIONS } from '../shared/world-regions.js';
-import { NAME_LIMIT, UiCommands } from './commands.js';
+import { UiCommands } from './commands.js';
 import { useUiContext, useView } from './context.js';
 import { flightOf, LobbyTicket } from './LobbyTicket.jsx';
 import { LobbyVehicle } from './LobbyVehicle.jsx';
 import solo from './SoloLobby.module.css';
 import menu from './Landing.module.css';
 import { MenuIcon } from './MenuIcons.jsx';
+import { MODE_LOOK } from './ModePicker.jsx';
 
 /** Colour and icon of each Solo choice (owner, 2026-11-14). Presentation only. */
 const TONES = Object.freeze({
@@ -37,16 +38,19 @@ export const SOLO_MODES = Object.freeze({
 
 const STEPS = ['mode', 'world', 'ready'];
 
+/** How the pass shows a Solo mode: the party tile's colour and icon, in Solo's words (Casual, practice Putt Pong). */
+const soloLook = mode => ({ ...MODE_LOOK[mode], ...(mode === GameModes.STANDARD && { title: 'Casual' }), ...(mode === GameModes.PONG && { sub: 'practice' }) });
+
 /** Arrow order in the destination view (owner, 2026-11-12): left goes Gaia → Luna → Ares → Gaia, right goes back the other way. */
 export const WORLD_ORDER = Object.freeze(['gaia', 'luna', 'ares']);
 const WORLD_BLURB = Object.freeze({ gaia: 'Home: six regions of courses', luna: 'Low gravity: long, floaty putts in two regions', ares: 'Lighter gravity: red canyons and highlands' });
 
 /**
  * Solo, one question per screen (owner, 2026-11-12, layout A): how to play (Casual, Tournament and its length, or the
- * smaller Practice button), then the destination, then the Solo lobby (owner, 2026-11-16): a 3D helicopter carrying the player's
- * ball, and on the right a boarding pass with their name, the colour badge that opens the party lobby's colour picker, the flight
- * and Play. The name is typed in the menu card. Play opens the solo room and goes straight to the level select with the chosen
- * mode. Back steps back; from the first step it leaves Solo. `colorField` is no longer shown here (the ticket's badge replaces it);
+ * smaller Practice button), then the destination, then the Solo lobby (owner, 2026-11-16, 2026-11-17): full screen, a 3D helicopter
+ * carrying the player's ball, and on the right a boarding pass with their name (edited on the pass), the colour badge that opens the
+ * party lobby's colour picker, the mode, the flight, Play Solo and Back. The menu card steps away for it. Play opens the solo room and
+ * goes straight to the level select with the chosen mode. Back (or Escape) steps back; from the first step it leaves Solo. `colorField` is no longer shown here (the ticket's badge replaces it);
  * it stays accepted so Landing.jsx needs no change.
  */
 export function SoloSteps({ name, onName, colorField, connecting, send, onExit, overlay = null }) {
@@ -58,7 +62,16 @@ export function SoloSteps({ name, onName, colorField, connecting, send, onExit, 
   const [mode, setMode] = useState(null);
   const [world, setWorld] = useState('gaia');
   const body = useRef(null);
-  useEffect(() => { body.current?.querySelector('button:not(:disabled), input')?.focus(); }, [step, pick]);
+  useEffect(() => {
+    const doc = body.current?.ownerDocument;
+    (step === 'ready' ? doc?.querySelector('[data-ui=solo-play]') : body.current?.querySelector('button:not(:disabled), input'))?.focus();
+  }, [step, pick]);
+  // The Solo lobby takes the whole screen: the menu card steps away while it shows (the pass has the name, Play and Back).
+  useEffect(() => {
+    const card = body.current?.closest('[data-menu-view]');
+    card?.toggleAttribute('data-solo-lobby', step === 'ready');
+    return () => card?.removeAttribute('data-solo-lobby');
+  }, [step]);
   // The destination step shows space; the Solo lobby flies the helicopter through Gaia's air (owner, 2026-11-16); the first step and
   // leaving Solo bring the horizon back. The big title steps aside for both the destination and the lobby.
   const inSpace = step === 'world';
@@ -138,33 +151,33 @@ export function SoloSteps({ name, onName, colorField, connecting, send, onExit, 
 
       {step === 'ready' && (() => {
         const { flight, gate } = flightOf('solo-' + mode + '-' + world);
-        // The helicopter is framed between the menu card on the left and the pass on the right.
+        // The helicopter is framed between the title card at the top left and the pass on the right.
         const insets = () => {
-          const card = body.current?.closest('[data-menu-view]') ?? body.current, view = card?.ownerDocument.defaultView;
-          const pass = view?.document.querySelector('[data-ui=solo-lobby] [data-ui=lobby-ticket]');
+          const view = body.current?.ownerDocument.defaultView;
           if (!view) return null;
-          return { left: (card?.getBoundingClientRect().right ?? 0) + 16, right: pass ? view.innerWidth - pass.getBoundingClientRect().left + 16 : 0, top: 8, bottom: 8 };
+          const box = sel => view.document.querySelector('[data-ui=solo-lobby] ' + sel)?.getBoundingClientRect();
+          const title = box('[data-ui=solo-title]'), pass = box('[data-ui=lobby-ticket]');
+          return { left: 24, right: pass ? view.innerWidth - pass.left + 16 : 0, top: title ? title.bottom + 8 : 8, bottom: 8 };
         };
-        const stage = (
-          <div data-ui="solo-lobby">
+        const lobby = (
+          <div data-ui="solo-lobby" onKeyDown={e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); back(); } }}>
             <LobbyVehicle vehicle="helicopter" passengers={[{ id: 'you', name: name.trim() || 'Player', color: color ?? 0, you: true }]} insets={insets} />
+            <div className={solo.titleCard} data-ui="solo-title">
+              <h1>Solo lobby</h1>
+              <p data-ui="solo-summary">{SOLO_MODES[mode]} on {WORLDS.find(w => w.id === world)?.name}</p>
+            </div>
             <div className={solo.pass}>
-              <LobbyTicket vehicle="helicopter" solo name={name} color={color} onPick={c => send(UiCommands.SET_COLOR, { color: c })} destination={world}
-                flight={flight} gate={gate} seat={1} extra={[['Mode', SOLO_MODES[mode]]]}>
-                <button type="button" className={solo.go} disabled={connecting} onClick={() => send(UiCommands.PLAY_SOLO, { name, mode, world })}>Play solo</button>
+              <LobbyTicket vehicle="helicopter" solo name={name} onName={onName} color={color} onPick={c => send(UiCommands.SET_COLOR, { color: c })} destination={world}
+                flight={flight} gate={gate} seat={1} mode={soloLook(mode)} onBack={back}>
+                <button type="button" className={solo.go} disabled={connecting} onClick={() => send(UiCommands.PLAY_SOLO, { name, mode, world })} data-ui="solo-play">Play Solo</button>
               </LobbyTicket>
             </div>
           </div>
         );
-        return <>
-          <p className={menu.summary} data-ui="solo-summary">{SOLO_MODES[mode]} on {WORLDS.find(w => w.id === world)?.name}</p>
-          <label>Your name<input maxLength={NAME_LIMIT} autoComplete="off" value={name} onChange={e => onName(e.target.value)} /></label>
-          <p className={menu.hint}>Your boarding pass is on the right. Tap your colour on it to change it.</p>
-          {overlay ? createPortal(stage, overlay) : stage}
-        </>;
+        return overlay ? createPortal(lobby, overlay) : lobby;
       })()}
 
-      <button type="button" className={menu.back} onClick={back} data-ui="menu-back">Back</button>
+      {step !== 'ready' && <button type="button" className={menu.back} onClick={back} data-ui="menu-back">Back</button>}
     </div>
   );
 }
