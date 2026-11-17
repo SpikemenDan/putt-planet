@@ -15,7 +15,7 @@ import { createInkMaterial, sizeInk, smoothHullGeometry } from './outline.js';
 import { ATMOSPHERE_FRAGMENT, ATMOSPHERE_VERTEX, CLOUD_FRAGMENT, CLOUD_SHELL_FRAGMENT, CLOUD_VERTEX, CONTRAIL_FRAGMENT, GALAXY_FRAGMENT, GALAXY_VERTEX, PLANET_FRAGMENT, SPHERE_VERTEX, STAR_FRAGMENT, STAR_VERTEX, STREAK_FRAGMENT, STREAK_VERTEX, TRAIL_VERTEX, WAKE_FRAGMENT } from './planet-shaders.js';
 import { worldMap } from './map-paint.js';
 import { MAX_BOATS, MAX_PLANES, MAX_SATELLITES, TEX_W, TEX_H, gaiaPlanet, laneRoutes, shipRoutes, surfaceDir } from './planet-data.js';
-import { MODEL_REACH, PLANE_KINDS, PLANT_KINDS, SHIP_KINDS, makeBalloon, makeBase, makeCity, makeCumulus, makeFlag, makeLighthouse, makeMill, makePeak, makePlane, makePlant, makePort, makeSatellite, makeShip, makeTown, makeVillage, makeVolcano } from './sky-models.js';
+import { MODEL_REACH, PLANE_KINDS, PLANT_KINDS, SHIP_KINDS, makeBalloon, makeBase, makeCity, makeMoonlet, makeObservatory, makeRadioDish, makeSpaceport, makeCumulus, makeFlag, makeLighthouse, makeMill, makePeak, makePlane, makePlant, makePort, makeSatellite, makeShip, makeTown, makeVillage, makeVolcano } from './sky-models.js';
 import { buildAresTexture, buildLunaTexture, WORLD_TEX_H, WORLD_TEX_W } from './worlds.js';
 
 export const PLANET_RADIUS = 100;
@@ -106,7 +106,7 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
   const shell = new THREE.Mesh(sphere(PLANET_RADIUS + 1.1, 128, 96), shellMaterial);
   cloudSpinner.add(shell);
   // The air is a full-view sheet far behind the planet; its shader traces each view ray past the planet to find how much air it crosses.
-  const air = new THREE.Mesh(own(new THREE.PlaneGeometry(1, 1)), own(new THREE.ShaderMaterial({ vertexShader: ATMOSPHERE_VERTEX, fragmentShader: ATMOSPHERE_FRAGMENT, transparent: true, premultipliedAlpha: true, depthWrite: false, uniforms: { sun: shared.sun, atmosphere: shared.atmosphere, radius: { value: PLANET_RADIUS }, shell: { value: PLANET_RADIUS * 1.5 } } })));
+  const air = new THREE.Mesh(own(new THREE.PlaneGeometry(1, 1)), own(new THREE.ShaderMaterial({ vertexShader: ATMOSPHERE_VERTEX, fragmentShader: ATMOSPHERE_FRAGMENT, transparent: true, premultipliedAlpha: true, depthWrite: false, uniforms: { sun: shared.sun, atmosphere: shared.atmosphere, radius: { value: PLANET_RADIUS }, shell: { value: PLANET_RADIUS * 1.5 }, ahead: { value: 0 } } })));
   air.position.z = -30000;
   air.scale.setScalar(200000);
   air.frustumCulled = false;
@@ -377,14 +377,54 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
   };
   baseOn(luna, [-0.45, 0.42, 0.79], 0.034, 0x8fe6ff); // on the side facing Gaia: barely visible
   baseOn(ares, [-0.3, 0.3, 0.9], 0.012, 0xa8ffcc); // far tinier still
+  // Signs of life for the destination view: Luna's observatories, radio dishes and a spaceport on the side the camera sees, satellites
+  // round both worlds, and two small lumpy moons for Ares. All are children of their world, so they shrink with it on the horizon.
+  const lunaSites = [makeObservatory, makeRadioDish, makeSpaceport].map(make => own(make(THREE)));
+  const placeOn = ({ mesh }, shape, dir, size) => {
+    const d = new THREE.Vector3(...dir).normalize(), body = new THREE.Mesh(shape, painted); // no ink: at this size an outline is just a dark blot
+    body.position.copy(d).multiplyScalar(0.985); // the foot sinks a little, so it sits in the ground on the curve
+    body.quaternion.setFromUnitVectors(yAxis, d);
+    body.rotateY(dir[0] * 7);
+    body.scale.setScalar(size);
+    mesh.add(body);
+  };
+  placeOn(luna, lunaSites[0], [0.32, 0.3, 0.9], 0.07);
+  placeOn(luna, lunaSites[0], [0.62, -0.18, 0.76], 0.055);
+  placeOn(luna, lunaSites[1], [0.12, -0.32, 0.94], 0.06);
+  placeOn(luna, lunaSites[1], [0.24, -0.44, 0.87], 0.045);
+  placeOn(luna, lunaSites[2], [0.5, 0.12, 0.86], 0.06);
+  placeOn(luna, lunaSites[0], [-0.6, -0.2, 0.77], 0.055);
+  const orbiters = [];
+  const orbit = ({ mesh }, body, radius, lean, phase, speed) => {
+    const pivot = new THREE.Group();
+    pivot.rotation.set(lean, 0, lean * 0.6);
+    const turn = new THREE.Group();
+    turn.rotation.y = phase;
+    body.position.set(radius, 0, 0);
+    turn.add(body); pivot.add(turn); mesh.add(pivot);
+    orbiters.push({ turn, speed });
+    return body;
+  };
+  const satellite = (k, size) => { const body = inked(new THREE.Mesh(pick(satelliteShapes, k), painted)); body.scale.setScalar(size); body.rotation.set(0.4, k, 0.2); return body; };
+  orbit(luna, satellite(0, 0.014), 1.32, 0.35, -1.2, 0.09);
+  orbit(luna, satellite(1, 0.012), 1.55, -0.55, 2.2, -0.06);
+  orbit(ares, satellite(0, 0.01), 1.3, -0.3, -1.6, 0.08);
+  orbit(ares, satellite(1, 0.009), 1.45, 0.6, 1.9, -0.05);
+  const moonRock = own(library.toon(0x9a8778)), moonDust = own(library.toon(0xb7a08a));
+  [[makeMoonlet(THREE, random, { stretch: [1.4, 0.85, 1.05] }), moonRock, 0.2, 1.9, 0.1, -1.1, 0.05], [makeMoonlet(THREE, random, { stretch: [1.2, 0.95, 0.9] }), moonDust, 0.12, 2.7, -0.06, 0.7, 0.025]].map(([g, material, size, radius, lean, phase, speed]) => {
+    const body = inked(new THREE.Mesh(own(g), material));
+    body.scale.setScalar(size);
+    orbit(ares, body, radius, lean, phase, speed);
+  });
 
-  // ---- The destination view (VIS-M4): the camera pulls back from the horizon into space, where Gaia hangs with Luna slowly orbiting it
+  // ---- The destination view (VIS-M4): the camera pulls back from the horizon into space, where Gaia hangs with Luna slowly orbiting it (framed on Gaia alone: Luna shows only when its orbit brings it into view)
   // and Ares stands far off. Sizes and distances are staged for the view, not real. `setView` picks the planet; the camera flies between
   // them, and the long trips to and from Ares widen the lens and then zoom in. Reads the live `display.space` settings.
   const spaceSettings = () => display.space ?? { orbitSeconds: 120, travelSeconds: 1.8, aresZoom: 0.5, nebula: 0.6, distance: 1 };
   const SPACE_LUNA = { orbit: 520, radius: 34, lean: 0.12 }, SPACE_ARES = { position: new THREE.Vector3(-4200, 700, -3600), radius: 62 };
-  const SPACE_FRAME = { gaia: 1500, luna: 240, ares: 400 }; // camera distance from each planet's centre, before `space.distance`
+  const SPACE_FRAME = { gaia: 700, luna: 240, ares: 400 }; // camera distance from each planet's centre, before `space.distance`: each about 7 radii, so every planet fills the view alike
   const SPACE_VIEW_DIR = new THREE.Vector3(0.42, 0.16, 1).normalize(); // seen a little from the right and above: the sun lights the near side
+  const SPACE_BACKDROP = 0x03050f; // the darkest tone of the page's own backdrop, so the fade in is seamless
   const space = { goal: 0, t: 0, from: 'gaia', to: 'gaia', travel: 1, orbit: 0.96 };
   const home = { luna: { position: new THREE.Vector3(), scale: 1 }, ares: { position: new THREE.Vector3(), scale: 1 } };
   function lunaSpacePosition(phase, out) {
@@ -422,13 +462,19 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
       for (const [x, y, r, rgb, a] of blobs) {
         const grad = g.createRadialGradient(x * w, y * h, 0, x * w, y * h, r * w);
         grad.addColorStop(0, 'rgba(' + rgb + ',' + a + ')'); grad.addColorStop(1, 'rgba(' + rgb + ',0)');
-        g.fillStyle = grad; g.fillRect(0, 0, w, h);
+        g.fillStyle = grad; g.fillRect(x * w - r * w, y * h - r * w, 2 * r * w, 2 * r * w); // only the puff's own square: outside it the gradient is clear
       }
       return c;
     };
-    const blobs = tones => Array.from({ length: 26 }, () => [0.2 + random() * 0.6, 0.25 + random() * 0.5, 0.08 + random() * 0.22, tones[Math.floor(random() * tones.length)], 0.12 + random() * 0.2]);
-    for (const [x, y, sx, sy, tones] of [[-0.9, -0.55, 1.5, 0.9, ['120,70,200', '220,80,160', '80,120,255']], [0.95, 0.35, 1.3, 0.8, ['40,170,200', '90,110,255', '160,90,230']], [0.1, -0.95, 1.1, 0.6, ['255,120,90', '200,70,140']]]) {
-      const canvasTexture = paint(256, 160, blobs(tones));
+    // One calm band of light crossing the sky, like the edge of a galaxy seen from inside: many faint puffs along a gentle curve, thickest
+    // in the middle, their colour drifting slowly from blue through violet to a little rose. No scattered patches.
+    const band = (count, tones) => Array.from({ length: count }, () => {
+      const s = random(), across = (random() + random() + random() - 1.5) * 0.16 * (0.5 + Math.sin(Math.PI * s));
+      const tone = tones[Math.min(tones.length - 1, Math.floor(s * tones.length + (random() - 0.5) * 0.8))] ?? tones[0];
+      return [0.14 + s * 0.72, 0.5 + (s - 0.5) * 0.18 + across + Math.sin(s * 5) * 0.03, 0.05 + random() * 0.07, tone, 0.04 + 0.07 * Math.sin(Math.PI * s)];
+    });
+    for (const [x, y, sx, sy, roll, tones, count] of [[0, -0.15, 3.4, 1.5, 0.32, ['70,110,230', '100,90,220', '140,90,220', '190,100,200'], 160], [0.15, -0.35, 2.4, 0.9, 0.26, ['60,90,200', '90,120,240'], 40]]) {
+      const canvasTexture = paint(512, 192, band(count, tones));
       if (!canvasTexture) continue;
       const texture = own(new THREE.CanvasTexture(canvasTexture));
       texture.colorSpace = THREE.SRGBColorSpace;
@@ -436,6 +482,7 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
       const mesh = new THREE.Mesh(own(new THREE.PlaneGeometry(1, 1)), material);
       mesh.position.set(x * skyT * 1.6, y * skyT, -skyDistance * 0.99);
       mesh.scale.set(sx * skyT, sy * skyT, 1);
+      mesh.rotation.z = roll;
       mesh.renderOrder = -3;
       deepSky.add(mesh);
       nebulae.push(material);
@@ -541,8 +588,7 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
   /** Where the camera stands to show planet `id` in space, and the point it looks at. */
   function spaceCamera(id, pos, look) {
     bodyCentre(id, look);
-    pos.copy(look).addScaledVector(SPACE_VIEW_DIR, SPACE_FRAME[id] * spaceSettings().distance);
-    if (id === 'gaia') look.x -= 170; // Gaia sits right of centre, clear of the menu panel on the left
+    pos.copy(look).addScaledVector(SPACE_VIEW_DIR, SPACE_FRAME[id] * spaceSettings().distance); // the planet sits centred, like Luna and Ares
   }
   /** The lens on a long trip: wider through the middle of the flight, then a short zoom in on arrival. */
   function tripFov(e) {
@@ -561,6 +607,8 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
     ares.mesh.scale.setScalar(home.ares.scale + (SPACE_ARES.radius - home.ares.scale) * k);
     ares.mesh.material.opacity = 0.78 + 0.22 * k;
     deepSky.visible = k > 0.001;
+    air.material.uniforms.ahead.value = k;
+    renderer?.setClearColor?.(k > 0 ? SPACE_BACKDROP : 0x000000, k); // in space the canvas turns opaque deep space, hiding the page's blue horizon backdrop
     library.inkUniforms.ink.value = stats.ink * (1 - 0.75 * k); // tiny far objects would be all outline: thin the ink in space
     const ns = spaceSettings().nebula;
     for (const m of nebulae) m.opacity = ns * k * 0.9;
@@ -623,6 +671,7 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
       for (const b of balloons) b.body.position.set(...b.dir).multiplyScalar(PLANET_RADIUS + 11 + Math.sin(clock * 0.5 + b.phase) * 0.5);
       for (const t of turbines) t.blades.rotation.x += t.speed * dt;
       luna.mesh.rotation.y += dt * 0.01;
+      for (const o of orbiters) o.turn.rotation.y += o.speed * dt;
       stepStreak(dt);
     }
     const sp = spaceSettings();
