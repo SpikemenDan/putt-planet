@@ -471,14 +471,15 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
         vec3 deep = vec3(0.55, 0.27, 0.22), dust = vec3(0.98, 0.7, 0.45), glow = vec3(1.0, 0.88, 0.62);
         vec3 col = mix(deep, dust, smoothstep(0.5, 6.0, depth)) + glow * sunward * 0.35;
         // Dust lies on the ground too: seen from inside the air, the surface takes a rusty veil, so Ares always reads red below.
-        float settle = onGround ? 0.55 * fade * smoothstep(top, ground * 1.02, length(o)) : 0.0;
+        float settle = onGround ? 0.62 * fade * smoothstep(top, ground * 1.02, length(o)) : 0.0;
         vec3 rust = vec3(0.78, 0.38, 0.22);
         float total = 1.0 - (1.0 - a) * (1.0 - settle);
         if (total < 0.003) discard;
         vec3 mixed = (col * a + rust * settle * (1.0 - a)) / max(total, 1e-4);
         gl_FragColor = vec4(mixed * total, total);
       }`,
-    side: THREE.BackSide, transparent: true, premultipliedAlpha: true, depthWrite: false,
+    // No depth test: the far wall of the shell lies behind the ground, and the path length already stops at the ground.
+    side: THREE.BackSide, transparent: true, premultipliedAlpha: true, depthWrite: false, depthTest: false,
   })));
   aresAir.visible = false;
   aresAir.renderOrder = 1;
