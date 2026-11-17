@@ -15,7 +15,7 @@ import { activatePowerup, addToInventory, armedState, auraOf, ballRadiusOf, clea
 import { DEPLOYABLE_HIT } from '../gameplay/deployables.js';
 import { courseBounds, hazardHoldsBall, lightningImpulse } from '../gameplay/global-hazards.js';
 import { hazardVariant, isPrecipitationItem, precipitationVariant } from '../gameplay/world-weather.js';
-import { aimAtHole, EFFECT_FLASH_MS, environmentAwake, SINK_WAIT_MS, STALL_SECONDS, touchedBlocks } from './rules.js';
+import { aimAtHole, EFFECT_FLASH_MS, environmentAwake, MANUAL_RESET_SECONDS, SIGNIFICANT_MOVE_DISTANCE, SINK_WAIT_MS, STALL_SECONDS, touchedBlocks } from './rules.js';
 
 /**
  * @param {object} options
@@ -52,6 +52,7 @@ export function createPutt({ definition, rule, puttIndex, id, name, playing, tim
   player.flashUntil = 0; player.flashType = '';
   let accumulator = 0, stall = 0, waitUntil = 0, completion = null, fxCount = 0, fx = null, disposed = false;
   const appliedLightning = new Set();
+  const positionSamples = [];
 
   const result = () => ({ toasts: [], banners: [], completed: null, aim: null, cancelInput: false, openCard: false, placement: null, deployHits: [], cupEliminations: [] });
   const finish = (out, event, now) => {
@@ -86,6 +87,8 @@ export function createPutt({ definition, rule, puttIndex, id, name, playing, tim
       const event = engine.launch(id, angle, power, shotPower);
       clearAtLaunch(player);
       stall = 0; accumulator = 0;
+      positionSamples.length = 0;
+      positionSamples.push({ x: player.x, y: player.y, z: player.z, time: localNow() });
       return event;
     },
 
@@ -98,6 +101,12 @@ export function createPutt({ definition, rule, puttIndex, id, name, playing, tim
       const out = result();
       if (disposed) return out;
       if (player.mode === 'play') {
+        if (positionSamples.length === 0 || now - positionSamples[positionSamples.length - 1].time >= 100) {
+          positionSamples.push({ x: player.x, y: player.y, z: player.z, time: now });
+        }
+        while (positionSamples.length > 0 && now - positionSamples[0].time > (MANUAL_RESET_SECONDS + 1) * 1000) {
+          positionSamples.shift();
+        }
         const held = hazardHoldsBall(player.globalHazards, hazardTime(), player, player.globalHazardBounds, course);
         if (!player.moving && (environmentAwake(course, player, hazardTime()) || held)) { out.cancelInput = true; player.moving = true; stall = 0; }
         if (player.moving) {
@@ -106,9 +115,20 @@ export function createPutt({ definition, rule, puttIndex, id, name, playing, tim
             for (const event of engine.step(FIXED_TIMESTEP).events) {
               if (event.type === SimulationEventTypes.SINK) finish(out, event, now);
               else if (event.type === SimulationEventTypes.CUP_ELIMINATION) out.cupEliminations.push(event.cupId);
-              else if (event.type === SimulationEventTypes.OUT_OF_BOUNDS) { out.toasts.push('Splash! Back to your last spot. That stroke still counts.'); out.aim = aimAtHole(course, player); }
+              else if (event.type === SimulationEventTypes.OUT_OF_BOUNDS) {
+                out.toasts.push('Splash! Back to your last spot. That stroke still counts.');
+                out.aim = aimAtHole(course, player);
+                stall = 0;
+                positionSamples.length = 0;
+                positionSamples.push({ x: player.x, y: player.y, z: player.z, time: now });
+              }
               else if (event.type === DEPLOYABLE_HIT) out.deployHits.push(event.id);
-              else if (event.type === SimulationEventTypes.REST) out.aim = aimAtHole(course, player);
+              else if (event.type === SimulationEventTypes.REST) {
+                out.aim = aimAtHole(course, player);
+                stall = 0;
+                positionSamples.length = 0;
+                positionSamples.push({ x: player.x, y: player.y, z: player.z, time: now });
+              }
             }
             accumulator -= FIXED_TIMESTEP;
           }
@@ -116,6 +136,9 @@ export function createPutt({ definition, rule, puttIndex, id, name, playing, tim
             outOfBounds(player, course, []);
             out.toasts.push('Splash! Back to your last spot. That stroke still counts.');
             out.aim = aimAtHole(course, player);
+            stall = 0;
+            positionSamples.length = 0;
+            positionSamples.push({ x: player.x, y: player.y, z: player.z, time: now });
           }
         }
         if (player.mode === 'play' && powerups.spawn) for (const k of touchedBlocks(course, player)) {
@@ -130,6 +153,37 @@ export function createPutt({ definition, rule, puttIndex, id, name, playing, tim
           finish(out, events[0], now);
         }
       }
+      return out;
+    },
+
+    /** True when the ball has not had significant movement in over MANUAL_RESET_SECONDS. */
+    get canResetBall() {
+      if (disposed || player.mode !== 'play') return false;
+      if (player.strokes === 0 && !player.moving) return false;
+      if (positionSamples.length === 0) return false;
+      const oldest = positionSamples[0];
+      const latest = positionSamples[positionSamples.length - 1];
+      if (latest.time - oldest.time < MANUAL_RESET_SECONDS * 1000) return false;
+      let maxDist = 0;
+      for (const s of positionSamples) {
+        const d = Math.hypot(s.x - oldest.x, s.y - oldest.y, s.z - oldest.z);
+        if (d > maxDist) maxDist = d;
+      }
+      return maxDist < SIGNIFICANT_MOVE_DISTANCE;
+    },
+
+    /** Manually resets the ball to its previous spot with a splash/stroke penalty when stuck. */
+    resetBall() {
+      const out = result();
+      if (disposed || player.mode !== 'play' || !this.canResetBall) return out;
+      outOfBounds(player, course, []);
+      stall = 0;
+      accumulator = 0;
+      positionSamples.length = 0;
+      positionSamples.push({ x: player.x, y: player.y, z: player.z, time: localNow() });
+      out.cancelInput = true;
+      out.toasts.push('Ball reset to last spot. That stroke still counts.');
+      out.aim = aimAtHole(course, player);
       return out;
     },
 

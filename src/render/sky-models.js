@@ -481,6 +481,58 @@ export function makeBase(THREE, dome = 0x8fe6ff) {
   ]);
 }
 
+/** An observatory: a round white hall under a silver dome, its shutter open on a telescope, with a little mast. Sits on +y. */
+export function makeObservatory(THREE) {
+  return mergeParts(THREE, [
+    { geometry: new THREE.CylinderGeometry(1, 1.08, 1, 18), color: 0xf2f4fa, at: moved(THREE, 0, 0.5, 0) },
+    { geometry: new THREE.SphereGeometry(1.02, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), color: 0xc9d2e4, at: moved(THREE, 0, 1, 0) },
+    { geometry: new THREE.BoxGeometry(0.36, 0.9, 1.1), color: 0x23264a, at: moved(THREE, 0, 1.55, 0.45, -0.5, 0, 0) }, // the open shutter
+    { geometry: new THREE.CylinderGeometry(0.13, 0.17, 1.2, 10), color: 0xffd640, at: moved(THREE, 0, 1.75, 0.55, 0.75, 0, 0) }, // the telescope
+    { geometry: new THREE.CylinderGeometry(0.05, 0.05, 1.3, 6), color: 0xe8ecf5, at: moved(THREE, 1.15, 0.65, -0.4) },
+    { geometry: new THREE.SphereGeometry(0.14, 8, 6), color: 0x36a2ff, at: moved(THREE, 1.15, 1.32, -0.4) },
+  ]);
+}
+
+/** A radio telescope: a big white dish on a yellow mount, tipped toward the sky. Sits on +y. */
+export function makeRadioDish(THREE) {
+  return mergeParts(THREE, [
+    { geometry: new THREE.CylinderGeometry(0.3, 0.45, 1.2, 10), color: 0xffd640, at: moved(THREE, 0, 0.6, 0) },
+    { geometry: new THREE.SphereGeometry(1.4, 18, 8, 0, Math.PI * 2, 0, 1.05), color: 0xeef1ff, at: moved(THREE, 0, 2.6, 0, Math.PI + 0.5, 0, 0) },
+    { geometry: new THREE.CylinderGeometry(0.04, 0.04, 1.3, 6), color: 0x8a94a8, at: moved(THREE, 0, 1.95, 0.32, 0.5, 0, 0) },
+  ]);
+}
+
+/** A surface spaceport: a landing pad ringed in yellow with a small upright rocket, a hangar and a tall comms mast. Sits on +y. */
+export function makeSpaceport(THREE) {
+  return mergeParts(THREE, [
+    { geometry: new THREE.CylinderGeometry(1.6, 1.7, 0.16, 24), color: 0x8a94a8, at: moved(THREE, 0, 0.08, 0) },
+    { geometry: new THREE.TorusGeometry(1.25, 0.08, 6, 28), color: 0xffd640, at: moved(THREE, 0, 0.17, 0, Math.PI / 2, 0, 0) },
+    { geometry: new THREE.CylinderGeometry(0.28, 0.32, 1.9, 12), color: 0xf8f8fc, at: moved(THREE, 0, 1.1, 0) },
+    { geometry: new THREE.ConeGeometry(0.28, 0.7, 12), color: 0xff3d6e, at: moved(THREE, 0, 2.4, 0) },
+    ...[0, 2.1, 4.2].map(a => ({ geometry: new THREE.BoxGeometry(0.08, 0.6, 0.5), color: 0xff3d6e, at: moved(THREE, Math.sin(a) * 0.32, 0.4, Math.cos(a) * 0.32, 0, a, 0) })),
+    { geometry: new THREE.CylinderGeometry(0.9, 0.9, 1.8, 14, 1, false, 0, Math.PI), color: 0xe8ecf5, at: moved(THREE, 2.4, 0, 0.3, 0, 0, Math.PI / 2) }, // a half-tube hangar
+    { geometry: new THREE.CylinderGeometry(0.05, 0.07, 2.6, 6), color: 0xe8ecf5, at: moved(THREE, -2.1, 1.3, -0.6) },
+    { geometry: new THREE.SphereGeometry(0.15, 8, 6), color: 0xff3d6e, at: moved(THREE, -2.1, 2.65, -0.6) },
+  ]);
+}
+
+/**
+ * A small, lumpy moonlet (not a sphere): an icosahedron squashed along its axes and pushed in and out by a few random bumps and dents.
+ * About 1 across; colours come from the material. Randomness is injected.
+ */
+export function makeMoonlet(THREE, random, { stretch = [1.35, 0.9, 1] } = {}) {
+  const g = new THREE.IcosahedronGeometry(0.5, 3), p = g.attributes.position, v = new THREE.Vector3();
+  const dents = Array.from({ length: 7 }, () => [new THREE.Vector3(random() - 0.5, random() - 0.5, random() - 0.5).normalize(), 0.25 + random() * 0.35, (random() - 0.65) * 0.32]);
+  for (let i = 0; i < p.count; i++) {
+    v.fromBufferAttribute(p, i).normalize();
+    let r = 0.5;
+    for (const [d, reach, depth] of dents) { const t = 1 - Math.min(1, v.distanceTo(d) / reach); r += depth * 0.5 * t * t; }
+    p.setXYZ(i, v.x * r * stretch[0], v.y * r * stretch[1], v.z * r * stretch[2]);
+  }
+  g.computeVertexNormals();
+  return g;
+}
+
 /**
  * A cumulus: many displaced lobes piled into a flat-bottomed dome, about 2 x `stretch` wide and 2 tall. Each vertex keeps its lobe's
  * normal plus a `soft` normal from the whole cloud and an `ao` term (dark underneath): lit together they make one big volume with

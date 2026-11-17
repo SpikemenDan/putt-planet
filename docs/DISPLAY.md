@@ -42,7 +42,7 @@ Units: world units (ball radius 5) and multipliers. Opacity is 0..1. The shaft h
 | `menu.stagger` | 0.07 | 0 to 0.3 | Main menu: seconds between each button dropping in (0 brings them in together). |
 | `menu.bob` | 2 | 0 to 8 | Main menu: idle bob of the big buttons, CSS px (0 holds them still; off under reduced motion). |
 | `menu.tilt` | 1.5 | 0 to 8 | Main menu: alternating lean of the buttons, degrees (0 keeps them straight). |
-| `menu.shineSeconds` | 5 | 0 to 20 | Main menu: seconds between shine sweeps across the Solo button (0 is off). Off under reduced motion. |
+| `menu.shineSeconds` | 5 | 0 to 20 | Main menu: seconds between shine sweeps across the Solo, Party and Custom buttons (0 is off). Off under reduced motion. |
 | `menu.cardTint` | 0.22 | 0 to 1 | Solo steps: how strongly each choice card is tinted with its own colour (0 white, 1 full colour). |
 | `lobby.zoom` | 1 | 0.6 to 1.6 | Lobby vehicles: how big the helicopter, plane or rocket shows in its frame, multiplier (higher is closer). |
 | `lobby.sway` | 4 | 0 to 25 | Lobby vehicles: how far the vehicle turns back and forth, degrees (0 holds it at one angle; off under reduced motion). |

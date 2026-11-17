@@ -62,6 +62,7 @@ export function GameScreen({ hidden, backdrop = false, onCanvas }) {
             <Tool icon="view" label={view?.viewLabel || 'View: Ball cam'} onClick={() => send(UiCommands.CYCLE_CAMERA)} />
             <Tool icon="card" label="Card" tip="Scorecard" onClick={() => send(UiCommands.TOGGLE_CARD)} />
             <Tool icon="scoreboard" label="Scoreboard" active={scoreOpen} onClick={() => setScoreOpen(open => !open)} />
+            {view?.canResetBall && <Tool icon="restart" label="Reset ball" tip="Reset ball (R)" onClick={() => send(UiCommands.RESET_BALL)} />}
             <span className={hud.tools} data-ui="practice-bar" hidden={!view?.practiceBar}>
               <Tool icon="prev" label="‹ Prev putt" tip="Previous putt" onClick={() => session({ type: 'PRACTICE_STEP', step: -1 })} />
               <Tool icon="restart" label="Restart" onClick={() => session({ type: 'PRACTICE_STEP', step: 0 })} />
@@ -88,7 +89,15 @@ export function GameScreen({ hidden, backdrop = false, onCanvas }) {
           {view.activeHazards.map(h => <span key={h.id}><Svg markup={powerupIcon(h.look || h.kind)} className={hud.chipIcon} />{h.label || h.kind.toUpperCase()}{h.direction ? ` ${h.direction}` : ''}{h.targetName ? ` → ${h.targetName}` : ''} · {h.seconds}s</span>)}
         </div>}
         <PowerMeter />
-        <div className={hud.guide} data-ui="guide">{'Short pull = precision · Long pull = power + sway · Esc = cancel · Right-drag / ← → = rotate · C = camera'}</div>
+        <div className={hud.guide} data-ui="guide">{'Short pull = precision · Long pull = power + sway · Esc = cancel · Right-drag / ← → = rotate · C = camera · R = reset'}</div>
+        {view?.canResetBall && (
+          <div className={hud.resetPrompt} data-ui="reset-ball-prompt">
+            <button type="button" onClick={() => send(UiCommands.RESET_BALL)} data-ui="reset-ball">
+              <Svg markup={HUD_ICONS.restart} className={hud.chipIcon} />
+              <span>Reset Ball (R)</span>
+            </button>
+          </div>
+        )}
         <div className={hud.inv}>
           {(view?.inventory || []).map(slot => (
             <button type="button" key={slot.index} className={`${hud.slot}${slot.kind === 'empty' ? ' ' + hud.slotEmpty : ''}`}

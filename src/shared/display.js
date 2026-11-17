@@ -47,7 +47,7 @@ export const DISPLAY_FIELDS = Object.freeze([
   ['menu.stagger', 0, 0.3, 'Main menu: delay between each button dropping in, in seconds (0 brings them in together).'],
   ['menu.bob', 0, 8, 'Main menu: how far the big buttons bob up and down while idle, in CSS px (0 holds them still). Off under reduced motion.'],
   ['menu.tilt', 0, 8, 'Main menu: how far the buttons lean, alternating left and right, in degrees (0 keeps them straight).'],
-  ['menu.shineSeconds', 0, 20, 'Main menu: seconds between shine sweeps across the Solo button (0 turns the shine off). Off under reduced motion.'],
+  ['menu.shineSeconds', 0, 20, 'Main menu: seconds between shine sweeps across the Solo, Party and Custom buttons (0 turns the shine off). Off under reduced motion.'],
   ['menu.cardTint', 0, 1, 'Solo steps: how strongly each choice card is tinted with its own colour (0 is white, 1 is the full colour).'],
   ['lobby.zoom', 0.6, 1.6, 'Lobby vehicles: how big the helicopter, plane or rocket shows in its frame, as a multiplier (higher is closer).'],
   ['lobby.sway', 0, 25, 'Lobby vehicles: how far the vehicle turns back and forth as it flies, in degrees (0 holds it at one angle). Off under reduced motion.'],

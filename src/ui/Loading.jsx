@@ -1,3 +1,4 @@
+import { reducedMotion as isReducedMotion } from './motion.js';
 import { useEffect, useRef, useState } from 'react';
 import { TIPS, TIP_MS, tipAt } from './tips.js';
 import { useUiContext } from './context.js';
@@ -26,7 +27,7 @@ export function PlanetStage() {
     const canvas = canvasRef.current;
     if (!canvas || !createLoadingScene) return undefined;
     const win = canvas.ownerDocument.defaultView;
-    const reducedMotion = !!win.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const reducedMotion = isReducedMotion(win);
     let scene = null;
     const build = setTimeout(() => { // after the first paint, so the title and form show at once
       try { scene = createLoadingScene({ canvas, display, random: seeded(load * 7919 + 1), reducedMotion, win }); stage?.attach(scene); if (import.meta.env?.DEV) win.__ppPlanetScene = scene; scene.start(); } catch { scene = null; } // decoration only: the CSS sky stays

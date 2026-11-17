@@ -103,10 +103,11 @@ void main(){
 /** The air above the limb: pale at the ground, deepening to blue, gone by the top of the shell, brighter toward the sun. */
 export const ATMOSPHERE_VERTEX = 'varying vec3 vW;void main(){vec4 w=modelMatrix*vec4(position,1.);vW=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}';
 export const ATMOSPHERE_FRAGMENT = `
-uniform vec3 sun;uniform float radius,shell,atmosphere;varying vec3 vW;
+uniform vec3 sun;uniform float radius,shell,atmosphere,ahead;varying vec3 vW;
 void main(){
   vec3 rd=normalize(vW-cameraPosition);
-  vec3 closest=cameraPosition+rd*dot(-cameraPosition,rd);
+  float t=dot(-cameraPosition,rd);
+  vec3 closest=cameraPosition+rd*mix(t,max(t,0.),ahead); // ahead=1 (space): only air in front of the camera counts, so none glows from behind it
   float h=clamp((length(closest)-radius)/(shell-radius),0.,1.);
   float g=(1.-pow(h,1.5))*(.5+atmosphere*.75);
   g*=.6+.4*smoothstep(-.3,.7,dot(normalize(closest),sun));

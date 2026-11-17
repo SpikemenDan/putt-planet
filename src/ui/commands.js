@@ -29,6 +29,10 @@ export const UiCommands = Object.freeze({
   SET_VOLUME: 'set-volume',
   /** { type } — Quality: High/Low. */
   TOGGLE_QUALITY: 'toggle-quality',
+  /** { type, camera } — Camera preferences (partial { view, orbitSpeed, invertY }, see src/shared/preferences.js). Saved locally; presentation only. */
+  SET_CAMERA: 'set-camera',
+  /** { type, motion } — 'auto' (follow the system) or 'reduce'. Saved locally; presentation only. */
+  SET_MOTION: 'set-motion',
   /** { type, event } — an L1 SessionEvents command without playerId; the app binds the sender. */
   SESSION: 'session',
   /** { type, kind, direction?, targetId? } — confirm a timed global hazard activation. */

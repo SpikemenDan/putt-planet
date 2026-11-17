@@ -1,16 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
-import { BALL_SKINS, CELEBRATIONS, TRAIL_SKINS } from '../cosmetics/catalog.js';
 import { NAME_LIMIT, UiCommands } from './commands.js';
 import { useCommands, useUiContext, useView } from './context.js';
 import { ColorPicker } from './ColorPicker.jsx';
 import { SoloSteps } from './SoloSteps.jsx';
 import { MenuIcon } from './MenuIcons.jsx';
 import { CustomRules } from './CustomRules.jsx';
+import { Skins } from './Skins.jsx';
 import { changedRules, rulesFromPartial } from '../shared/rules.js';
+import { CAMERA_PREFS, ORBIT_SPEED_RANGE } from '../shared/preferences.js';
+import { CAMERA_VIEW_LABELS } from '../camera/rig.js';
 import app from './App.module.css';
 import menu from './Landing.module.css';
-
-const COSMETIC_FIELDS = [['ball', 'Ball', BALL_SKINS], ['trail', 'Trail', TRAIL_SKINS], ['celebration', 'Celebration', CELEBRATIONS]];
 
 /** Build label: `vite.config.mjs` defines __APP_VERSION__ (package version plus commit); tests and other loaders show "dev". */
 export const APP_VERSION = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'dev'; // eslint-disable-line no-undef
@@ -21,7 +21,7 @@ const readDraft = () => { try { return rulesFromPartial(JSON.parse(globalThis.wi
 const writeDraft = rules => { try { globalThis.window?.localStorage?.setItem(CUSTOM_RULES_KEY, JSON.stringify(rules)); } catch { /* not remembered */ } };
 
 /** Main menu views (VIS-M2 #174). Solo and Party hold today's flows until VIS-M4 #176 and VIS-M3 #175 replace them. */
-export const MENU_VIEWS = Object.freeze(['home', 'solo', 'party', 'custom', 'settings']);
+export const MENU_VIEWS = Object.freeze(['home', 'solo', 'party', 'custom', 'skins', 'settings']);
 
 /**
  * Copies `display.menu` onto the menu as CSS variables. The shipped DISPLAY is frozen, so that is done once; the
@@ -58,7 +58,9 @@ function useMenuLook(ref, display, hidden) {
 export function Landing({ hidden, initialName = '', initialRoomCode = '', initialView = 'home' }) {
   const { send } = useCommands();
   const { display } = useUiContext();
-  const { connecting, error, cosmetics, color } = useView(v => v.landing);
+  const { connecting, error, cosmetics, color, soundOn, volume, qualityHigh, camera: cameraPrefs, motion } = useView(v => v.landing);
+  const camera = cameraPrefs || CAMERA_PREFS;
+  const setCamera = partial => send(UiCommands.SET_CAMERA, { camera: partial });
   const [name, setName] = useState(initialName);
   const [roomCode, setRoomCode] = useState(initialRoomCode);
   const [view, setView] = useState(MENU_VIEWS.includes(initialView) ? initialView : 'home');
@@ -100,15 +102,18 @@ export function Landing({ hidden, initialName = '', initialRoomCode = '', initia
       {view === 'home' ? (
         <nav className={menu.stack} aria-label="Main menu">
           {homeButton('solo', 'Solo', 'Practice and play alone', menu.solo, 'solo')}
-          {homeButton('party', 'Party', 'Play with friends', menu.party)}
-          {homeButton('custom', 'Custom', 'Make your own rules', menu.custom)}
-          <button type="button" ref={el => { homeButtons.current.settings = el; }} className={menu.settings} onClick={() => open('settings')} data-menu="settings">Settings</button>
+          {homeButton('party', 'Party', 'Play with friends', menu.party, 'party')}
+          {homeButton('custom', 'Custom', 'Make your own rules', menu.custom, 'custom')}
+          <div className={menu.minorRow}>
+            <button type="button" ref={el => { homeButtons.current.skins = el; }} className={menu.settings + ' ' + menu.skinsButton} onClick={() => open('skins')} data-menu="skins"><MenuIcon name="skins" className={menu.settingsIcon} />Skins</button>
+            <button type="button" ref={el => { homeButtons.current.settings = el; }} className={menu.settings} onClick={() => open('settings')} data-menu="settings"><MenuIcon name="settings" className={menu.settingsIcon} />Settings</button>
+          </div>
         </nav>
       ) : (
         <section className={menu.panel} data-menu-view={view} aria-label={view[0].toUpperCase() + view.slice(1)} onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); back(); } }}>
           {view === 'solo' && <SoloSteps name={name} onName={setName} colorField={colorField} connecting={connecting} send={send} onExit={back} overlay={root.current} />}
           {view === 'party' && <>
-            <h2 className={menu.heading}>Party</h2>
+            <h2 className={menu.heading}><MenuIcon name="party" className={menu.headingIcon} />Party</h2>
             {nameField}
             {/* VIS-M3 #175: Host creates the party and only then gets its code; opening this menu makes no room and no code. */}
             <div className={menu.partyPart} data-ui="party-host">
@@ -125,27 +130,87 @@ export function Landing({ hidden, initialName = '', initialRoomCode = '', initia
             </form>
           </>}
           {view === 'custom' && <>
-            <h2 className={menu.heading}>Custom</h2>
+            <h2 className={menu.heading}><MenuIcon name="custom" className={menu.headingIcon} />Custom</h2>
             <CustomRules rules={rules} onChange={editRules} busy={connecting}
               onPlaySolo={() => send(UiCommands.PLAY_SOLO, { name, rules })}
               onHostParty={() => { setHostRules(rules); setView('party'); }} />
           </>}
+          {view === 'skins' && <>
+            <h2 className={menu.heading}><MenuIcon name="skins" className={menu.headingIcon} />Skins</h2>
+            <Skins cosmetics={cosmetics} color={color} send={send} colorField={colorField} />
+          </>}
           {view === 'settings' && <>
-            <h2 className={menu.heading}>Settings</h2>
-            <details data-ui="cosmetics" open><summary>Your style</summary>
-              <div className={menu.style}>
-                {COSMETIC_FIELDS.map(([kind, label, records]) => (
-                  <label key={kind}>{label}
-                    <select value={cosmetics[kind]} onChange={e => send(UiCommands.SET_COSMETIC, { kind, id: e.target.value })}>
-                      {records.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-                    </select>
-                  </label>
-                ))}
+            <h2 className={menu.heading}><MenuIcon name="settings" className={menu.headingIcon} />Settings</h2>
+            {/* Owner, 2026-11-16: sound and graphics here (the same commands as the in-game Settings); skins have their own menu. */}
+            <section className={menu.card} data-tone="sound" aria-label="Sound" data-ui="settings-sound">
+              <h3 className={menu.cardHead}><MenuIcon name="sound" className={menu.cardIcon} />Sound</h3>
+              <div className={menu.setRow}>
+                <span className={menu.setLabel} id="set-sound">Sound effects</span>
+                <button type="button" role="switch" aria-checked={soundOn} aria-labelledby="set-sound" className={menu.switch} onClick={() => send(UiCommands.TOGGLE_SOUND)} data-ui="set-sound"><span className={menu.knob} aria-hidden="true" /></button>
+                <output className={menu.setValue}>{soundOn ? 'On' : 'Off'}</output>
               </div>
-            </details>
-            <details><summary>How to play</summary>
-              <p>3D party mini golf. Everyone plays the same hole at once, and the next hole starts when all players finish. Ride ramps, jump pads and teleporters, dodge fans and water, and mess with your friends.</p>
-              <p className={app.small}>Drag backward anywhere on the course, then release to putt. Longer pulls add power and widen a sine sway; release as the arrow crosses center for a perfectly straight shot. Escape cancels. Keys 1–3 use power-ups. Right-drag rotates the ball camera.</p>
+              <div className={menu.setRow}>
+                <label className={menu.setLabel} htmlFor="set-volume">Volume</label>
+                <input id="set-volume" type="range" className={menu.slider} min="0" max="100" step="5" value={Math.round(volume * 100)} disabled={!soundOn}
+                  style={{ '--fill': volume }} onChange={e => send(UiCommands.SET_VOLUME, { volume: Number(e.target.value) / 100 })} data-ui="set-volume" />
+                <output className={menu.setValue} htmlFor="set-volume">{Math.round(volume * 100)}%</output>
+              </div>
+            </section>
+            <section className={menu.card} data-tone="graphics" aria-label="Graphics" data-ui="settings-graphics">
+              <h3 className={menu.cardHead}><MenuIcon name="graphics" className={menu.cardIcon} />Graphics</h3>
+              <div className={menu.setRow}>
+                <span className={menu.setLabel} id="set-quality">Quality</span>
+                <div className={menu.segment} role="radiogroup" aria-labelledby="set-quality" data-ui="set-quality">
+                  {[[true, 'High'], [false, 'Low']].map(([high, label]) => (
+                    <button key={label} type="button" role="radio" aria-checked={qualityHigh === high} onClick={() => { if (qualityHigh !== high) send(UiCommands.TOGGLE_QUALITY); }}>{label}</button>
+                  ))}
+                </div>
+              </div>
+              <p className={menu.cardText + ' ' + app.small}>{qualityHigh ? 'High: sharp on high-resolution screens, with soft shadows.' : 'Low: no shadows and standard pixel density, for smoother play on slower computers.'}</p>
+              <div className={menu.setRow}>
+                <span className={menu.setLabel} id="set-motion">Reduce motion</span>
+                <div className={menu.segment} role="radiogroup" aria-labelledby="set-motion" data-ui="set-motion">
+                  {[['auto', 'Auto'], ['reduce', 'On']].map(([value, label]) => (
+                    <button key={value} type="button" role="radio" aria-checked={motion === value} onClick={() => { if (motion !== value) send(UiCommands.SET_MOTION, { motion: value }); }}>{label}</button>
+                  ))}
+                </div>
+              </div>
+              <p className={menu.cardText + ' ' + app.small}>{motion === 'reduce' ? 'On: menus stop bouncing and sliding, and camera flights cut straight to the view. The planet backdrop stays still from the next time it loads.' : 'Auto: follows your system’s reduced-motion setting.'}</p>
+            </section>
+            <section className={menu.card} data-tone="camera" aria-label="Camera" data-ui="settings-camera">
+              <h3 className={menu.cardHead}><MenuIcon name="camera" className={menu.cardIcon} />Camera</h3>
+              <div className={menu.setRow}>
+                <span className={menu.setLabel} id="set-view">Starting view</span>
+                <div className={menu.segment} role="radiogroup" aria-labelledby="set-view" data-ui="set-camera-view">
+                  {CAMERA_VIEW_LABELS.map((label, index) => (
+                    <button key={label} type="button" role="radio" aria-checked={camera.view === index} onClick={() => { if (camera.view !== index) setCamera({ view: index }); }}>{label}</button>
+                  ))}
+                </div>
+              </div>
+              <div className={menu.setRow}>
+                <label className={menu.setLabel} htmlFor="set-orbit">Rotate speed</label>
+                <input id="set-orbit" type="range" className={menu.slider} min={ORBIT_SPEED_RANGE.min} max={ORBIT_SPEED_RANGE.max} step={ORBIT_SPEED_RANGE.step} value={camera.orbitSpeed}
+                  style={{ '--fill': (camera.orbitSpeed - ORBIT_SPEED_RANGE.min) / (ORBIT_SPEED_RANGE.max - ORBIT_SPEED_RANGE.min) }} onChange={e => setCamera({ orbitSpeed: Number(e.target.value) })} data-ui="set-orbit" />
+                <output className={menu.setValue} htmlFor="set-orbit">{camera.orbitSpeed.toFixed(1)}×</output>
+              </div>
+              <div className={menu.setRow}>
+                <span className={menu.setLabel} id="set-invert">Invert up/down</span>
+                <button type="button" role="switch" aria-checked={camera.invertY} aria-labelledby="set-invert" className={menu.switch} onClick={() => setCamera({ invertY: !camera.invertY })} data-ui="set-invert"><span className={menu.knob} aria-hidden="true" /></button>
+                <output className={menu.setValue}>{camera.invertY ? 'On' : 'Off'}</output>
+              </div>
+              <p className={menu.cardText + ' ' + app.small}>Right-drag or the arrow keys rotate the camera; C switches view during a game.</p>
+            </section>
+            <details className={menu.card} data-tone="help"><summary><MenuIcon name="help" className={menu.cardIcon} />How to play</summary>
+              <p className={menu.cardText}>3D party mini golf. Everyone plays the same hole at once, and the next hole starts when all players finish. Ride ramps, jump pads and teleporters, dodge fans and water, and mess with your friends.</p>
+              <ul className={menu.keys}>
+                <li><kbd>Drag</kbd> back anywhere, release to putt</li>
+                <li><kbd>Esc</kbd> cancel a shot</li>
+                <li><kbd>1</kbd>–<kbd>3</kbd> use a power-up</li>
+                <li><kbd>C</kbd> change camera</li>
+                <li><kbd>Right-drag</kbd> or <kbd>←</kbd> <kbd>→</kbd> rotate</li>
+                <li><kbd>M</kbd> sound on or off</li>
+              </ul>
+              <p className={menu.cardText + ' ' + app.small}>Longer pulls add power and widen a sine sway; release as the arrow crosses center for a perfectly straight shot.</p>
             </details>
           </>}
           <p className={app.status} role="status" data-ui="connect-error" hidden={!error}>{error}</p>

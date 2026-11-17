@@ -138,21 +138,49 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
   // ---------------------------------------------------------------------------------------------
   await scenario('cosmetics (F1): the picked style is saved locally, restored on reload and junk storage falls back to defaults', async () => {
     const W = world();
+    // Skins menu (owner, 2026-11-16): one tab per kind; each tab's cards are radios carrying the catalog id.
+    const tab = async (c, kind) => act(async () => { c.doc.querySelector(`[data-ui=skins] [role=tab][data-kind=${kind}]`).click(); });
+    const chosen = async c => { const out = []; for (const kind of ['ball', 'trail', 'celebration']) { await tab(c, kind); out.push(c.doc.querySelector('[data-ui=cosmetics] [aria-checked=true]')?.dataset.id); } return out; };
+    const pick = async (c, kind, id) => { await tab(c, kind); await act(async () => { c.doc.querySelector(`[data-ui=cosmetics] [data-id=${id}]`).click(); }); };
     const first = await W.client('Pat');
-    await first.menu('settings');
-    const selects = [...first.doc.querySelectorAll('[data-ui=landing] [data-ui=cosmetics] select')];
-    assert.deepEqual(selects.map(s => s.value), ['classic', 'classic', 'confetti']);
-    await act(async () => { selects[0].value = 'frost'; selects[0].dispatchEvent(new first.win.w.Event('change', { bubbles: true })); });
-    await act(async () => { selects[2].value = 'gold'; selects[2].dispatchEvent(new first.win.w.Event('change', { bubbles: true })); });
+    await first.menu('skins');
+    assert.deepEqual(await chosen(first), ['classic', 'classic', 'confetti']);
+    await pick(first, 'ball', 'frost');
+    await pick(first, 'celebration', 'gold');
     const saved = first.win.w.localStorage.getItem('pp_cosmetics');
     assert.deepEqual(JSON.parse(saved), { ball: 'frost', trail: 'classic', celebration: 'gold' });
     const reloaded = await W.client('Pat2', { local: { pp_cosmetics: saved } });
-    await reloaded.menu('settings');
-    assert.deepEqual([...reloaded.doc.querySelectorAll('[data-ui=cosmetics] select')].map(s => s.value), ['frost', 'classic', 'gold']);
+    await reloaded.menu('skins');
+    assert.deepEqual(await chosen(reloaded), ['frost', 'classic', 'gold']);
     const junk = await W.client('Pat3', { local: { pp_cosmetics: '{"ball":"<img src=x>","trail":"comet"}' } });
-    await junk.menu('settings');
-    assert.deepEqual([...junk.doc.querySelectorAll('[data-ui=cosmetics] select')].map(s => s.value), ['classic', 'comet', 'confetti'], 'unknown ids fall back, valid ones are kept');
+    await junk.menu('skins');
+    assert.deepEqual(await chosen(junk), ['classic', 'comet', 'confetti'], 'unknown ids fall back, valid ones are kept');
     await first.dispose(); await reloaded.dispose(); await junk.dispose();
+  });
+
+  await scenario('preferences: camera and Reduce motion are saved locally, applied to the camera rig and the page, and junk falls back', async () => {
+    const W = world();
+    const c = await W.client('Cam');
+    await c.menu('settings');
+    const rig = c.app.view.rig;
+    assert.deepEqual([rig.state.view, rig.state.orbitSpeed, rig.state.invertY], [0, 1, false], 'shipped camera feel by default');
+    assert.equal(c.doc.documentElement.dataset.motion, undefined, 'motion follows the system by default');
+    await c.click(c.doc.querySelectorAll('[data-ui=set-camera-view] [role=radio]')[1]);
+    await c.click(c.doc.querySelector('[data-ui=set-invert]'));
+    await c.fill(c.doc.querySelector('[data-ui=set-orbit]'), '1.8');
+    await c.click(c.doc.querySelectorAll('[data-ui=set-motion] [role=radio]')[1]);
+    assert.deepEqual([rig.state.view, rig.state.orbitSpeed, rig.state.invertY], [1, 1.8, true], 'the rig follows the settings at once');
+    assert.equal(c.doc.documentElement.dataset.motion, 'reduce', 'Reduce motion marks the page');
+    const store = c.win.w.localStorage;
+    assert.deepEqual(JSON.parse(store.getItem('pp_camera')), { view: 1, orbitSpeed: 1.8, invertY: true });
+    assert.equal(JSON.parse(store.getItem('pp_motion')), 'reduce');
+    const again = await W.client('Cam2', { local: { pp_camera: store.getItem('pp_camera'), pp_motion: store.getItem('pp_motion') } });
+    assert.deepEqual([again.app.view.rig.state.view, again.app.view.rig.state.orbitSpeed, again.app.view.rig.state.invertY], [1, 1.8, true], 'restored on reload');
+    assert.equal(again.doc.documentElement.dataset.motion, 'reduce');
+    const junk = await W.client('Cam3', { local: { pp_camera: '{"view":5,"orbitSpeed":"fast"}', pp_motion: '"<b>"' } });
+    assert.deepEqual([junk.app.view.rig.state.view, junk.app.view.rig.state.orbitSpeed, junk.app.view.rig.state.invertY], [0, 1, false], 'junk storage falls back');
+    assert.equal(junk.doc.documentElement.dataset.motion, undefined);
+    await c.dispose(); await again.dispose(); await junk.dispose();
   });
 
   await scenario('start screen: the planet is the backdrop of the menu, and leaves with it', async () => {
@@ -771,6 +799,66 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
     for (const t of ['rev', 'zany', 'rew']) assert.equal(validPresence({ ...base, effect: t }), false, 'removed power-up ' + t);
     for (const fx of [{ id: 3, t: 'zany' }, { id: 3, t: 'rev' }, { id: 3, t: 'mag' }, { id: -1, t: 'mag' }, { id: 1, t: 'steady', extra: 1 }, 'mag', null]) assert.equal(validPresence({ ...base, fx }), false, JSON.stringify(fx));
     assert.equal(validPresence({ ...base, colour: 1 }), false, 'unknown fields are still rejected');
+  });
+
+  await scenario('ball reset: manual reset after 5s without significant movement, auto stall reset remains active at 25s', async () => {
+    const { createPutt } = await import('../src/app/putt.js');
+    const { createCourseData } = await import('../src/courses/index.js');
+    const data = createCourseData();
+    let mockTime = 1000;
+    const putt = createPutt({
+      definition: data.definitions[0],
+      rule: data.rules[0].putts[0],
+      puttIndex: 0,
+      id: 'p1',
+      name: 'Player',
+      playing: true,
+      timed: false,
+      roundStartTime: 0,
+      limitSeconds: 120,
+      roomNow: () => mockTime,
+      now: () => mockTime,
+    });
+    // On the tee before any shots
+    for (let i = 0; i < 60; i++) { mockTime += 100; putt.frame(mockTime, 0.05); }
+    assert.equal(putt.canResetBall, false, 'cannot reset on tee before any shot is taken');
+
+    // Shoot
+    putt.shoot(0, 0.5);
+    assert.equal(putt.player.strokes, 1);
+    assert.equal(putt.canResetBall, false, 'cannot reset immediately after shooting');
+
+    // High speed movement for 2s
+    for (let i = 0; i < 20; i++) { mockTime += 100; putt.frame(mockTime, 0.05); }
+    assert.equal(putt.canResetBall, false, 'cannot reset during first 2 seconds');
+
+    // Simulate ball coming to rest or stuck vibrating in a corner
+    putt.player.vx = 0;
+    putt.player.vy = 0;
+    for (let i = 0; i < 55; i++) { mockTime += 100; putt.frame(mockTime, 0.05); }
+    assert.equal(putt.canResetBall, true, 'can reset ball after 5s without significant movement');
+
+    // Execute manual reset
+    const resetOut = putt.resetBall();
+    assert.match(resetOut.toasts[0], /Ball reset to last spot/);
+    assert.equal(putt.player.moving, false);
+    assert.equal(putt.canResetBall, false, 'cannot reset immediately after reset');
+    assert.deepEqual([putt.player.x, putt.player.y], data.definitions[0].putts[0].tee, 'restores previous shot location');
+
+    // Auto reset remains active after 25s of moving stall
+    putt.player.x = 500;
+    putt.player.y = 500;
+    putt.player.prevPosition = [500, 500, 0];
+    putt.player.mode = 'play';
+    putt.player.moving = true;
+    let autoResetToast = null;
+    for (let i = 0; i < 550; i++) {
+      mockTime += 50;
+      putt.player.moving = true; // keep moving to simulate stall
+      const res = putt.frame(mockTime, 0.05);
+      if (res.toasts.length) autoResetToast = res.toasts[0];
+    }
+    assert.match(autoResetToast, /Splash! Back to your last spot/);
   });
 
   console.log(`App: ${passed} scenarios passed (jsdom clients with stub WebGL/audio and the in-memory transport; real-browser evidence is separate).`);

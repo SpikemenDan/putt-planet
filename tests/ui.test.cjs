@@ -191,7 +191,7 @@ function fakeClock() {
     const landing = t.within('[data-ui=landing]');
     assert.equal(landing.dataset.view, 'home');
     const nav = landing.querySelector('nav[aria-label="Main menu"]');
-    assert.deepEqual([...nav.querySelectorAll('button')].map(b => b.getAttribute('aria-label') || b.textContent), ['Solo', 'Party', 'Custom', 'Settings'], 'three main buttons, then Settings');
+    assert.deepEqual([...nav.querySelectorAll('button')].map(b => b.getAttribute('aria-label') || b.textContent), ['Solo', 'Party', 'Custom', 'Skins', 'Settings'], 'three main buttons, then Skins and Settings');
     assert.ok([...nav.querySelectorAll('button')].every(b => !b.disabled && b.tabIndex === 0), 'every button is reachable by keyboard');
     assert.equal(landing.querySelectorAll('input').length, 0, 'the home view asks nothing yet');
     assert.match(t.within('[data-ui=version]').textContent, /^v\S/, 'the version shows bottom-left');
@@ -875,19 +875,73 @@ function fakeClock() {
     await t.teardown();
   });
 
-  await scenario('landing: the style picker lists the cosmetics catalog and dispatches validated ids', async () => {
+  await scenario('landing: Skins shows the cosmetics catalog per tab and dispatches validated ids; Settings holds sound and graphics', async () => {
     const t = await setup();
     await act(async () => t.store.setLocal({ active: false }));
-    await click(t.within('[data-menu=settings]'));
-    const selects = [...t.within('[data-ui=landing]').querySelectorAll('[data-ui=cosmetics] select')];
-    assert.equal(selects.length, 3, 'ball, trail and celebration');
-    assert.deepEqual(selects.map(s => s.value), ['classic', 'classic', 'confetti'], 'defaults selected');
-    assert.ok(selects.every(s => s.options.length >= 3));
+    await click(t.within('[data-menu=skins]'));
+    const landing = t.within('[data-ui=landing]');
+    const tabs = [...landing.querySelectorAll('[data-ui=skins] [role=tab]')];
+    assert.deepEqual(tabs.map(b => b.textContent), ['Ball', 'Trail', 'Celebration'], 'one tab per kind');
+    const cards = () => [...landing.querySelectorAll('[data-ui=cosmetics] [role=radio]')];
+    const ids = { ball: ['classic', 'glow', 'ember', 'frost'], trail: ['classic', 'rainbow', 'sparks', 'comet'], celebration: ['confetti', 'gold', 'fireworks', 'mint'] };
+    const seen = {};
+    for (const [i, kind] of ['ball', 'trail', 'celebration'].entries()) {
+      await click(tabs[i]);
+      assert.equal(tabs[i].getAttribute('aria-selected'), 'true');
+      seen[kind] = cards().map(c => c.dataset.id);
+      assert.equal(cards().filter(c => c.getAttribute('aria-checked') === 'true').length, 1, kind + ': exactly one card is chosen');
+    }
+    assert.deepEqual(seen, ids, 'every catalog record has a card');
+    assert.ok(!landing.querySelector('[data-ui=skins] select'), 'no dropdowns');
     t.commands.length = 0;
-    await act(async () => { selects[1].value = 'rainbow'; selects[1].dispatchEvent(new dom.window.Event('change', { bubbles: true })); });
+    await click(tabs[1]);
+    await click(landing.querySelector('[data-ui=cosmetics] [data-id=rainbow]'));
     assert.deepEqual(t.commands, [{ type: 'set-cosmetic', kind: 'trail', id: 'rainbow' }]);
     await act(async () => t.store.setLocal({ cosmetics: { ball: 'ember', trail: 'rainbow', celebration: 'gold' } }));
-    assert.deepEqual([...t.within('[data-ui=landing]').querySelectorAll('[data-ui=cosmetics] select')].map(s => s.value), ['ember', 'rainbow', 'gold'], 'the view follows the stored choice');
+    assert.equal(landing.querySelector('[data-ui=cosmetics] [aria-checked=true]').dataset.id, 'rainbow', 'the view follows the stored choice');
+    assert.match(landing.querySelector('[data-ui=skins-current]').textContent, /Ember ball · Rainbow trail · Gold rush/);
+    await click(tabs[0]);
+    assert.ok(landing.querySelector('[data-ui=skins] [data-ui=color-picker]'), 'the Ball tab also picks the ball colour');
+
+    await click(landing.querySelector('[data-ui=menu-back]'));
+    await click(t.within('[data-menu=settings]'));
+    assert.ok(!landing.querySelector('[data-ui=cosmetics]'), 'skins are no longer in Settings');
+    await act(async () => t.store.setLocal({ soundOn: true, volume: 0.4, qualityHigh: true }));
+    const sound = landing.querySelector('[data-ui=set-sound]'), volume = landing.querySelector('[data-ui=set-volume]');
+    const [high, low] = [...landing.querySelectorAll('[data-ui=set-quality] [role=radio]')];
+    assert.equal(sound.getAttribute('aria-checked'), 'true');
+    assert.equal(volume.value, '40', 'the volume slider shows the stored volume');
+    assert.equal(high.getAttribute('aria-checked'), 'true');
+    t.commands.length = 0;
+    await click(sound);
+    await act(async () => { const set = Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype, 'value').set; set.call(volume, '75'); volume.dispatchEvent(new dom.window.Event('input', { bubbles: true })); });
+    await click(high); // already chosen: no command
+    await click(low);
+    assert.deepEqual(t.commands, [{ type: 'toggle-sound' }, { type: 'set-volume', volume: 0.75 }, { type: 'toggle-quality' }]);
+    await act(async () => t.store.setLocal({ soundOn: false, qualityHigh: false }));
+    assert.equal(sound.getAttribute('aria-checked'), 'false');
+    assert.ok(volume.disabled, 'volume is idle while sound is off');
+    assert.equal(low.getAttribute('aria-checked'), 'true');
+
+    // Camera and Reduce motion (owner, 2026-11-16): local presentation preferences.
+    const viewButtons = [...landing.querySelectorAll('[data-ui=set-camera-view] [role=radio]')];
+    assert.deepEqual(viewButtons.map(b => b.textContent), ['Ball cam', 'Hole view', 'World view']);
+    assert.equal(viewButtons[0].getAttribute('aria-checked'), 'true', 'Ball cam by default');
+    const orbit = landing.querySelector('[data-ui=set-orbit]'), invert = landing.querySelector('[data-ui=set-invert]');
+    const [auto, reduce] = [...landing.querySelectorAll('[data-ui=set-motion] [role=radio]')];
+    assert.equal(auto.getAttribute('aria-checked'), 'true', 'motion follows the system by default');
+    t.commands.length = 0;
+    await click(viewButtons[2]);
+    await act(async () => { const set = Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype, 'value').set; set.call(orbit, '1.5'); orbit.dispatchEvent(new dom.window.Event('input', { bubbles: true })); });
+    await click(invert);
+    await click(reduce);
+    assert.deepEqual(t.commands, [{ type: 'set-camera', camera: { view: 2 } }, { type: 'set-camera', camera: { orbitSpeed: 1.5 } }, { type: 'set-camera', camera: { invertY: true } }, { type: 'set-motion', motion: 'reduce' }]);
+    await act(async () => t.store.setLocal({ camera: { view: 1, orbitSpeed: 0.5, invertY: true }, motion: 'reduce' }));
+    assert.equal(viewButtons[1].getAttribute('aria-checked'), 'true');
+    assert.equal(orbit.value, '0.5');
+    assert.match(landing.querySelector('output[for=set-orbit]').textContent, /^0\.5×$/);
+    assert.equal(invert.getAttribute('aria-checked'), 'true');
+    assert.equal(reduce.getAttribute('aria-checked'), 'true');
     await t.teardown();
   });
 
@@ -1526,6 +1580,14 @@ function fakeClock() {
     assert.equal(t.root.querySelector('[role=alert]').hidden, false);
     await act(async () => t.store.setLocal({ connected: true }));
     assert.equal(t.root.querySelector('[role=alert]').hidden, true);
+    // Reset ball button appears when canResetBall is true and dispatches reset-ball
+    assert.equal(t.root.querySelector('[data-ui=reset-ball]'), null, 'no reset button when canResetBall is false');
+    await act(async () => t.store.setLocal({ canResetBall: true }));
+    const resetBtn = t.root.querySelector('[data-ui=reset-ball]');
+    assert.ok(resetBtn, 'reset button appears when canResetBall is true');
+    t.commands.length = 0;
+    await click(resetBtn);
+    assert.deepEqual(t.commands, [{ type: 'reset-ball' }]);
     await t.teardown();
   });
 
