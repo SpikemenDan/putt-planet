@@ -51,7 +51,7 @@ export function RoomLobby({ hidden }) {
   const destination = lobby?.destination ?? 'gaia';
   const vehicle = lobbyVehicleFor({ solo: !party, destination });
   const seat = roster.findIndex(p => p.you) + 1;
-  const { flight } = flightOf(lobby?.code || 'solo');
+  const { flight } = flightOf(lobby?.code ?? '', destination);
   const planet = WORLDS.find(w => w.id === destination)?.name ?? 'Gaia';
   // The sky behind: Gaia's air for the plane, space around the destination for the rocket.
   const shown = !hidden && !!lobby;

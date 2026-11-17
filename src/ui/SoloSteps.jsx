@@ -151,7 +151,7 @@ export function SoloSteps({ name, onName, colorField, connecting, send, onExit, 
       })()}
 
       {step === 'ready' && (() => {
-        const { flight } = flightOf('solo-' + mode + '-' + world);
+        const { flight } = flightOf('', world);
         // The helicopter is framed between the left edge, the pass on the right and the mode bar below.
         const insets = () => {
           const view = body.current?.ownerDocument.defaultView;

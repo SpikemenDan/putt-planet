@@ -378,6 +378,7 @@ function fakeClock() {
     assert.equal(ticket.querySelector('[data-ui=ticket-destination]').textContent, 'Gaia');
     assert.equal(ticket.querySelector('[data-ui=destination-pick]'), null, 'Solo chose its planet already');
     assert.deepEqual([...ticket.querySelectorAll('dt')].map(d => d.textContent), ['Flight', 'Helipad', 'Seat'], 'flight, helipad and seat only');
+    assert.equal(ticket.querySelector('dd').textContent, 'PP 4242', 'easter egg: Solo to Gaia flies GAIA on a phone keypad');
     assert.equal(ticket.querySelector('[data-gate]').dataset.gate, 'lily', 'the helicopter lifts off from a lily pad');
     assert.match(ticket.querySelector('[data-gate]').textContent, /^Lily Pad [1-9]$/);
     const bar = stage.querySelector('[data-ui=solo-modes] [data-ui=mode-picker]');
@@ -1034,6 +1035,7 @@ function fakeClock() {
     }
     assert.equal(lobby.querySelector('[data-ui=party-code] strong').textContent, 'ABCD');
     assert.equal(lobby.querySelector('[data-ui=lobby-ticket] [data-ui=barcode]').dataset.value, 'ABCD', 'the barcode is the party code');
+    assert.equal(lobby.querySelector('[data-ui=lobby-ticket] dd').textContent, 'AB 23', 'easter egg: the flight is the code, airline AB, then C and D on a phone keypad');
     const tile = v => lobby.querySelector(`[data-ui=mode-picker] [data-mode=${v}]`);
     const chosen = () => lobby.querySelector('[data-ui=mode-picker] [aria-checked=true]')?.dataset.mode ?? null;
     const leading = () => lobby.querySelector('[data-ui=mode-picker] [data-mode][data-leading]')?.dataset.mode;

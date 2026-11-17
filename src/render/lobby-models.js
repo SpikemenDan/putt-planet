@@ -55,56 +55,83 @@ function cabin(THREE, seats, floorY, length, seatColor) {
 }
 
 /**
- * The Solo helicopter, in the party plane's livery: a white cabin with a blue belly and a pink cheatline, a clear bubble at the nose
- * over a blue tub where the ball rides, a white tail boom with a blue band, a yellow fin and stabiliser, skids and a rotor with
- * yellow tips.
+ * The Solo helicopter (owner, 2026-11-17: cleaner), in the party plane's livery: one smooth teardrop fuselage that tapers into the
+ * tail boom, white above and blue below with a pink cheatline. Its nose is a clear glass dome over a blue tub where the ball rides,
+ * like a bubble cockpit. A yellow fin and stabiliser, a pink tail rotor, slim skids and a two-blade rotor with yellow tips.
  */
 export function makeHelicopter(THREE) {
-  const white = 0xf8f6ff, blue = 0x3e8ef7, pink = 0xff3d8b, yellow = 0xffd23f, metal = 0x4b4570, dark = 0x2a2346, glassDark = 0x23407a;
-  const cabin = (x, y, sx, sy, sz) => at(THREE, x, y, 0, 0, 0, 0, sx, sy, sz);
-  const bubble = at(THREE, 0.95, 1.45, 0, 0, 0, 0, 1.05, 0.95, 0.9);
+  const white = 0xf8f6ff, blue = 0x3e8ef7, pink = 0xff3d8b, yellow = 0xffd23f, metal = 0x4b4570, dark = 0x2a2346;
+  const Y = 1.45; // the fuselage axis height: the skids rest on y = 0
+  const SEAM = 0.15; // where the glass nose meets the painted body (x)
+  // The teardrop's radius along the fuselage (x, nose at +x): a round nose, a full cabin, then a long taper into the boom.
+  const profile = [[1.75, 0], [1.68, 0.42], [1.5, 0.72], [1.2, 0.95], [0.75, 1.08], [SEAM, 1.12], [-0.5, 1.08], [-1.1, 0.9], [-1.6, 0.6],
+    [-2.1, 0.36], [-2.6, 0.27], [-4.3, 0.2], [-4.75, 0.17], [-4.85, 0]];
+  const radiusAt = x => {
+    for (let k = 1; k < profile.length; k++) {
+      const [x0, r0] = profile[k - 1], [x1, r1] = profile[k];
+      if (x <= x0 && x >= x1) return r0 + (r1 - r0) * (x0 - x) / (x0 - x1);
+    }
+    return 0;
+  };
+  /** A lathe of the profile between x = from and x = to, around the fuselage axis; `half` 'low', 'high' or 'all'. */
+  const shell = (from, to, half, grow = 1, phi = null) => {
+    const pts = [];
+    for (const [x, r] of profile) if (x <= from + 1e-6 && x >= to - 1e-6) pts.push([x, r]);
+    if (pts[0][0] < from) pts.unshift([from, radiusAt(from)]);
+    if (pts[pts.length - 1][0] > to) pts.push([to, radiusAt(to)]);
+    // Lathe points run along y; after rotateZ(-π/2) y becomes +x, and phi 0..π faces down.
+    const lathe = new THREE.LatheGeometry(pts.reverse().map(([x, r]) => new THREE.Vector2(r * grow, x)), 48,
+      phi ? phi[0] : half === 'high' ? Math.PI : 0, phi ? phi[1] : half === 'all' ? Math.PI * 2 : Math.PI);
+    return lathe.rotateZ(-Math.PI / 2).translate(0, Y, 0);
+  };
+  // The cabin floor: the fuselage's cross-section at the floor's height, from the canopy frame to the nose.
+  const cabinFloor = () => {
+    const d = 0.42, outline = [];
+    for (let x = SEAM; x <= 1.7; x += 0.05) outline.push([x, Math.sqrt(Math.max(0, radiusAt(x) ** 2 - d * d)) * 0.98]);
+    const shape = new THREE.Shape(outline.map(([x, w]) => new THREE.Vector2(x, w)).concat(outline.reverse().map(([x, w]) => new THREE.Vector2(x, -w))));
+    return new THREE.ShapeGeometry(shape).rotateX(Math.PI / 2).translate(0, Y - d, 0);
+  };
   const parts = [
-    { geometry: new THREE.SphereGeometry(1, 32, 22), color: white, at: cabin(-0.65, 1.45, 1.35, 1.05, 1.0) }, // cabin
-    { geometry: new THREE.SphereGeometry(1, 32, 12, 0, Math.PI * 2, Math.PI * 0.58, Math.PI * 0.42), color: blue, at: cabin(-0.65, 1.44, 1.36, 1.06, 1.01) }, // blue belly
-    { geometry: new THREE.CylinderGeometry(1, 1, 0.16, 32, 1, true), color: pink, at: cabin(-0.65, 1.3, 1.335, 1, 0.995) }, // cheatline
-    { geometry: new THREE.SphereGeometry(1, 32, 12, 0, Math.PI * 2, Math.PI * 0.7, Math.PI * 0.3), color: blue, at: bubble }, // the tub under the bubble
-    { geometry: new THREE.TorusGeometry(1, 0.05, 8, 40).rotateX(Math.PI / 2), color: pink, at: at(THREE, 0.95, 1.45 - 0.95 * Math.cos(Math.PI * 0.3), 0, 0, 0, 0, 1.05 * Math.sin(Math.PI * 0.3), 1, 0.9 * Math.sin(Math.PI * 0.3)) }, // tub rim
-    { geometry: new THREE.CylinderGeometry(0.34, 0.16, 3.6, 20).rotateZ(Math.PI / 2), color: white, at: at(THREE, -3.5, 1.75, 0) }, // tail boom
-    { geometry: new THREE.CylinderGeometry(0.29, 0.255, 0.55, 20, 1, true).rotateZ(Math.PI / 2), color: blue, at: at(THREE, -2.75, 1.75, 0, 0, 0, 0, 1, 1.03, 1.03) }, // boom band
-    { geometry: new THREE.CylinderGeometry(0.235, 0.215, 0.3, 20, 1, true).rotateZ(Math.PI / 2), color: pink, at: at(THREE, -3.6, 1.75, 0, 0, 0, 0, 1, 1.03, 1.03) }, // boom stripe
-    { geometry: fin(THREE, [[-5.35, 1.6], [-4.75, 1.6], [-4.95, 3.0], [-5.5, 3.1]], 0.16), color: yellow }, // tail fin
-    { geometry: fin(THREE, [[-5.5, 2.75], [-4.98, 2.75], [-4.95, 3.0], [-5.5, 3.1]], 0.2), color: pink }, // fin tip
-    { geometry: wing(THREE, [[-4.4, -1.0], [-3.9, -1.0], [-3.75, 1.0], [-4.25, 1.0]], 0.12), color: yellow, at: at(THREE, 0, 1.72, 0) }, // stabiliser
-    { geometry: new THREE.SphereGeometry(0.5, 20, 14), color: white, at: at(THREE, -0.75, 2.45, 0, 0, 0, 0, 1.7, 0.7, 1.0) }, // engine cowling
-    { geometry: new THREE.CylinderGeometry(0.12, 0.12, 0.3, 14).rotateZ(Math.PI / 2), color: dark, at: at(THREE, -1.65, 2.45, 0) }, // exhaust
-    { geometry: new THREE.CylinderGeometry(0.13, 0.17, 0.5, 14), color: metal, at: at(THREE, -0.6, 2.85, 0) }, // mast
+    { geometry: shell(SEAM, -4.85, 'high'), color: white }, // body and boom, top
+    { geometry: shell(SEAM, -4.85, 'low'), color: blue }, // belly
+    { geometry: shell(1.75, SEAM, 'low'), color: blue }, // the tub the ball rides in
+    { geometry: new THREE.TorusGeometry(1.12, 0.05, 10, 48).rotateY(Math.PI / 2), color: blue, at: at(THREE, SEAM, Y, 0) }, // the canopy frame
+    ...[-0.13, Math.PI - 0.13].map(start => ({ geometry: shell(SEAM, -2.2, 'all', 1.012, [start, 0.26]), color: pink })), // cheatline, both sides
+    { geometry: cabinFloor(), color: 0x2d6fd0 }, // the tub's floor, under the ball
+    { geometry: new THREE.CircleGeometry(1.1, 48).rotateY(Math.PI / 2), color: white, at: at(THREE, SEAM - 0.02, Y, 0) }, // the cabin's back wall behind the ball
+    { geometry: new THREE.TorusGeometry(0.27, 0.06, 8, 24).rotateY(Math.PI / 2), color: pink, at: at(THREE, -2.6, Y, 0) }, // boom band
+    { geometry: new THREE.TorusGeometry(0.235, 0.06, 8, 24).rotateY(Math.PI / 2), color: blue, at: at(THREE, -3.2, Y, 0) }, // boom band
+    { geometry: fin(THREE, [[-4.85, Y - 0.1], [-4.25, Y - 0.1], [-4.45, Y + 1.25], [-4.95, Y + 1.35]], 0.16), color: yellow }, // tail fin
+    { geometry: fin(THREE, [[-4.95, Y + 1.0], [-4.48, Y + 1.0], [-4.45, Y + 1.25], [-4.95, Y + 1.35]], 0.2), color: pink }, // fin tip
+    { geometry: wing(THREE, [[-4.15, -0.85], [-3.7, -0.85], [-3.55, 0.85], [-4.0, 0.85]], 0.1), color: yellow, at: at(THREE, 0, Y + 0.05, 0) }, // stabiliser
+    { geometry: new THREE.CylinderGeometry(0.35, 0.55, 0.32, 24), color: white, at: at(THREE, -0.45, Y + 1.12, 0) }, // rotor fairing
+    { geometry: new THREE.CylinderGeometry(0.1, 0.13, 0.4, 14), color: metal, at: at(THREE, -0.45, Y + 1.45, 0) }, // mast
   ];
   for (const side of [1, -1]) {
-    parts.push({ geometry: new THREE.CylinderGeometry(0.2, 0.2, 0.08, 16).rotateX(Math.PI / 2), color: glassDark, at: at(THREE, -1.05, 1.62, side * 0.985) }); // cabin window
-    parts.push({ geometry: capsule(THREE, 0.1, 3.0, 4, 12), color: metal, at: at(THREE, -0.3, 0.12, side * 0.9) }); // skid
-    for (const x of [-1.25, 0.55]) parts.push({ geometry: new THREE.CylinderGeometry(0.075, 0.075, 0.8, 10), color: metal, at: at(THREE, x, 0.5, side * 0.72, side * 0.4, 0, 0) });
+    parts.push({ geometry: capsule(THREE, 0.09, 2.9, 4, 12), color: metal, at: at(THREE, -0.25, 0.1, side * 0.85) }); // skid
+    for (const x of [-1.05, 0.55]) parts.push({ geometry: new THREE.CylinderGeometry(0.065, 0.065, 0.95, 10), color: metal, at: at(THREE, x, 0.52, side * 0.68, side * 0.42, 0, 0) });
   }
   const blades = (span, chord, tip) => {
-    const list = [{ geometry: new THREE.CylinderGeometry(0.2, 0.2, 0.18, 16), color: yellow }];
-    for (let k = 0; k < 2; k++) {
-      const turn = at(THREE, 0, 0, 0, 0, k * Math.PI / 2, 0);
-      list.push({ geometry: new THREE.BoxGeometry(span, 0.06, chord).applyMatrix4(turn), color: dark });
-      for (const end of [1, -1]) list.push({ geometry: new THREE.BoxGeometry(tip, 0.07, chord * 1.02).translate(end * (span - tip) / 2, 0, 0).applyMatrix4(turn), color: yellow });
-    }
+    const list = [{ geometry: new THREE.CylinderGeometry(0.2, 0.2, 0.16, 16), color: yellow }];
+    const turn = at(THREE, 0, 0, 0, 0, 0, 0);
+    list.push({ geometry: new THREE.BoxGeometry(span, 0.06, chord).applyMatrix4(turn), color: dark });
+    for (const end of [1, -1]) list.push({ geometry: new THREE.BoxGeometry(tip, 0.07, chord * 1.02).translate(end * (span - tip) / 2, 0, 0).applyMatrix4(turn), color: yellow });
     return mergeParts(THREE, list);
   };
-  // Built at 1.3 times the scale above, so the ball sits snugly inside the bubble with room around it.
-  const grow = 1.3, scale = new THREE.Matrix4().makeScale(grow, grow, grow);
+  const tail = mergeParts(THREE, [
+    { geometry: new THREE.CylinderGeometry(0.12, 0.12, 0.12, 14), color: yellow },
+    { geometry: new THREE.BoxGeometry(1.0, 0.05, 0.16), color: pink },
+  ]).rotateX(Math.PI / 2);
   return {
-    body: mergeParts(THREE, parts).applyMatrix4(scale),
-    glass: new THREE.SphereGeometry(1, 32, 22, 0, Math.PI * 2, 0, Math.PI * 0.72).applyMatrix4(bubble).applyMatrix4(scale),
-    seats: [new THREE.Vector3(1.0 * grow, 1.18 * grow + 0.15, 0)],
+    body: mergeParts(THREE, parts),
+    glass: shell(1.75, SEAM - 0.02, 'high', 1.0),
+    seats: [new THREE.Vector3(0.75, Y + 0.12, 0)],
     spinners: [
-      { geometry: blades(7.4, 0.4, 0.7).applyMatrix4(scale), position: new THREE.Vector3(-0.6, 3.15, 0).multiplyScalar(grow), axis: 'y', speed: 1 },
-      { geometry: blades(1.5, 0.18, 0.3).rotateX(Math.PI / 2).applyMatrix4(scale), position: new THREE.Vector3(-5.2, 2.35, 0.22).multiplyScalar(grow), axis: 'z', speed: 1.6 },
+      { geometry: blades(7.2, 0.38, 0.65), position: new THREE.Vector3(-0.45, Y + 1.7, 0), axis: 'y', speed: 1 },
+      { geometry: tail, position: new THREE.Vector3(-4.45, Y + 0.55, -0.22), axis: 'z', speed: 1.6 },
     ],
-    drop: 1.7, // the skids below the ball
-    rise: 1.9, // the rotor above it
+    drop: Y + 0.12 - 0.05, // the skids below the ball
+    rise: Y + 1.7 - (Y + 0.12) - 0.5, // the rotor above it
   };
 }
 

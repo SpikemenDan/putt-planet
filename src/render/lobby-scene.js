@@ -51,53 +51,40 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', re
   const inkMaterial = own(createInkMaterial(THREE, inkUniforms));
   const ink = mesh => { mesh.add(new THREE.Mesh(own(smoothHullGeometry(THREE, mesh.geometry)), inkMaterial)); return mesh; };
 
-  // ---- The sun (owner, 2026-11-17: realistic, not cartoon): a glowing photosphere with slowly boiling granulation and limb darkening
-  // (white-hot in the middle, deep orange at the edge), wrapped in a soft corona with faint streamers that drift. No outline: it is
-  // the light. Fixed to the camera at the top right of the free area.
+  // ---- The sun (owner, 2026-11-17: smaller and cartoonish, dimpled like a golf ball): a warm yellow ball in flat toon bands, lit
+  // from the top left, covered in dimples that each catch a little shade on the lit side and light on the other, with an ink outline
+  // and two flat halo rings behind it. Unlit by the scene: it is the light. Fixed to the camera at the top right of the free area.
   const sun = new THREE.Group();
-  const sunTime = { value: 0 };
-  const NOISE = `
-    float h3(vec3 p){ p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
-    float n3(vec3 x){ vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
-      return mix(mix(mix(h3(i), h3(i + vec3(1,0,0)), f.x), mix(h3(i + vec3(0,1,0)), h3(i + vec3(1,1,0)), f.x), f.y),
-                 mix(mix(h3(i + vec3(0,0,1)), h3(i + vec3(1,0,1)), f.x), mix(h3(i + vec3(0,1,1)), h3(i + vec3(1,1,1)), f.x), f.y), f.z); }
-    float fbm(vec3 p){ float v = 0.0, a = 0.5; for (int k = 0; k < 4; k++) { v += a * n3(p); p = p * 2.03 + 1.7; a *= 0.5; } return v; }`;
-  const photosphere = new THREE.Mesh(own(new THREE.SphereGeometry(1.6, 64, 48)), own(new THREE.ShaderMaterial({
-    uniforms: { time: sunTime },
-    vertexShader: 'varying vec3 vN; varying vec3 vP; void main(){ vP = position; vN = normalize(normalMatrix * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-    fragmentShader: `uniform float time; varying vec3 vN; varying vec3 vP; ${NOISE}
+  const DIMPLES = 150;
+  const dimplePoints = Array.from({ length: DIMPLES }, (_, i) => { // an even Fibonacci spread over the ball
+    const y = 1 - 2 * (i + 0.5) / DIMPLES, r = Math.sqrt(1 - y * y), a = i * Math.PI * (3 - Math.sqrt(5));
+    return new THREE.Vector3(Math.cos(a) * r, y, Math.sin(a) * r);
+  });
+  const photosphere = ink(new THREE.Mesh(own(new THREE.SphereGeometry(1.6, 64, 48)), own(new THREE.ShaderMaterial({
+    uniforms: { pts: { value: dimplePoints }, light: { value: new THREE.Vector3(-0.55, 0.6, 0.58).normalize() } },
+    vertexShader: 'varying vec3 vN; void main(){ vN = normal; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: `uniform vec3 pts[${DIMPLES}]; uniform vec3 light; varying vec3 vN;
       void main(){
-        float mu = clamp(vN.z, 0.0, 1.0);
-        float cells = fbm(vP * 4.2 + vec3(0.0, time * 0.05, time * 0.03));
-        float fine = n3(vP * 13.0 - time * 0.1);
-        float g = cells * 0.75 + fine * 0.25;
-        float limb = 0.55 + 0.45 * pow(mu, 0.4);
-        vec3 hot = vec3(1.0, 0.98, 0.9), warm = vec3(1.0, 0.84, 0.42), edge = vec3(1.0, 0.52, 0.12);
-        vec3 col = mix(edge, mix(warm, hot, smoothstep(0.45, 1.0, mu)), smoothstep(0.0, 0.55, mu));
-        col *= 0.9 + 0.2 * g;
-        gl_FragColor = vec4(min(col * limb * 1.08, vec3(1.0)), 1.0);
+        vec3 n = normalize(vN), c = pts[0];
+        float best = 10.0;
+        for (int i = 0; i < ${DIMPLES}; i++) { float d = distance(n, pts[i]); if (d < best) { best = d; c = pts[i]; } }
+        float R = 0.135, k = 1.0 - smoothstep(R * 0.8, R, best);
+        // Inside a dimple the surface bowls in: its normal leans toward the dimple's centre.
+        vec3 o = n - c;
+        vec3 m = normalize(n - o * 3.2 * k);
+        float lam = dot(m, light);
+        vec3 col = lam > 0.45 ? vec3(1.0, 0.85, 0.27) : lam > -0.05 ? vec3(1.0, 0.74, 0.2) : vec3(0.98, 0.6, 0.16);
+        if (k < 0.5 && dot(n, normalize(light + vec3(0.0, 0.0, 0.6))) > 0.94) col = vec3(1.0, 0.94, 0.6);
+        gl_FragColor = vec4(col, 1.0);
       }`,
-  })));
-  const corona = new THREE.Mesh(own(new THREE.PlaneGeometry(9, 9)), own(new THREE.ShaderMaterial({
-    uniforms: { time: sunTime },
-    transparent: true, depthWrite: false, premultipliedAlpha: true,
-    blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor, blendSrcAlpha: THREE.OneFactor, blendDstAlpha: THREE.OneMinusSrcAlphaFactor,
-    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv * 2.0 - 1.0; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-    fragmentShader: `uniform float time; varying vec2 vUv; ${NOISE}
-      void main(){
-        float r = length(vUv) * 4.5 / 1.6;
-        if (r < 0.98) discard;
-        float a = atan(vUv.y, vUv.x);
-        float streak = fbm(vec3(cos(a) * 3.0, sin(a) * 3.0, time * 0.08)) ;
-        float glow = exp(-(r - 1.0) * 2.6) * 0.85 + exp(-(r - 1.0) * 0.9) * 0.22 * (0.55 + streak);
-        glow *= smoothstep(2.8, 1.6, r) * 0.6 + 0.4 * smoothstep(2.8, 1.0, r);
-        glow = clamp(glow, 0.0, 1.0);
-        vec3 col = mix(vec3(1.0, 0.7, 0.3), vec3(1.0, 0.95, 0.78), exp(-(r - 1.0) * 3.0));
-        gl_FragColor = vec4(col * glow, glow);
-      }`,
-  })));
-  corona.position.z = -0.01;
-  sun.add(corona, photosphere);
+  }))));
+  const halo = (radius, opacity) => {
+    const mesh = new THREE.Mesh(own(new THREE.CircleGeometry(radius, 64)), own(new THREE.MeshBasicMaterial({ color: 0xffd84a, transparent: true, opacity, depthWrite: false })));
+    return mesh;
+  };
+  const glow = new THREE.Group();
+  glow.add(halo(2.25, 0.85));
+  sun.add(glow, photosphere);
   camera.add(sun);
 
   const rig = new THREE.Group(); // sways and bobs
@@ -195,9 +182,9 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', re
     // The sun sits at the top right of the free area, far behind the vehicle.
     const sunZ = dist * 2.4, halfH = sunZ * tan, halfW = halfH * camera.aspect;
     sun.position.set((-1 + 2 * (insets.left + freeW * 0.76 + offX) / width) * halfW, (1 - 2 * (insets.top + freeH * 0.14 + offY) / height) * halfH, -sunZ);
-    sun.scale.setScalar(sunZ / 58);
-    sunTime.value = t; // the granulation boils and the corona streamers drift (still with reduced motion)
-    photosphere.rotation.y = t * 0.02;
+    sun.scale.setScalar(sunZ / 90); // small in the sky (owner, 2026-11-17)
+    glow.position.copy(sun.position).normalize().multiplyScalar(1.8); // the halo sits behind the ball on the line of sight, centred on it
+    glow.scale.setScalar(1 + Math.sin(t * 1.3) * 0.04); // the halo breathes
     rig.rotation.y = TURN + Math.sin(t * 0.6) * l.sway * Math.PI / 180;
     rig.position.y = Math.sin(t * 1.7) * l.bob;
     rig.rotation.x = Math.sin(t * 1.1) * 0.02;

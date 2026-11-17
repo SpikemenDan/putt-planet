@@ -28,11 +28,19 @@ export function gateFor(vehicle, destination, flight = '') {
   return { kind: 'cloud', text: 'Cloud 9' };
 }
 
-/** A flight number from any text (the party code), stable for the party: PP 1000–9999. */
-export function flightOf(text = '') {
-  let h = 2166136261;
-  for (const ch of String(text)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0;
-  return { flight: 'PP ' + (1000 + (h % 9000)) };
+const KEYPAD = { a: 2, b: 2, c: 2, d: 3, e: 3, f: 3, g: 4, h: 4, i: 4, j: 5, k: 5, l: 5, m: 6, n: 6, o: 6, p: 7, q: 7, r: 7, s: 7, t: 8, u: 8, v: 8, w: 9, x: 9, y: 9, z: 9 };
+/** Each letter or digit as typed on a phone keypad (A–C → 2 … W–Z → 9). */
+const keypad = text => [...String(text).toLowerCase()].map(ch => /\d/.test(ch) ? ch : KEYPAD[ch] ?? '').join('');
+
+/**
+ * The flight number, an easter egg (owner, 2026-11-17): a party's flight is its code, airline style. The first two characters are
+ * the airline and the next four are typed on a phone keypad, so code TB3JWZDQ flies as TB 3599. Solo (`code` empty) flies Putt
+ * Planet Air to its planet's name on the keypad: Gaia is PP 4242, Ares PP 2737, Luna PP 5862.
+ */
+export function flightOf(code = '', world = 'gaia') {
+  const clean = String(code).replace(/[^a-z0-9]/gi, '').toUpperCase();
+  if (clean.length >= 3) return { flight: clean.slice(0, 2) + ' ' + keypad(clean.slice(2, 6)) };
+  return { flight: 'PP ' + (keypad(world).slice(0, 4) || '1000') };
 }
 
 /**
