@@ -6,7 +6,7 @@
  * The plane and rocket seat their passengers in a row under a long glass canopy along the top, each ball in front of its own seat
  * back, so every ball is easy to see. Units: a ball is 1 across (radius 0.5). Local axes: +x forward (nose), +y up, +z toward the
  * viewer's side. Each builder returns { body, glass, seats, spinners, flame?, flameAt?, tilt?, drop }: `seats` are ball centres,
- * `spinners` parts that turn about `axis` (rotors and fans), `flame` the rocket's exhaust, `drop` how far below a seat the belly is,
+ * `spinners` parts that turn about `axis` (rotors and fans), `flame` the rocket's exhaust, `inner` an optional cabin interior drawn without ink, `drop` how far below a seat the belly is,
  * `rise` how far above it the roof is (0 when the ball rides on top).
  * `THREE` is injected.
  */
@@ -54,18 +54,32 @@ function cabin(THREE, seats, floorY, length, seatColor) {
   return parts;
 }
 
+/** The same geometry seen from inside: winding and normals reversed, so a lining shows its inner face. */
+function inward(THREE, geometry) {
+  const flat = geometry.index ? geometry.toNonIndexed() : geometry;
+  const p = flat.attributes.position.array, n = flat.attributes.normal.array;
+  for (let i = 0; i < p.length; i += 9) for (let k = 0; k < 3; k++) {
+    [p[i + 3 + k], p[i + 6 + k]] = [p[i + 6 + k], p[i + 3 + k]];
+    [n[i + 3 + k], n[i + 6 + k]] = [n[i + 6 + k], n[i + 3 + k]];
+  }
+  for (let i = 0; i < n.length; i++) n[i] = -n[i];
+  return flat;
+}
+
 /**
- * The Solo helicopter (owner, 2026-11-17: cleaner), in the party plane's livery: one smooth teardrop fuselage that tapers into the
- * tail boom, white above and blue below with a pink cheatline. Its nose is a clear glass dome over a blue tub where the ball rides,
- * like a bubble cockpit. A yellow fin and stabiliser, a pink tail rotor, slim skids and a two-blade rotor with yellow tips.
+ * The Solo helicopter (owner, 2026-11-17: cleaner, the player in an opening in the side): a smooth white pod with a blue belly that
+ * tapers into a slim tail boom, a dark wraparound windscreen and a rounded engine housing under a two-blade rotor. The sliding door
+ * on the viewer's side is open (the door panel parked behind it), framed in yellow, and the ball sits in the doorway on a blue floor
+ * against a violet seat back, inside a soft lilac cabin. A blue fin and stabiliser with yellow tips, a pink tail rotor, slim skids.
  */
 export function makeHelicopter(THREE) {
-  const white = 0xf8f6ff, blue = 0x3e8ef7, pink = 0xff3d8b, yellow = 0xffd23f, metal = 0x4b4570, dark = 0x2a2346;
-  const Y = 1.45; // the fuselage axis height: the skids rest on y = 0
-  const SEAM = 0.15; // where the glass nose meets the painted body (x)
-  // The teardrop's radius along the fuselage (x, nose at +x): a round nose, a full cabin, then a long taper into the boom.
-  const profile = [[1.75, 0], [1.68, 0.42], [1.5, 0.72], [1.2, 0.95], [0.75, 1.08], [SEAM, 1.12], [-0.5, 1.08], [-1.1, 0.9], [-1.6, 0.6],
-    [-2.1, 0.36], [-2.6, 0.27], [-4.3, 0.2], [-4.75, 0.17], [-4.85, 0]];
+  const white = 0xf8f6ff, blue = 0x3e8ef7, pink = 0xff3d8b, yellow = 0xffd23f, metal = 0x4b4570, dark = 0x2a2346, screen = 0x2c5cb8, seatColor = 0x4a3f9e;
+  const Y = 1.5; // the fuselage axis height: the skids rest on y = 0
+  const R = 1.1; // the cabin's radius, constant through the doorway
+  const DOOR = [-0.6, 0.8], A = 0.9; // the doorway along x, and its half-angle around the side facing the viewer (-z)
+  // The pod's radius along the fuselage (x, nose at +x): a round nose, a straight cabin, then a smooth taper into the boom.
+  const profile = [[2.05, 0], [2.0, 0.4], [1.86, 0.7], [1.62, 0.9], [1.28, 1.04], [0.95, R], [-0.75, R], [-1.25, 1.0], [-1.75, 0.76],
+    [-2.25, 0.44], [-2.65, 0.29], [-4.4, 0.2], [-4.8, 0.17], [-4.9, 0]];
   const radiusAt = x => {
     for (let k = 1; k < profile.length; k++) {
       const [x0, r0] = profile[k - 1], [x1, r1] = profile[k];
@@ -73,66 +87,91 @@ export function makeHelicopter(THREE) {
     }
     return 0;
   };
-  /** A lathe of the profile between x = from and x = to, around the fuselage axis; `half` 'low', 'high' or 'all'. */
-  const shell = (from, to, half, grow = 1, phi = null) => {
-    const pts = [];
-    for (const [x, r] of profile) if (x <= from + 1e-6 && x >= to - 1e-6) pts.push([x, r]);
-    if (pts[0][0] < from) pts.unshift([from, radiusAt(from)]);
+  /**
+   * A lathe of the profile between x = from and x = to around the fuselage axis, over angles [start, start + length]. After the
+   * turn onto x, angle 0 faces the viewer (-z: the lobby turns the nose to the left, so -z is the near side), π/2 down, π away
+   * and 3π/2 up.
+   */
+  const shell = (from, to, start, length, grow = 1) => {
+    const pts = profile.filter(([x]) => x <= from + 1e-6 && x >= to - 1e-6);
+    if (!pts.length || pts[0][0] < from) pts.unshift([from, radiusAt(from)]);
     if (pts[pts.length - 1][0] > to) pts.push([to, radiusAt(to)]);
-    // Lathe points run along y; after rotateZ(-π/2) y becomes +x, and phi 0..π faces down.
-    const lathe = new THREE.LatheGeometry(pts.reverse().map(([x, r]) => new THREE.Vector2(r * grow, x)), 48,
-      phi ? phi[0] : half === 'high' ? Math.PI : 0, phi ? phi[1] : half === 'all' ? Math.PI * 2 : Math.PI);
-    return lathe.rotateZ(-Math.PI / 2).translate(0, Y, 0);
+    return new THREE.LatheGeometry(pts.reverse().map(([x, r]) => new THREE.Vector2(r * grow, x)), 56, Math.PI - start - length, length)
+      .rotateZ(-Math.PI / 2).translate(0, Y, 0);
   };
-  // The cabin floor: the fuselage's cross-section at the floor's height, from the canopy frame to the nose.
-  const cabinFloor = () => {
-    const d = 0.42, outline = [];
-    for (let x = SEAM; x <= 1.7; x += 0.05) outline.push([x, Math.sqrt(Math.max(0, radiusAt(x) ** 2 - d * d)) * 0.98]);
-    const shape = new THREE.Shape(outline.map(([x, w]) => new THREE.Vector2(x, w)).concat(outline.reverse().map(([x, w]) => new THREE.Vector2(x, -w))));
-    return new THREE.ShapeGeometry(shape).rotateX(Math.PI / 2).translate(0, Y - d, 0);
-  };
-  const parts = [
-    { geometry: shell(SEAM, -4.85, 'high'), color: white }, // body and boom, top
-    { geometry: shell(SEAM, -4.85, 'low'), color: blue }, // belly
-    { geometry: shell(1.75, SEAM, 'low'), color: blue }, // the tub the ball rides in
-    { geometry: new THREE.TorusGeometry(1.12, 0.05, 10, 48).rotateY(Math.PI / 2), color: blue, at: at(THREE, SEAM, Y, 0) }, // the canopy frame
-    ...[-0.13, Math.PI - 0.13].map(start => ({ geometry: shell(SEAM, -2.2, 'all', 1.012, [start, 0.26]), color: pink })), // cheatline, both sides
-    { geometry: cabinFloor(), color: 0x2d6fd0 }, // the tub's floor, under the ball
-    { geometry: new THREE.CircleGeometry(1.1, 48).rotateY(Math.PI / 2), color: white, at: at(THREE, SEAM - 0.02, Y, 0) }, // the cabin's back wall behind the ball
-    { geometry: new THREE.TorusGeometry(0.27, 0.06, 8, 24).rotateY(Math.PI / 2), color: pink, at: at(THREE, -2.6, Y, 0) }, // boom band
-    { geometry: new THREE.TorusGeometry(0.235, 0.06, 8, 24).rotateY(Math.PI / 2), color: blue, at: at(THREE, -3.2, Y, 0) }, // boom band
-    { geometry: fin(THREE, [[-4.85, Y - 0.1], [-4.25, Y - 0.1], [-4.45, Y + 1.25], [-4.95, Y + 1.35]], 0.16), color: yellow }, // tail fin
-    { geometry: fin(THREE, [[-4.95, Y + 1.0], [-4.48, Y + 1.0], [-4.45, Y + 1.25], [-4.95, Y + 1.35]], 0.2), color: pink }, // fin tip
-    { geometry: wing(THREE, [[-4.15, -0.85], [-3.7, -0.85], [-3.55, 0.85], [-4.0, 0.85]], 0.1), color: yellow, at: at(THREE, 0, Y + 0.05, 0) }, // stabiliser
-    { geometry: new THREE.CylinderGeometry(0.35, 0.55, 0.32, 24), color: white, at: at(THREE, -0.45, Y + 1.12, 0) }, // rotor fairing
-    { geometry: new THREE.CylinderGeometry(0.1, 0.13, 0.4, 14), color: metal, at: at(THREE, -0.45, Y + 1.45, 0) }, // mast
+  const UP = [Math.PI, Math.PI], DOWN = [0, Math.PI]; // the top and bottom halves
+  /** The pod in two colours with the doorway left open: top white, belly blue (or one colour, for the lining). */
+  const pod = (grow, top, belly) => [
+    { geometry: shell(2.05, DOOR[1], ...UP, grow), color: top }, { geometry: shell(2.05, DOOR[1], ...DOWN, grow), color: belly },
+    { geometry: shell(DOOR[0], -4.9, ...UP, grow), color: top }, { geometry: shell(DOOR[0], -4.9, ...DOWN, grow), color: belly },
+    { geometry: shell(DOOR[1], DOOR[0], Math.PI, Math.PI - A, grow), color: top }, // above and behind the doorway
+    { geometry: shell(DOOR[1], DOOR[0], A, Math.PI - A, grow), color: belly }, // below it
   ];
-  for (const side of [1, -1]) {
-    parts.push({ geometry: capsule(THREE, 0.09, 2.9, 4, 12), color: metal, at: at(THREE, -0.25, 0.1, side * 0.85) }); // skid
-    for (const x of [-1.05, 0.55]) parts.push({ geometry: new THREE.CylinderGeometry(0.065, 0.065, 0.95, 10), color: metal, at: at(THREE, x, 0.52, side * 0.68, side * 0.42, 0, 0) });
+  const side = phi => [-Math.sin(phi), -Math.cos(phi)]; // [y, z] of angle phi on the fuselage, per unit radius
+  const [railTop, railZ] = side(-A), [railLow] = side(A);
+  const doorLength = DOOR[1] - DOOR[0], doorMid = (DOOR[0] + DOOR[1]) / 2;
+  const arc = () => new THREE.TorusGeometry(R * 1.01, 0.055, 8, 24, 2 * A).rotateZ(-A).rotateY(Math.PI / 2);
+  const parts = [
+    ...pod(1, white, blue),
+    // The doorway's yellow frame: an arc at each end and a rail along the top and bottom.
+    ...DOOR.map(x => ({ geometry: arc(), color: yellow, at: at(THREE, x, Y, 0) })),
+    ...[railTop, railLow].map(y => ({ geometry: new THREE.CylinderGeometry(0.055, 0.055, doorLength, 10).rotateZ(Math.PI / 2), color: yellow, at: at(THREE, doorMid, Y + y * R * 1.01, railZ * R * 1.01) })),
+    // The sliding door, parked open behind the doorway, with a round window and a yellow handle.
+    { geometry: shell(DOOR[0] - 0.05, DOOR[0] - 1.25, -A + 0.08, 2 * A - 0.16, 1.05), color: white },
+    { geometry: new THREE.CircleGeometry(0.26, 24), color: screen, at: at(THREE, DOOR[0] - 0.62, Y + 0.25, -(radiusAt(DOOR[0] - 0.62) * 1.05 * Math.cos(0.23) + 0.07), 0.23, Math.PI, 0) },
+    { geometry: capsule(THREE, 0.05, 0.22, 4, 8), color: yellow, at: at(THREE, DOOR[0] - 0.2, Y - 0.1, -R * 1.055) },
+    // The wraparound windscreen over the nose.
+    { geometry: shell(1.97, 1.0, Math.PI + 0.25, Math.PI - 0.55, 1.008), color: screen },
+    { geometry: shell(1.72, 1.52, Math.PI + 0.35, Math.PI - 0.75, 1.012), color: 0x9fd0ff }, // a glint across it
+    // The engine housing and mast.
+    { geometry: capsule(THREE, 0.4, 1.3, 10, 24), color: white, at: at(THREE, -0.25, Y + 0.95, 0, 0, 0, 0, 1, 0.8, 0.85) },
+    { geometry: new THREE.CylinderGeometry(0.2, 0.2, 0.12, 18).rotateZ(Math.PI / 2), color: dark, at: at(THREE, -1.2, Y + 0.97, 0) }, // exhaust
+    { geometry: new THREE.CylinderGeometry(0.09, 0.12, 0.4, 14), color: metal, at: at(THREE, -0.1, Y + 1.38, 0) },
+    // The boom: a blue band where it leaves the pod.
+    { geometry: new THREE.TorusGeometry(0.29, 0.055, 8, 24).rotateY(Math.PI / 2), color: blue, at: at(THREE, -2.65, Y, 0) },
+    // Tail fin and stabiliser, blue with yellow tips.
+    { geometry: fin(THREE, [[-4.9, Y - 0.05], [-4.3, Y - 0.05], [-4.5, Y + 1.15], [-4.98, Y + 1.25]], 0.14), color: blue },
+    { geometry: fin(THREE, [[-4.98, Y + 0.95], [-4.46, Y + 0.95], [-4.5, Y + 1.15], [-4.98, Y + 1.25]], 0.18), color: yellow },
+    { geometry: wing(THREE, [[-4.15, -0.8], [-3.75, -0.8], [-3.6, 0.8], [-4.0, 0.8]], 0.09), color: blue, at: at(THREE, 0, Y + 0.05, 0) },
+    ...[1, -1].map(s => ({ geometry: wing(THREE, [[-4.15, 0.65], [-3.62, 0.65], [-3.6, 0.82], [-4.0, 0.82]], 0.12), color: yellow, at: at(THREE, 0, Y + 0.05, 0, s < 0 ? Math.PI : 0, 0, 0) })),
+  ];
+  for (const s of [1, -1]) {
+    parts.push({ geometry: capsule(THREE, 0.08, 3.0, 4, 12), color: metal, at: at(THREE, -0.1, 0.09, s * 0.95) }); // skid
+    parts.push({ geometry: capsule(THREE, 0.08, 0.32, 4, 12), color: metal, at: at(THREE, 1.55, 0.2, s * 0.95, 0, 0, 0.5) }); // its upturned toe
+    for (const x of [-0.9, 0.8]) parts.push({ geometry: new THREE.CylinderGeometry(0.06, 0.06, 0.95, 10), color: metal, at: at(THREE, x, 0.5, s * 0.8, s * 0.4, 0, 0) });
   }
+  // The cabin, seen through the doorway (no ink): a lilac lining, a blue floor and a violet seat back against the far wall.
+  const FLOOR = Y - 0.5, d = Y - FLOOR, outline = [];
+  for (let x = -1.2; x <= 1.75; x += 0.05) outline.push([x, Math.sqrt(Math.max(0, (radiusAt(x) * 0.95) ** 2 - d * d))]);
+  const floorShape = new THREE.Shape(outline.map(([x, w]) => new THREE.Vector2(x, w)).concat([...outline].reverse().map(([x, w]) => new THREE.Vector2(x, -w))));
+  const inner = mergeParts(THREE, [
+    ...pod(0.95, 0xe4e1ff, 0xc9c3f2).map(p => ({ ...p, geometry: inward(THREE, p.geometry) })),
+    { geometry: new THREE.ShapeGeometry(floorShape).rotateX(Math.PI / 2), color: 0x2d6fd0, at: at(THREE, 0, FLOOR, 0) },
+    { geometry: new THREE.BoxGeometry(1.05, 1.0, 0.16), color: seatColor, at: at(THREE, 0.1, Y + 0.05, 0.62, -0.1, 0, 0) }, // seat back
+    { geometry: new THREE.BoxGeometry(1.05, 0.16, 0.5), color: seatColor, at: at(THREE, 0.1, FLOOR + 0.08, 0.38) }, // seat base
+  ]);
   const blades = (span, chord, tip) => {
-    const list = [{ geometry: new THREE.CylinderGeometry(0.2, 0.2, 0.16, 16), color: yellow }];
-    const turn = at(THREE, 0, 0, 0, 0, 0, 0);
-    list.push({ geometry: new THREE.BoxGeometry(span, 0.06, chord).applyMatrix4(turn), color: dark });
-    for (const end of [1, -1]) list.push({ geometry: new THREE.BoxGeometry(tip, 0.07, chord * 1.02).translate(end * (span - tip) / 2, 0, 0).applyMatrix4(turn), color: yellow });
+    const list = [{ geometry: new THREE.CylinderGeometry(0.2, 0.2, 0.16, 16), color: yellow }, { geometry: new THREE.BoxGeometry(span, 0.06, chord), color: dark }];
+    for (const end of [1, -1]) list.push({ geometry: new THREE.BoxGeometry(tip, 0.07, chord * 1.02).translate(end * (span - tip) / 2, 0, 0), color: yellow });
     return mergeParts(THREE, list);
   };
   const tail = mergeParts(THREE, [
     { geometry: new THREE.CylinderGeometry(0.12, 0.12, 0.12, 14), color: yellow },
     { geometry: new THREE.BoxGeometry(1.0, 0.05, 0.16), color: pink },
   ]).rotateX(Math.PI / 2);
+  const seat = new THREE.Vector3(0.1, FLOOR + 0.5, -0.3); // in the doorway, a little proud of the hull
   return {
     body: mergeParts(THREE, parts),
-    glass: shell(1.75, SEAM - 0.02, 'high', 1.0),
-    seats: [new THREE.Vector3(0.75, Y + 0.12, 0)],
+    inner,
+    glass: shell(1.97, 1.0, Math.PI + 0.25, Math.PI - 0.55, 1.02),
+    seats: [seat],
     spinners: [
-      { geometry: blades(7.2, 0.38, 0.65), position: new THREE.Vector3(-0.45, Y + 1.7, 0), axis: 'y', speed: 1 },
-      { geometry: tail, position: new THREE.Vector3(-4.45, Y + 0.55, -0.22), axis: 'z', speed: 1.6 },
+      { geometry: blades(7.2, 0.36, 0.65), position: new THREE.Vector3(-0.1, Y + 1.62, 0), axis: 'y', speed: 1 },
+      { geometry: tail, position: new THREE.Vector3(-4.45, Y + 0.55, -0.2), axis: 'z', speed: 1.6 },
     ],
     tilt: -0.12, // nose down, as a helicopter flies forward
-    drop: Y + 0.12 - 0.05, // the skids below the ball
-    rise: Y + 1.7 - (Y + 0.12) - 0.5, // the rotor above it
+    drop: seat.y - 0.05, // the skids below the ball
+    rise: Y + 1.62 - seat.y - 0.5, // the rotor above it
   };
 }
 

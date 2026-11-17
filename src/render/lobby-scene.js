@@ -180,6 +180,7 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', re
     built = new THREE.Group();
     built.rotation.z = model.tilt ?? 0;
     built.add(inkMine(new THREE.Mesh(mine(model.body), painted)));
+    if (model.inner) built.add(new THREE.Mesh(mine(model.inner), painted)); // the cabin seen through an opening: no ink inside
     spinners = model.spinners.map(s => {
       const mesh = inkMine(new THREE.Mesh(mine(s.geometry), painted));
       mesh.position.copy(s.position);
