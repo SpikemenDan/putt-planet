@@ -184,13 +184,30 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
       assert.ok(run(0.1).nebula > 0, 'the nebula shows in space');
       live.space.nebula = 0;
       assert.equal(run(0.1).nebula, 0, 'space.nebula sets the nebula brightness');
+      reset();
+      const sunMove = () => { const a = run(0.1).sun; const b = run(3).sun; return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]); };
+      const slowSwing = sunMove();
+      live.space.revolveSeconds = 30;
+      assert.ok(sunMove() > slowSwing * 3, 'space.revolveSeconds sets how fast the planets swing around the sun');
+      reset(); fly('gaia', 4);
+      const farAres = fly('ares', 8);
+      scene.setView({ space: true, target: 'ares', near: true });
+      for (let k = 0; k < 80; k++) scene.step(0.1);
+      const near = scene.space, dist = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
+      assert.equal(near.near, 1, 'near brings the camera down to Ares');
+      assert.ok(dist(near.camera, near.ares) < near.aresRadius * 1.2 && dist(near.camera, near.ares) > near.aresRadius, 'just above the ground, inside the air');
+      assert.ok(dist(farAres.camera, farAres.ares) > near.aresRadius * 3, 'the far view stands well off');
+      assert.ok(near.air > 0.99, 'Ares has its dusty air in space');
+      scene.setView({ space: true, target: 'ares', near: false });
+      for (let k = 0; k < 80; k++) scene.step(0.1);
+      assert.equal(scene.space.near, 0, 'and back out again');
       scene.dispose(); dom.window.close();
     }
     // loading.finishTime, ballPulse and ballBounce are checked in tests/ui.test.cjs, where the screen really closes after the first
     // and the progress balls carry the other two as CSS variables, and so is the menu group
     // (VIS-M2), where each value lands on its own CSS variable on the real main menu, and the lobby group, on the lobby vehicle scene.
     // The table covers every DISPLAY setting, so a new setting cannot be added without a reach check.
-    assert.deepEqual([...Object.keys(expectations), 'ball.visualScale', ...['spinSpeed', 'axisTilt', 'horizonHeight', 'cameraAltitude', 'cloudCover', 'cloudDrift', 'finishTime', 'atmosphere', 'atmosphereHeight', 'citySize', 'lunaSize', 'outlineWidth', 'planes', 'boats', 'satellites', 'ballPulse', 'ballBounce'].map(k => 'loading.' + k), ...['orbitSeconds', 'travelSeconds', 'aresZoom', 'nebula', 'distance'].map(k => 'space.' + k), ...['buttonScale', 'stagger', 'bob', 'tilt', 'shineSeconds', 'cardTint'].map(k => 'menu.' + k), ...['zoom', 'sway', 'bob', 'spinSeconds'].map(k => 'lobby.' + k), ...['aresWind', 'aresWindDensity', 'lunaDust', 'lunaDustDensity', 'lunaSolar'].map(k => 'environment.' + k)].sort(), DISPLAY_FIELDS.map(f => f[0]).sort());
+    assert.deepEqual([...Object.keys(expectations), 'ball.visualScale', ...['spinSpeed', 'axisTilt', 'horizonHeight', 'cameraAltitude', 'cloudCover', 'cloudDrift', 'finishTime', 'atmosphere', 'atmosphereHeight', 'citySize', 'lunaSize', 'outlineWidth', 'planes', 'boats', 'satellites', 'ballPulse', 'ballBounce'].map(k => 'loading.' + k), ...['orbitSeconds', 'travelSeconds', 'aresZoom', 'nebula', 'distance', 'revolveSeconds'].map(k => 'space.' + k), ...['buttonScale', 'stagger', 'bob', 'tilt', 'shineSeconds', 'cardTint'].map(k => 'menu.' + k), ...['zoom', 'sway', 'bob', 'spinSeconds'].map(k => 'lobby.' + k), ...['aresWind', 'aresWindDensity', 'lunaDust', 'lunaDustDensity', 'lunaSolar'].map(k => 'environment.' + k)].sort(), DISPLAY_FIELDS.map(f => f[0]).sort());
   });
 
   // ---- TUNING probes: [name, setting, value, code printing one number, expected default, expected with the override]
