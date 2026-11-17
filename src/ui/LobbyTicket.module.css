@@ -60,9 +60,9 @@
 .stub::after{right:-16px;clip-path:inset(0 50% 0 0)}
 .barcode{display:block;flex:1;height:30px;background:repeating-linear-gradient(90deg,var(--ink) 0 3px,transparent 3px 5px,var(--ink) 5px 6px,transparent 6px 9px,var(--ink) 9px 13px,transparent 13px 15px)}
 /* The party code under the barcode, like a booking reference, with a small copy-invite icon. */
-.code{display:flex;flex:1 0 100%;align-items:center;gap:10px;min-width:0;padding-top:2px}
-.code small{flex:none;white-space:nowrap;font:900 10px/1 var(--font);letter-spacing:1.5px;text-transform:uppercase;color:var(--mut)}
-.code strong{font:400 19px/1 var(--font);letter-spacing:2px;color:var(--ink);user-select:all;white-space:nowrap}
+.code{display:flex;flex:1 0 100%;align-items:center;justify-content:center;gap:10px;min-width:0;padding-top:2px}
+.code small{flex:none;translate:0 3px;white-space:nowrap;font:900 10px/1 var(--font);letter-spacing:1.5px;text-transform:uppercase;color:var(--mut)}
+.code strong{display:block;padding-top:2px;font:400 19px/1 var(--font);letter-spacing:2px;color:var(--ink);user-select:all;white-space:nowrap}
 .copy{flex:none;width:24px;height:24px;margin:0;padding:0;border:2px solid var(--ink);border-radius:7px;background:#fff center/14px no-repeat;cursor:pointer;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23141029' stroke-width='2.6' stroke-linejoin='round'%3E%3Crect x='8' y='8' width='12' height='12' rx='3'/%3E%3Cpath d='M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2'/%3E%3C/svg%3E");transition:background-color .15s,scale .1s}
 .copy:hover{background-color:var(--yellow)}
