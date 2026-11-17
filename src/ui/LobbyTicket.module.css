@@ -25,6 +25,14 @@
 .pencilEnd{fill:var(--pink)}
 .nameEdit:hover .pencil{rotate:-12deg;scale:1.1}
 .nameEdit:focus-within .pencilBody{fill:#ffe98a}
+/* The empty-name nudge (owner, 2026-11-17): a pink "Tap to add your name" on a breathing highlighter stripe, and a wiggling pencil. */
+.nameEdit[data-empty] .name{border-radius:8px;background:linear-gradient(transparent 18%,color-mix(in srgb,var(--yellow) 75%,transparent) 18% 86%,transparent 86%);animation:namePulse 1.8s ease-in-out infinite}
+.nameEdit[data-empty] .name::placeholder{font:900 21px var(--font);letter-spacing:.3px;color:var(--pink)}
+.nameEdit[data-empty] .name:focus{animation:none;background:transparent}
+.nameEdit[data-empty]:not(:focus-within) .pencil{animation:pencilWiggle 1.8s ease-in-out infinite;transform-origin:20% 80%}
+@keyframes namePulse{50%{background-color:color-mix(in srgb,var(--pink) 10%,transparent)}}
+@keyframes pencilWiggle{0%,60%,100%{rotate:0deg}70%{rotate:-16deg}80%{rotate:10deg}90%{rotate:-6deg}}
+@media (prefers-reduced-motion:reduce){.nameEdit[data-empty] .name,.nameEdit[data-empty] .pencil{animation:none}}
 /* The route, in airport-style codes. */
 .route{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;padding:0 18px}
 .route b{display:block;font:900 34px/1 var(--font);letter-spacing:2px}

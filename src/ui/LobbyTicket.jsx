@@ -46,15 +46,16 @@ export function flightOf(code = '', world = 'gaia') {
 /**
  * The passenger's name on the pass. With `onName` it is edited right there, like the colour badge beside it: the name is a field that
  * reads as printed text until you click it. `onNameDone` runs when editing ends (Enter, Escape or clicking away): a party sends the
- * rename to the room then, not on every key. Without `onName` it is plain text.
+ * rename to the room then, not on every key. Without `onName` it is plain text. An empty name nudges (owner, 2026-11-17): the
+ * blank reads "Tap to add your name" on a soft highlighter stripe and the pencil wiggles, so players name themselves on the pass.
  */
 function PassengerName({ name, onName, onNameDone }) {
   const shown = String(name).trim().slice(0, NAME_LIMIT) || 'Player';
   if (!onName) return <strong className={styles.name} data-ui="ticket-name">{shown}</strong>;
   return (
-    <label className={styles.nameEdit} data-ui="ticket-name-edit">
+    <label className={styles.nameEdit} data-ui="ticket-name-edit" data-empty={String(name).trim() ? undefined : ''}>
       <input className={styles.name} data-ui="ticket-name" aria-label="Your name" maxLength={NAME_LIMIT} autoComplete="off" spellCheck={false}
-        placeholder="Player" value={name} onChange={e => onName(e.target.value)} onBlur={() => onNameDone?.()}
+        placeholder="Tap to add your name" value={name} onChange={e => onName(e.target.value)} onBlur={() => onNameDone?.()}
         onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); e.currentTarget.blur(); } }} />
       <svg className={styles.pencil} viewBox="0 0 24 24" aria-hidden="true"><path className={styles.pencilBody} d="M15.2 3.6l5.2 5.2L9.6 19.6l-5.2-5.2z" /><path className={styles.pencilTip} d="M4.4 14.4l5.2 5.2-6.6 1.4z" /><path className={styles.pencilEnd} d="M15.2 3.6l1.6-1.6a1.6 1.6 0 0 1 2.3 0l2.9 2.9a1.6 1.6 0 0 1 0 2.3l-1.6 1.6z" /></svg>
     </label>
