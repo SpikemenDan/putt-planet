@@ -499,7 +499,7 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
   aresAir.renderOrder = 1;
   scene.add(aresAir);
   const nearUp = new THREE.Vector3(), nearAhead = new THREE.Vector3();
-  const home = { luna: { position: new THREE.Vector3(), scale: 1 }, ares: { position: new THREE.Vector3(), scale: 1 } };
+  const home = { luna: { position: new THREE.Vector3(), scale: 1 } };
   function lunaSpacePosition(phase, out) {
     const a = phase * Math.PI * 2;
     return out.set(Math.cos(a) * SPACE_LUNA.orbit, -Math.sin(a) * SPACE_LUNA.orbit * Math.sin(SPACE_LUNA.lean), Math.sin(a) * SPACE_LUNA.orbit * Math.cos(SPACE_LUNA.lean)); // the near side of the orbit passes below Gaia
@@ -641,7 +641,6 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
     place(luna, 0.86, 0.5, LUNA_RADIUS * s.lunaSize);
     place(ares, -0.6, 0.8, ARES_SHARE * ARES_DISTANCE * t * 2);
     home.luna.position.copy(luna.mesh.position); home.luna.scale = luna.mesh.scale.x;
-    home.ares.position.copy(ares.mesh.position); home.ares.scale = ares.mesh.scale.x;
     stats.lunaPixels = LUNA_RADIUS * s.lunaSize / (LUNA_DISTANCE * t) * h;
     stats.limb = 1 - 2 * s.horizonHeight;
   }
@@ -771,9 +770,12 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
     lunaSpacePosition(space.orbit, tmpA);
     luna.mesh.position.lerpVectors(home.luna.position, tmpA, k);
     luna.mesh.scale.setScalar(home.luna.scale + (SPACE_LUNA.radius - home.luna.scale) * k);
-    ares.mesh.position.lerpVectors(home.ares.position, aresNow, k);
-    ares.mesh.scale.setScalar(home.ares.scale + (SPACE_ARES.radius - home.ares.scale) * k);
-    ares.mesh.material.opacity = 0.78 + 0.22 * k;
+    // Ares stays put (owner, 2026-11-17): one planet at its place in the little solar system, behind Gaia from the sun, so from the
+    // horizon it is out of sight below the limb, and going out into space only moves the camera. (The preview gallery's close look
+    // still uses the stand-in placed in the sky.)
+    ares.mesh.position.copy(aresNow);
+    ares.mesh.scale.setScalar(SPACE_ARES.radius);
+    ares.mesh.material.opacity = 1;
     aresAir.visible = k > 0.001;
     if (aresAir.visible) {
       const r = ares.mesh.scale.x, u = aresAir.material.uniforms;
