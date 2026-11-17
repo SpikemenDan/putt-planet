@@ -49,11 +49,21 @@
 .actions{display:flex;flex-direction:column;gap:8px;padding:0 16px}
 .actions > button,.actions > label{width:100%;margin:0}
 /* Perforation, barcode and the stub's small print. */
-.stub{position:relative;display:flex;align-items:center;gap:14px;margin-top:2px;padding:12px 14px 0 18px;border-top:3px dashed var(--ink)}
+.stub{position:relative;display:flex;align-items:flex-end;gap:14px;margin-top:2px;padding:12px 14px 0 18px;border-top:3px dashed var(--ink)}
 .stub::before,.stub::after{content:'';position:absolute;top:-14px;width:24px;height:24px;border-radius:50%;background:#fffdf4;border:4px solid var(--ink)}
 .stub::before{left:-16px;clip-path:inset(0 0 0 50%)}
 .stub::after{right:-16px;clip-path:inset(0 50% 0 0)}
-.barcode{display:block;flex:1;height:34px;background:repeating-linear-gradient(90deg,var(--ink) 0 3px,transparent 3px 5px,var(--ink) 5px 6px,transparent 6px 9px,var(--ink) 9px 13px,transparent 13px 15px)}
+.ref{display:flex;flex:1;flex-direction:column;gap:6px;min-width:0}
+.barcode{display:block;height:26px;background:repeating-linear-gradient(90deg,var(--ink) 0 3px,transparent 3px 5px,var(--ink) 5px 6px,transparent 6px 9px,var(--ink) 9px 13px,transparent 13px 15px)}
+/* The party code under the barcode, like a booking reference, with a small copy-invite icon. */
+.code{display:flex;align-items:center;gap:8px;min-width:0}
+.code small{flex:none;white-space:nowrap;font:900 9px/1.1 var(--font);letter-spacing:1.2px;text-transform:uppercase;color:var(--mut)}
+.code strong{font:400 19px/1 var(--font);letter-spacing:2px;color:var(--ink);user-select:all;white-space:nowrap}
+.copy{flex:none;width:24px;height:24px;margin:0;padding:0;border:2px solid var(--ink);border-radius:7px;background:#fff center/14px no-repeat;cursor:pointer;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23141029' stroke-width='2.6' stroke-linejoin='round'%3E%3Crect x='8' y='8' width='12' height='12' rx='3'/%3E%3Cpath d='M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2'/%3E%3C/svg%3E");transition:background-color .15s,scale .1s}
+.copy:hover{background-color:var(--yellow)}
+.copy:active{scale:.9}
+.hiddenText{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 /* Back (Solo) or Leave room (party), in the stub's bottom-right corner: a round-cornered comic tag with an arrow. */
 .back{flex:none;display:inline-flex;align-items:center;gap:6px;margin:0;padding:7px 14px 7px 10px;font:900 15px var(--font);letter-spacing:.5px;text-transform:none;text-shadow:none;
   color:var(--ink);background:var(--yellow);border:3px solid var(--ink);border-radius:999px;box-shadow:0 4px 0 var(--ink);cursor:pointer;transition:translate .1s,box-shadow .1s,background .15s}

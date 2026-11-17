@@ -41,11 +41,13 @@ function PassengerName({ name, onName }) {
 /**
  * The lobby ticket (owner, 2026-11-16, 2026-11-17): a bright boarding pass on the right of the Solo and party lobbies, laid out like a
  * real one: the vehicle's pass title, the passenger with their colour badge (click it to change colour: the same picker and palette
- * everywhere) and name (`onName`: click it to edit), the route in airport-style codes, then flight, gate and seat, the lobby's buttons (`children`: Play or Start Game) and, on the stub, Back (`onBack`). In a party everyone
+ * everywhere) and name (`onName`: click it to edit), the route in airport-style codes, then flight, gate and seat, then
+ * the lobby's buttons (`children`: Play or Start Game) and, on the stub, the party code under the barcode like a booking reference
+ * (`code`, with a copy-invite icon: `onCopy`) and Back (`onBack`). In a party everyone
  * votes for the destination on the pass (`onDestination`, `worldVoters`: each voter's ball sits on their planet; `myWorld` is checked);
  * the route shows the planet the vote leads with. Names render as React text only, cut to NAME_LIMIT.
  */
-export function LobbyTicket({ vehicle = 'plane', name = '', onName = null, color = null, taken = {}, onPick, solo = false, destination = 'gaia', onDestination = null, worldVoters = null, myWorld = null, flight = 'PP 1000', gate = 'A1', seat = 1, onBack = null, backLabel = 'Back', hidden = false, children }) {
+export function LobbyTicket({ vehicle = 'plane', name = '', onName = null, color = null, taken = {}, onPick, solo = false, destination = 'gaia', onDestination = null, worldVoters = null, myWorld = null, code = '', onCopy = null, flight = 'PP 1000', gate = 'A1', seat = 1, onBack = null, backLabel = 'Back', hidden = false, children }) {
   const planet = WORLDS.find(w => w.id === destination)?.name ?? 'Gaia';
   const pass = PASS[vehicle] ?? PASS.plane;
   const fields = [['Flight', flight], [pass.gate, gate], ['Seat', String(seat).padStart(2, '0')]];
@@ -83,7 +85,15 @@ export function LobbyTicket({ vehicle = 'plane', name = '', onName = null, color
       </dl>
       <div className={styles.actions}>{children}</div>
       <div className={styles.stub}>
-        <span className={styles.barcode} aria-hidden="true" />
+        <span className={styles.ref}>
+          <span className={styles.barcode} aria-hidden="true" />
+          {code && (
+            <span className={styles.code} data-ui="party-code">
+              <small>Party code</small><strong>{code}</strong>
+              {onCopy && <button type="button" className={styles.copy} onClick={onCopy} title="Copy invite"><span className={styles.hiddenText}>Copy invite</span></button>}
+            </span>
+          )}
+        </span>
         {onBack && <button type="button" className={styles.back} onClick={onBack} data-ui={solo ? 'menu-back' : 'pass-leave'} data-kind={solo ? 'back' : 'leave'}>{backLabel}</button>}
       </div>
     </aside>

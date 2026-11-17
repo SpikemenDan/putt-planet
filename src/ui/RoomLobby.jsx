@@ -9,24 +9,13 @@ import { flightOf, LobbyTicket } from './LobbyTicket.jsx';
 import { LobbyVehicle, VEHICLE_SEATS } from './LobbyVehicle.jsx';
 import { ModePicker } from './ModePicker.jsx';
 import { TiePicker } from './TiePicker.jsx';
-import buttons from './buttons.module.css';
 import styles from './RoomLobby.module.css';
-
-/** The party code, big enough to read out to a friend, with Copy invite beside it. Shown only once the party exists. */
-function PartyCode({ code, send }) {
-  return (
-    <div className={styles.code} data-ui="party-code">
-      <span className={styles.codeText}><span className={styles.codeLabel}>Party code</span><strong className={styles.codeValue}>{code}</strong></span>
-      <button type="button" className={styles.copy} onClick={() => send(UiCommands.INVITE)}>Copy invite</button>
-    </div>
-  );
-}
 
 /**
  * Party lobby (VIS-M3 #175; vehicles, ticket and manifest, owner 2026-11-16), full screen over the planet sky: everyone's ball rides
  * one 3D vehicle, the plane through Gaia's air or the rocket in space for Ares and Luna, with name tags alternating above and below.
  * On the left, the passenger manifest (no title board; the start countdown shows above the mode bar); on the right, your boarding pass (your name and colour badge,
- * the destination, the party code, the host's Start Game, Leave room on the stub); along the bottom, one bar of colourful mode tiles.
+ * the destination, the host's Start Game, the party code and Leave room on the stub); along the bottom, one bar of colourful mode tiles.
  * In a party everyone votes for the mode (the tiles) and the planet (the pass) (owner, 2026-11-17): each voter's ball sits in the
  * corner of their choice, the vehicle follows the leading planet, and Start Game plays the leading mode. Players arrive with a free
  * colour and change it from the badge on their pass.
@@ -93,8 +82,8 @@ export function RoomLobby({ hidden }) {
           onPick={c => send(UiCommands.SET_COLOR, { color: c })} destination={destination}
           onDestination={voting ? world => vote({ world }) : lobby?.canPickDestination ? world => session({ type: 'SET_DESTINATION', world }) : null}
           worldVoters={voting ? lobby.votes.world : null} myWorld={lobby?.myVote?.world ?? null}
+          code={party ? lobby.code : ''} onCopy={() => send(UiCommands.INVITE)}
           flight={flight} gate={gate} seat={seat > 0 ? seat : 1} onBack={() => send(UiCommands.LEAVE)} backLabel="Leave room">
-          {party && <PartyCode code={lobby.code} send={send} />}
           {lobby?.showStart && <button type="button" className={styles.go} onClick={start} data-ui="start-game">Start Game</button>}
         </LobbyTicket>
       </div>
