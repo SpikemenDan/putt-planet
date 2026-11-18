@@ -19,7 +19,7 @@ const TOWARD = Object.freeze({ luna: { x: 0.8, y: 0.6 }, ares: { x: -0.8, y: 0.6
 export function skyArrived(scene, destination) {
   const s = scene?.space;
   if (!s || typeof s.t !== 'number') return true;
-  const settled = Math.abs(s.t - s.goal) < 0.02 && s.travel >= 1 && Math.abs(s.near - (s.nearGoal ?? s.near)) < 0.02;
+  const settled = Math.abs(s.t - s.goal) < 0.02 && s.travel >= 1 && (s.lap ?? 1) >= 1 && Math.abs(s.near - (s.nearGoal ?? s.near)) < 0.02;
   return settled && (destination === 'gaia' ? s.goal === 0 : s.to === destination);
 }
 
@@ -123,7 +123,8 @@ export function LobbyVehicle({ vehicle = 'plane', destination = 'gaia', air = tr
         }
       });
       made.setSkyProbe?.(to => skyArrived(now.current.stage?.scene, to));
-      made.setAimProbe?.(to => now.current.stage?.scene?.screenOf?.(to) ?? null);
+      // On the lap round the planet the vehicle flies on ahead of the camera rather than at the planet's centre.
+      made.setAimProbe?.(to => { const sc = now.current.stage?.scene; return sc?.space?.travel >= 1 && sc.space.lap < 1 ? { x: 0, y: -0.15 } : sc?.screenOf?.(to) ?? null; });
       made.setSun?.(now.current.sun); // a restored canvas starts a moment later: catch up with what changed meanwhile
       made.setTrip?.({ vehicle: now.current.vehicle, destination: now.current.destination, air: now.current.air });
       made.setPassengers(latest.current);

@@ -212,10 +212,13 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', de
   // A trip to another planet (owner, 2026-11-18: it should really travel there, the camera following it, never just fly off screen):
   // the vehicle stays in frame and swings round from its side-on pose to a three-quarter view from behind, nose toward the planet it
   // is bound for, while the planet sky behind rides along with it. A plane or helicopter bound for space is swapped for the rocket as
-  // it sets off (a quick pop, not a fly-off); a rocket bound for Gaia stays a rocket until it is home. Seconds.
-  const TRIP = { pop: 0.28, grow: 0.5, chase: 1.4, settle: 0.4, maxWait: 14 };
+  // it sets off; a rocket bound for Gaia stays a rocket until it is home. Seconds.
+  // The switch is a cartoon dash (owner, 2026-11-18): the old craft zips off ahead, the new one zooms in from behind with a little
+  // overshoot, and only then does it turn to set off. On arrival it rides the sky's lap of the planet before turning side-on again.
+  const TRIP = { chase: 1.4, settle: 0.3, maxWait: 20 };
+  const DASH = { out: 0.32, in: 0.6, gap: 0.06, reach: 46 };
   const FALLBACK = { luna: { x: 0.3, y: 0.2 }, ares: { x: -0.3, y: 0.2 }, gaia: { x: 0.1, y: -0.4 } };
-  let craft = null, leaving = null, pop = null, trip = null, chase = 0, arriveAt = -1, frameHalf = null, lastNow = null;
+  let craft = null, leaving = null, swap = SWAP, trip = null, chase = 0, arriveAt = -1, frameHalf = null, lastNow = null;
   const easeOutBack = x => 1 + 2.2 * Math.pow(x - 1, 3) + 1.2 * Math.pow(x - 1, 2);
   const easeIn = x => x * x * x, easeOut = x => 1 - Math.pow(1 - x, 3), easeInOut = x => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
   const clamp01 = x => Math.max(0, Math.min(1, x));
@@ -241,7 +244,6 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', de
     for (const r of c.owned) r.dispose();
   };
   const disposeLeaving = () => { disposeCraft(leaving?.craft); leaving = null; };
-  const disposePop = () => { disposeCraft(pop?.old); pop = null; if (craft) craft.holder.scale.setScalar(1); };
   /** One vehicle with its passengers, trails and flame, in a `holder` group that carries its slide or flight. */
   const makeCraft = kind => {
     const owned = new Set(), mine = r => { owned.add(r); return r; };
@@ -294,7 +296,8 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', de
     return c;
   };
   /** Puts `kind` in the rig: at once, or (`glide`) gliding in from behind, the current one speeding off ahead. */
-  const setCraft = (kind, glide) => {
+  const setCraft = (kind, glide, timing = SWAP) => {
+    swap = timing;
     if (glide && craft) { disposeLeaving(); leaving = { craft, start: null }; } else disposeCraft(craft);
     arriveAt = glide ? null : -1; // a glide starts on the next frame, from its clock
     craft = makeCraft(kind);
@@ -327,19 +330,8 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', de
     z.normalize();
     return out.setFromRotationMatrix(basis.makeBasis(x, new THREE.Vector3().crossVectors(z, x), z));
   };
-  /** Swaps the craft aboard for `kind` in place: the old one shrinks away and the new one pops up where it was, passengers aboard. */
-  const popTo = kind => {
-    if (!craft || craft.kind === kind) return;
-    disposeLeaving(); disposePop();
-    const old = craft;
-    craft = makeCraft(kind);
-    craft.holder.quaternion.copy(old.holder.quaternion);
-    craft.holder.scale.setScalar(0.001);
-    rig.add(craft.holder);
-    pop = { old, t0: null };
-    stats.vehicle = kind;
-    stats.passengers = craft.balls.length;
-  };
+  /** Swaps the craft aboard for `kind` with the cartoon dash: off ahead, the new one in from behind. */
+  const popTo = kind => { if (craft && craft.kind !== kind) setCraft(kind, true, DASH); };
   /** The vehicle that makes a journey: a rocket whenever either end is out in space. */
   const rideFor = (kind, from, to) => (from === 'gaia' && to === 'gaia') || isRocket(kind) ? kind : isRocket(craft?.kind) ? craft.kind : 'rocket';
   const startTrip = ({ kind, to, air: nextAir }) => {
@@ -379,7 +371,7 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', de
     if (trip.t0 === null) trip.t0 = now;
     const e = now - trip.t0;
     const there = skyProbe ? !!skyProbe(trip.to) : true;
-    if ((there && e >= TRIP.settle + TRIP.pop + TRIP.grow) || e >= TRIP.maxWait) { land(); return; }
+    if ((there && e >= TRIP.settle + DASH.out + DASH.in && arriveAt === -1) || e >= TRIP.maxWait) { land(); return; }
     // Where the planet is on the sky's screen, steered toward smoothly: the nose points left, into the scene and toward it.
     const seen = aimProbe?.(trip.to);
     const { x, y } = seen && Number.isFinite(seen.x) && Number.isFinite(seen.y) ? seen : FALLBACK[trip.to] ?? FALLBACK.luna;
@@ -395,15 +387,15 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', de
     // The swap: the old vehicle speeds off ahead, the new one glides in from behind once it has started to go.
     if (leaving) {
       if (leaving.start === null) leaving.start = now;
-      const p = (now - leaving.start) / SWAP.out;
-      leaving.craft.holder.position.x = easeIn(Math.min(1, p)) * SWAP.reach;
+      const p = (now - leaving.start) / swap.out;
+      leaving.craft.holder.position.x = easeIn(Math.min(1, p)) * swap.reach;
       if (p >= 1) disposeLeaving();
     }
-    if (arriveAt === null) arriveAt = now + (leaving ? SWAP.gap : 0);
+    if (arriveAt === null) arriveAt = now + (leaving ? swap.gap : 0);
     if (craft && arriveAt > 0) {
-      const p = (now - arriveAt) / SWAP.in;
+      const p = (now - arriveAt) / swap.in;
       craft.holder.visible = p >= 0;
-      craft.holder.position.x = -(1 - easeOut(clamp01(p))) * SWAP.reach;
+      craft.holder.position.x = -(1 - (swap === DASH ? easeOutBack : easeOut)(clamp01(p))) * swap.reach;
       if (p >= 1) { craft.holder.position.x = 0; arriveAt = -1; }
     }
     // The framing eases to the new vehicle's size rather than jumping (and holds while none is aboard).
@@ -425,19 +417,10 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', de
     camera.updateMatrixWorld();
     right.set(1, 0, 0).applyQuaternion(camera.quaternion); up.set(0, 1, 0).applyQuaternion(camera.quaternion); back.set(0, 0, 1).applyQuaternion(camera.quaternion);
     if (trip) travel(now, dt);
-    // The pop: the old craft shrinks away, then the new one springs up in its place.
-    if (pop) {
-      if (pop.t0 === null) pop.t0 = now;
-      const a = clamp01((now - pop.t0) / TRIP.pop), b = clamp01((now - pop.t0 - TRIP.pop * 0.6) / TRIP.grow);
-      pop.old.holder.scale.setScalar(Math.max(0.001, 1 - easeIn(a)));
-      craft.holder.scale.setScalar(Math.max(0.001, easeOutBack(b)));
-      if (a >= 1 && pop.old.holder.parent) pop.old.holder.parent.remove(pop.old.holder);
-      if (b >= 1) disposePop();
-    }
     // Chasing: ease into the three-quarter view from behind while travelling, and back to side-on once there.
-    chase += ((trip ? 1 : 0) - chase) * (reducedMotion ? 1 : Math.min(1, dt / TRIP.chase * 2.5));
+    chase += ((trip && arriveAt === -1 ? 1 : 0) - chase) * (reducedMotion ? 1 : Math.min(1, dt / TRIP.chase * 2.5));
     if (chase < 0.001) chase = 0;
-    stats.swapping = !!leaving || arriveAt !== -1 || !!trip || !!pop || chase > 0.01;
+    stats.swapping = !!leaving || arriveAt !== -1 || !!trip || chase > 0.01;
     stats.trip = trip ? 'travelling' : chase > 0.01 ? 'arriving' : null;
     // The air fades in and out over about a second.
     const airEase = reducedMotion ? 1 : Math.min(1, dt * 1.2);
@@ -477,14 +460,13 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', de
       rig.updateMatrix();
       rigQ.copy(rig.quaternion).invert().multiply(facing(chaseDir, chaseQ));
       const w = easeInOut(chase);
-      for (const c of [craft, pop?.old]) if (c) c.holder.quaternion.slerpQuaternions(noTurn, rigQ, w);
+      if (craft) craft.holder.quaternion.slerpQuaternions(noTurn, rigQ, w);
     } else if (craft) craft.holder.quaternion.identity();
     if (craft) {
       animateCraft(craft, t, l, airLevel);
       craft.balls.forEach((b, k) => { b.position.y = craft.model.seats[b.userData.seat].y + (reducedMotion ? 0 : (0.5 - 0.5 * Math.cos(t * 1.2 + k * 0.9)) * 0.025); });
     }
     if (leaving) animateCraft(leaving.craft, t, l, airLevel);
-    if (pop?.old.holder.parent) animateCraft(pop.old, t, l, airLevel);
     scene.updateMatrixWorld(true);
     renderer.render(scene, camera);
     stats.frames++;
@@ -552,7 +534,7 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', de
       disposed = true;
       if (raf) win.cancelAnimationFrame(raf);
       disposeLeaving();
-      disposePop(); trip = null;
+      trip = null;
       disposeCraft(craft); craft = null;
       for (const r of owned) r.dispose?.();
       renderer.dispose?.();
