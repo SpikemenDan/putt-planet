@@ -131,6 +131,28 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
     assert.equal(changed('planes', 2).traffic.planes, 2, 'loading.planes sets the number of planes');
     assert.equal(changed('boats', 5).traffic.boats, 5, 'loading.boats sets the number of boats');
     assert.equal(changed('satellites', 6).traffic.satellites, 6, 'loading.satellites sets the number of satellites');
+    { // loading.paintedMaps: the painted maps replace the procedural surfaces once loaded, and 0 brings the procedural ones back.
+      const live = structuredClone(DEFAULT_DISPLAY);
+      const dom = new JSDOM('<canvas></canvas>', { pretendToBeVisual: true });
+      dom.window.HTMLCanvasElement.prototype.getContext = () => new Proxy({}, { get: (_, k) => (k === 'createRadialGradient' ? () => ({ addColorStop() {} }) : () => {}), set: () => true });
+      const canvas = dom.window.document.querySelector('canvas');
+      canvas.getBoundingClientRect = () => ({ width: 1280, height: 720 });
+      let seen = null;
+      const createWebGLRenderer = () => ({ render(s) { seen = s; }, setPixelRatio() {}, getPixelRatio: () => 1, setSize() {}, setClearColor() {}, dispose() {}, capabilities: { getMaxAnisotropy: () => 1 } });
+      const loaded = {}, loadMap = ({ name, flipY = true }) => Promise.resolve(loaded[name] = Object.assign(new THREE.DataTexture(new Uint8Array(4), 1, 1), { flipY, mapName: name }));
+      const scene = createPlanetScene({ THREE, canvas, display: live, random: mulberry32(9), planet: sharedPlanet, win: dom.window, createWebGLRenderer, loadMap });
+      await new Promise(resolve => setTimeout(resolve, 0));
+      scene.start(); scene.step(0.1);
+      const surfaces = () => { const out = { gaia: null, maps: [] }; seen.traverse(o => { const u = o.material?.uniforms; if (u?.mapOn) out.gaia = u.mapOn.value; if (o.material?.map?.image?.width === 512) out.maps.push('procedural'); if (o.material?.map?.mapName) out.maps.push(o.material.map.mapName); }); return out; };
+      const on = surfaces();
+      assert.deepEqual(scene.stats.paintedMaps, ['gaia', 'ares', 'luna'], 'all three painted maps are in use by default');
+      assert.ok(on.gaia === 1 && on.maps.includes('ares') && on.maps.includes('luna'), 'Gaia samples its painting; Ares and Luna wear theirs');
+      assert.equal(loaded.gaia.flipY, false, 'Gaia keeps row 0 at the north, as the shader samples the flat master map');
+      live.loading.paintedMaps = 0; scene.step(0.1);
+      const off = surfaces();
+      assert.ok(off.gaia === 0 && !off.maps.includes('ares') && !off.maps.includes('luna') && off.maps.filter(m => m === 'procedural').length === on.maps.filter(m => m === 'procedural').length + 2 && scene.stats.paintedMaps.length === 0, 'loading.paintedMaps 0 brings back the procedural surfaces');
+      scene.dispose(); dom.window.close();
+    }
     const reach = m => Math.hypot(...m.camera) - 100;
     assert.ok(Math.abs(reach(lbase) - 40) < 1e-6 && Math.abs(reach(changed('cameraAltitude', 1.2)) - 120) < 1e-6, 'loading.cameraAltitude sets how high the camera flies (40 units by default, inside the air)');
     // environment (VIS-E #166): strength and density reach the Ares and Luna scenery, and only their own world's.
@@ -207,7 +229,7 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
     // and the progress balls carry the other two as CSS variables, and so is the menu group
     // (VIS-M2), where each value lands on its own CSS variable on the real main menu, and the lobby group, on the lobby vehicle scene.
     // The table covers every DISPLAY setting, so a new setting cannot be added without a reach check.
-    assert.deepEqual([...Object.keys(expectations), 'ball.visualScale', ...['spinSpeed', 'axisTilt', 'horizonHeight', 'cameraAltitude', 'cloudCover', 'cloudDrift', 'finishTime', 'atmosphere', 'atmosphereHeight', 'citySize', 'lunaSize', 'outlineWidth', 'planes', 'boats', 'satellites', 'ballPulse', 'ballBounce'].map(k => 'loading.' + k), ...['orbitSeconds', 'travelSeconds', 'aresZoom', 'nebula', 'distance', 'revolveSeconds'].map(k => 'space.' + k), ...['buttonScale', 'stagger', 'bob', 'tilt', 'shineSeconds', 'cardTint'].map(k => 'menu.' + k), ...['zoom', 'sway', 'bob', 'spinSeconds'].map(k => 'lobby.' + k), ...['aresWind', 'aresWindDensity', 'lunaDust', 'lunaDustDensity', 'lunaSolar'].map(k => 'environment.' + k)].sort(), DISPLAY_FIELDS.map(f => f[0]).sort());
+    assert.deepEqual([...Object.keys(expectations), 'ball.visualScale', ...['spinSpeed', 'axisTilt', 'horizonHeight', 'cameraAltitude', 'cloudCover', 'cloudDrift', 'finishTime', 'atmosphere', 'atmosphereHeight', 'citySize', 'lunaSize', 'outlineWidth', 'planes', 'boats', 'satellites', 'paintedMaps', 'ballPulse', 'ballBounce'].map(k => 'loading.' + k), ...['orbitSeconds', 'travelSeconds', 'aresZoom', 'nebula', 'distance', 'revolveSeconds'].map(k => 'space.' + k), ...['buttonScale', 'stagger', 'bob', 'tilt', 'shineSeconds', 'cardTint'].map(k => 'menu.' + k), ...['zoom', 'sway', 'bob', 'spinSeconds'].map(k => 'lobby.' + k), ...['aresWind', 'aresWindDensity', 'lunaDust', 'lunaDustDensity', 'lunaSolar'].map(k => 'environment.' + k)].sort(), DISPLAY_FIELDS.map(f => f[0]).sort());
   });
 
   // ---- TUNING probes: [name, setting, value, code printing one number, expected default, expected with the override]

@@ -18,7 +18,7 @@ varying vec2 vUv;varying vec3 vObj;varying vec3 vN;varying vec3 vView;varying ve
 void main(){vUv=uv;vObj=normalize(position);vec4 w=modelMatrix*vec4(position,1.);vN=normalize(mat3(modelMatrix)*position);vEast=mat3(modelMatrix)*vec3(position.z,0.,-position.x);vView=normalize(cameraPosition-w.xyz);gl_Position=projectionMatrix*viewMatrix*w;}`;
 
 export const PLANET_FRAGMENT = `
-uniform sampler2D field,landMap,cloudMap,paintMap;uniform float paintOn;uniform vec3 sun;uniform float time,cloudShift,dotCell,cloudGate,inkPx,atmosphere;uniform vec2 texel;
+uniform sampler2D field,landMap,cloudMap,paintMap,mapTex;uniform float paintOn,mapOn;uniform vec3 sun;uniform float time,cloudShift,dotCell,cloudGate,inkPx,atmosphere;uniform vec2 texel;
 varying vec2 vUv;varying vec3 vObj;varying vec3 vN;varying vec3 vView;varying vec3 vEast;
 ${NOISE}
 void main(){
@@ -49,6 +49,13 @@ void main(){
   float lava=f.a*smoothstep(.55,.6,fine*.7+broad*.35);
   ground=mix(ground,vec3(1.,.42,.08),lava);
   vec3 albedo=mix(sea,ground,isLand);
+  // The owner's painted map (planet-maps.js), warped onto the same coast: it replaces the drawn sea and land. Its own deep blue marks the
+  // water, for the sun glint; the painting carries its coast, so the inked coastline and the lava stains step aside.
+  vec3 painted=texture2D(mapTex,uv).rgb;
+  float paintedWater=smoothstep(.1,.22,painted.b-max(painted.r,painted.g));
+  albedo=mix(albedo,painted,mapOn);
+  isLand=mix(isLand,1.-paintedWater,mapOn);
+  lava*=1.-mapOn;
   // Relief: the elevation map tilts the normal, so mountains catch the sun.
   vec3 N=normalize(vN);
   float hE=texture2D(field,uv+vec2(texel.x,0.)).g,hW=texture2D(field,uv-vec2(texel.x,0.)).g,hS=texture2D(field,uv+vec2(0.,texel.y)).g,hN=texture2D(field,uv-vec2(0.,texel.y)).g;
@@ -69,10 +76,10 @@ void main(){
   float glint=pow(max(dot(N,H),0.),70.+ripple*90.);
   c+=vec3(1.,.96,.84)*glint*.85*(1.-isLand)*step(0.,ndl);
   // Ink coastline, a fixed number of pixels wide.
-  c=mix(c,vec3(.05,.05,.13),(1.-smoothstep(inkPx*.55,inkPx*1.1,abs(land)/aa))*.82);
+  c=mix(c,vec3(.05,.05,.13),(1.-smoothstep(inkPx*.55,inkPx*1.1,abs(land)/aa))*.82*(1.-mapOn));
   c=mix(c,vec3(1.,.5,.12),lava*.8); // lava glows through shadow
   // City lights on the night side.
-  float lights=f.b*step(.5,vnoise(vObj*230.))*(1.-smoothstep(-.08,.14,ndl));
+  float lights=f.b*isLand*step(.5,vnoise(vObj*230.))*(1.-smoothstep(-.08,.14,ndl));
   c+=vec3(1.,.78,.4)*lights*1.2;
   // Air: the limb fades into a lit blue haze.
   float rim=pow(1.-max(dot(N,V),0.),2.2);

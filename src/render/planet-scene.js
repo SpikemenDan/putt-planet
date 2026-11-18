@@ -17,6 +17,7 @@ import { worldMap } from './map-paint.js';
 import { MAX_BOATS, MAX_PLANES, MAX_SATELLITES, TEX_W, TEX_H, gaiaPlanet, laneRoutes, shipRoutes, surfaceDir } from './planet-data.js';
 import { MODEL_REACH, PLANE_KINDS, PLANT_KINDS, SHIP_KINDS, makeBalloon, makeBase, makeCity, makeMoonlet, makeObservatory, makeRadioDish, makeSpaceport, makeCumulus, makeFlag, makeLighthouse, makeMill, makePeak, makePlane, makePlant, makePort, makeSatellite, makeShip, makeTown, makeVillage, makeVolcano } from './sky-models.js';
 import { buildAresTexture, buildLunaTexture, WORLD_TEX_H, WORLD_TEX_W } from './worlds.js';
+import { loadPlanetMap } from './planet-maps.js';
 
 export const PLANET_RADIUS = 100;
 /** Real distances and sizes in Earth radii, at this planet's radius: the Moon is 60 away and 0.27 across. */
@@ -57,8 +58,9 @@ export function frameCamera(width, height, horizonHeight, radius = PLANET_RADIUS
  * @param {'city'|'port'|'town'|'ship'|'plane'|'volcano'|'mountain'|'luna'|'ares'|null} [options.focus] preview gallery: look closely at one object
  * @param {Window} [options.win]
  * @param {Function} [options.createWebGLRenderer] renderer seam (tests)
+ * @param {Function} [options.loadMap] painted-map loader seam (tests); resolves a texture or null (planet-maps.js)
  */
-export function createPlanetScene({ THREE, canvas, display, random, planet: prebuilt = null, reducedMotion = false, focus = null, win = canvas.ownerDocument.defaultView, createWebGLRenderer = defaultRenderer }) {
+export function createPlanetScene({ THREE, canvas, display, random, planet: prebuilt = null, reducedMotion = false, focus = null, win = canvas.ownerDocument.defaultView, createWebGLRenderer = defaultRenderer, loadMap = loadPlanetMap }) {
   const doc = canvas.ownerDocument, settings = () => display.loading;
   let renderer = null;
   try { renderer = createWebGLRenderer(THREE, canvas); } catch { renderer = null; }
@@ -92,7 +94,7 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
   scene.add(tilt);
   const shared = { sun: { value: sun }, time: { value: 0 }, dotCell: library.inkUniforms.dot, atmosphere: { value: 0.75 }, cloudGate: { value: 0.5 }, cloudShift: { value: 0 }, inkPx: { value: 1.2 } };
   const sphere = (radius, a, b) => own(new THREE.SphereGeometry(radius, a, b));
-  const surface = own(new THREE.ShaderMaterial({ vertexShader: SPHERE_VERTEX, fragmentShader: PLANET_FRAGMENT, uniforms: { ...shared, field: { value: fieldTexture }, landMap: { value: landTexture }, paintMap: { value: null }, paintOn: { value: 0 }, cloudMap: { value: cloudTexture }, texel: { value: new THREE.Vector2(1.5 / TEX_W, 1.5 / TEX_H) } } }));
+  const surface = own(new THREE.ShaderMaterial({ vertexShader: SPHERE_VERTEX, fragmentShader: PLANET_FRAGMENT, uniforms: { ...shared, field: { value: fieldTexture }, landMap: { value: landTexture }, paintMap: { value: null }, paintOn: { value: 0 }, mapTex: { value: null }, mapOn: { value: 0 }, cloudMap: { value: cloudTexture }, texel: { value: new THREE.Vector2(1.5 / TEX_W, 1.5 / TEX_H) } } }));
   spinner.add(new THREE.Mesh(sphere(PLANET_RADIUS, 192, 128), surface));
   // The land takes the flat map's painting (4096 wide, painted in a worker) as soon as it arrives; until then the 1024-wide colours show.
   if (!prebuilt) worldMap().then(bitmap => {
@@ -102,6 +104,19 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
     surface.uniforms.paintMap.value = paint; surface.uniforms.paintOn.value = 1;
     stats.painted = true;
   });
+  // The owner's painted maps (planet-maps.js) load lazily; `loading.paintedMaps` picks them over the procedural surfaces once they arrive.
+  const paintedMaps = { gaia: null, ares: null, luna: null };
+  const anisotropy = renderer.capabilities?.getMaxAnisotropy?.() ?? 1;
+  for (const [name, options] of [['gaia', { flipY: false }], ['ares', { srgb: true }], ['luna', { srgb: true }]]) {
+    loadMap({ THREE, doc, name, anisotropy, ...options }).then(texture => {
+      if (!texture) return;
+      if (disposed) { texture.dispose(); return; }
+      paintedMaps[name] = own(texture);
+      if (name === 'gaia') surface.uniforms.mapTex.value = texture;
+      usePaintedMaps(paintedMapsOn);
+      if (reducedMotion) draw(); // the still frame has no loop to pick the map up
+    });
+  }
   const shellMaterial = own(new THREE.ShaderMaterial({ vertexShader: SPHERE_VERTEX, fragmentShader: CLOUD_SHELL_FRAGMENT, transparent: true, depthWrite: false, uniforms: { ...shared, cloudMap: { value: cloudTexture } } }));
   const shell = new THREE.Mesh(sphere(PLANET_RADIUS + 1.1, 128, 96), shellMaterial);
   cloudSpinner.add(shell);
@@ -367,6 +382,18 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
     return { mesh, distance };
   };
   const ares = world(buildAresTexture(random), ARES_DISTANCE, 0.78), luna = world(buildLunaTexture(random), LUNA_DISTANCE);
+  const proceduralMaps = { ares: ares.mesh.material.map, luna: luna.mesh.material.map };
+  let paintedMapsOn = true;
+  /** Shows the painted maps that have arrived (`on`), or the procedural surfaces. */
+  function usePaintedMaps(on) {
+    paintedMapsOn = on;
+    surface.uniforms.mapOn.value = on && paintedMaps.gaia ? 1 : 0;
+    for (const [name, body] of [['ares', ares], ['luna', luna]]) {
+      const map = on && paintedMaps[name] ? paintedMaps[name] : proceduralMaps[name];
+      if (body.mesh.material.map !== map) { body.mesh.material.map = map; body.mesh.material.needsUpdate = true; }
+    }
+    stats.paintedMaps = Object.keys(paintedMaps).filter(name => on && paintedMaps[name]);
+  }
   inked(luna.mesh);
   const baseOn = ({ mesh }, dir, size, dome) => {
     const base = new THREE.Mesh(own(makeBase(THREE, dome)), painted), d = new THREE.Vector3(...dir).normalize();
@@ -612,7 +639,7 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
 
   // ---- Per-frame state
   let lastCloudSort = -1, slowFrames = 0, quality = 1, frameId = null, last = null, spin = 0, cloudSpin = 0, clock = 0, disposed = false, sizeKey = '', framing = { y: 0, z: 0 };
-  const stats = { limb: 0, deckClouds: 0, tallestCity: 0, ink: 0, lunaPixels: 0 };
+  const stats = { limb: 0, deckClouds: 0, tallestCity: 0, ink: 0, lunaPixels: 0, paintedMaps: [] };
   const scratch = new THREE.Vector3(), scratch2 = new THREE.Vector3();
 
   const viewport = () => { const rect = canvas.getBoundingClientRect?.(); return { w: rect?.width || win?.innerWidth || 1280, h: rect?.height || win?.innerHeight || 720 }; };
@@ -654,6 +681,7 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
     shared.cloudShift.value = -(cloudSpin - spin) / 360;
     shared.cloudGate.value = 1.1 - s.cloudCover * 0.58;
     shared.atmosphere.value = s.atmosphere;
+    if ((s.paintedMaps >= 0.5) !== paintedMapsOn) usePaintedMaps(s.paintedMaps >= 0.5);
     shared.time.value = clock;
     air.material.uniforms.shell.value = stats.airTop = PLANET_RADIUS * (1 + s.atmosphereHeight);
     const ratio = renderer?.getPixelRatio?.() ?? 1;

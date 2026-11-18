@@ -135,6 +135,8 @@ export const RULES = [
   { test: f => f.startsWith('tools/overnight/'), scripts: ['test:overnight'], reason: 'overnight tooling (the CLI entry is not imported by its tests)' },
   { test: f => f === 'tools/gaia/import-azgaar.mjs', scripts: ['test:ui'], reason: 'run by hand; writes src/shared/gaia-reference.js, which the map tests read' },
   { test: f => /^src\/ui\/fonts\/.*\.(?:otf|ttf|woff2?)$/.test(f), scripts: ['build'], reason: 'font file, reached only through a stylesheet' },
+  { test: f => /^src\/render\/textures\/.*\.webp$/.test(f), scripts: ['build'], note: 'painted planet map: check the globes in the dev preview', reason: 'image asset, reached only through new URL() in src/render/planet-maps.js' },
+  { test: f => f === 'tools/gaia/prepare-planet-maps.py', scripts: [], note: 'run by hand (Python); writes src/render/textures/*.webp, so check the globes in the dev preview', reason: 'offline map preparation tool' },
   { test: f => f.startsWith('.github/'), scripts: [], note: 'CI or template change: nothing runs locally; confirm on the PR\'s CI run', reason: 'GitHub configuration' },
   { test: f => f.startsWith('prototypes/'), scripts: [], note: 'isolated prototype with its own package; no suite covers it', reason: 'prototype' },
   { test: f => f === 'scripts/make-portable.cjs', scripts: [], note: 'only build:portable runs this, and that distribution path is unverified', reason: 'portable build helper' },
