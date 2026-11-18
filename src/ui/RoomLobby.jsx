@@ -8,6 +8,7 @@ import { LobbyManifest } from './LobbyManifest.jsx';
 import { flightOf, LobbyTicket } from './LobbyTicket.jsx';
 import { LobbyVehicle, VEHICLE_SEATS } from './LobbyVehicle.jsx';
 import { ModePicker } from './ModePicker.jsx';
+import { PlanetPicker, useLobbySky } from './PlanetPicker.jsx';
 import { TiePicker } from './TiePicker.jsx';
 import styles from './RoomLobby.module.css';
 
@@ -16,7 +17,7 @@ import styles from './RoomLobby.module.css';
  * one 3D vehicle, the plane through Gaia's air or the rocket in space for Ares and Luna, with name tags alternating above and below.
  * On the left, the passenger manifest (no title board; the start countdown shows above the mode bar); on the right, your boarding pass (your name and colour badge,
  * the destination, the host's Start Game, the party code and Leave room on the stub); along the bottom, one bar of colourful mode tiles.
- * In a party everyone votes for the mode (the tiles) and the planet (the pass) (owner, 2026-11-17): each voter's ball sits in the
+ * In a party everyone votes for the mode (the tiles) and the planet (the planet picker on the left, owner 2026-11-17, 2026-11-18): each voter's ball sits in the
  * corner of their choice, the vehicle follows the leading planet, and Start Game plays the leading mode. Players arrive with a free
  * colour and change it from the badge on their pass.
  */
@@ -53,23 +54,10 @@ export function RoomLobby({ hidden }) {
   const seat = roster.findIndex(p => p.you) + 1;
   const { flight } = flightOf(lobby?.code ?? '', destination);
   const planet = WORLDS.find(w => w.id === destination)?.name ?? 'Gaia';
-  // The sky behind: Gaia's air for the plane; for the rocket, Ares's dusty air or the sky just above Luna, when the planet scene can
-  // bring its camera down there (`near`, owner, 2026-11-17), its own sun showing in place of the lobby's corner sun. A planet scene
-  // without `near` instead shows the planet from space, sitting low along the bottom of the screen.
+  // The sky behind follows the destination (useLobbySky): Gaia's air for the plane, Ares's or Luna's sky for the rocket.
   const shown = !hidden && !!lobby;
-  const rocket = vehicle === 'rocket';
-  const nearSky = typeof stage?.scene?.space?.near === 'number';
-  useEffect(() => {
-    if (!shown) return undefined;
-    stage?.setView({ space: rocket, target: rocket ? destination : 'gaia', near: rocket && nearSky });
-    const sky = left.current?.ownerDocument.querySelector('[data-ui=planet-stage]');
-    const view = sky?.ownerDocument.defaultView;
-    const resized = () => view?.dispatchEvent(new view.Event('resize')); // a still (reduced-motion) planet scene redraws only on resize
-    sky?.toggleAttribute('data-low', rocket && !nearSky);
-    resized();
-    return () => { stage?.setView({ space: false, target: 'gaia', near: false }); sky?.removeAttribute('data-low'); resized(); };
-  }, [stage, shown, rocket, destination, nearSky]);
   const left = useRef(null), right = useRef(null), dock = useRef(null);
+  const ownSky = useLobbySky(stage, shown, destination, left);
   const insets = () => {
     const view = left.current?.ownerDocument.defaultView;
     if (!view) return null;
@@ -79,20 +67,20 @@ export function RoomLobby({ hidden }) {
   };
   return (
     <div className={styles.lobby} hidden={hidden} data-ui="room-lobby">
-      <LobbyVehicle vehicle={vehicle} passengers={roster} hidden={hidden || !lobby} insets={insets} sun={!(rocket && nearSky)} />
+      <LobbyVehicle vehicle={vehicle} passengers={roster} hidden={hidden || !lobby} insets={insets} sun={!ownSky} />
       <div ref={left} className={styles.left}>
         {/* No title board (owner, 2026-11-17): the heading and room line stay for screen readers only. */}
         <div className={styles.hiddenText}>
           <h1>{party ? 'Party lobby' : 'Room lobby'}</h1>
           <p>{lobby?.label}</p>
         </div>
+        <PlanetPicker value={voting ? lobby?.myVote?.world ?? destination : destination} voters={voting ? lobby.votes.world : null} leading={destination}
+          onPick={voting ? world => vote({ world }) : lobby?.canPickDestination ? world => session({ type: 'SET_DESTINATION', world }) : null} />
         <LobbyManifest passengers={roster} seats={VEHICLE_SEATS[vehicle] ?? 8} flight={flight} destination={planet} />
       </div>
       <div ref={right} className={styles.right}>
         <LobbyTicket vehicle={vehicle} name={nameDraft ?? me?.name ?? ''} onName={setNameDraft} onNameDone={commitName} color={lobby?.myColor ?? null} taken={lobby?.takenColors} hidden={hidden || !lobby}
           onPick={c => send(UiCommands.SET_COLOR, { color: c })} destination={destination}
-          onDestination={voting ? world => vote({ world }) : lobby?.canPickDestination ? world => session({ type: 'SET_DESTINATION', world }) : null}
-          worldVoters={voting ? lobby.votes.world : null} myWorld={lobby?.myVote?.world ?? null}
           code={party ? lobby.code : ''} onCopy={() => send(UiCommands.INVITE)}
           flight={flight} seat={seat > 0 ? seat : 1} onBack={() => send(UiCommands.LEAVE)} backLabel="Leave room">
           {lobby?.showStart && <button type="button" className={styles.go} onClick={start} data-ui="start-game">Start Game</button>}

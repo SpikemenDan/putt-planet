@@ -214,8 +214,8 @@ function fakeClock() {
     await act(async () => { await new Promise(r => setTimeout(r, 5)); });
     assert.equal(doc.activeElement?.dataset.menu, 'custom', 'focus returns to the button that opened it');
     await click(landing.querySelector('[data-menu=solo]'));
-    assert.equal($('[data-ui=solo-steps]').dataset.step, 'mode', 'Solo opens on its first step');
-    assert.ok(!button('Play Solo'), 'Play Solo waits for the last step');
+    assert.ok($('[data-ui=solo-lobby]'), 'Solo opens straight onto its lobby (owner, 2026-11-18)');
+    assert.ok(button('Play Solo'), 'with Play Solo ready');
     assert.ok(!button('Create party'), 'and not the party one');
     await t.teardown();
     const invited = await setup({ mountProps: { initialView: 'party' }, inRoom: false });
@@ -226,130 +226,85 @@ function fakeClock() {
     await invited.teardown();
   });
 
-  await scenario('solo steps (VIS-M4): mode, world, ready; Back steps back; chosen mode reaches play-solo', async () => {
+  await scenario('solo lobby picker (owner, 2026-11-18): Solo opens on its lobby; the planet picker flies the sky; the mode bar and planet reach play-solo; Back and Escape leave', async () => {
     const views = [];
     const createLoadingScene = () => ({ start() {}, dispose() {}, setView: v => views.push({ space: v.space, target: v.target }) });
     const t = await setup({ mountProps: { createLoadingScene } });
     await act(async () => t.store.setLocal({ active: false, connecting: false }));
     await act(async () => { await new Promise(r => setTimeout(r, 20)); }); // the scene attaches after the first paint
     const landing = t.within('[data-ui=landing]');
-    const steps = () => $('[data-ui=solo-steps]');
-    const step = () => steps().dataset.step;
-    const inSteps = label => [...steps().querySelectorAll('button')].find(b => (b.getAttribute('aria-label') ?? b.textContent).startsWith(label));
-    const labels = () => [...steps().querySelectorAll('button:not([data-ui=menu-back])')].map(b => b.getAttribute('aria-label') || b.querySelector('span')?.textContent || b.textContent);
-    const first = () => steps().querySelector('button:not(:disabled), input');
+    const key = async k => act(async () => { doc.activeElement.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: k, bubbles: true })); });
 
     await click(landing.querySelector('[data-menu=solo]'));
-    assert.equal(step(), 'mode');
-    assert.deepEqual(labels(), ['Casual', 'Tournament', 'Practice'], 'Casual, Tournament and the smaller Practice button');
-    assert.ok(inSteps('Practice').className !== inSteps('Casual').className, 'Practice is styled smaller than the main options');
-    assert.equal(doc.activeElement, first(), 'focus starts on the first button');
-    assert.ok(!button('Play Solo'), 'no name or Play yet');
-
-    // Tournament lengths
-    await click(inSteps('Tournament'));
-    assert.equal(step(), 'mode:tournament');
-    assert.deepEqual([...steps().querySelectorAll('button[aria-label$=" maps"]')].map(b => b.getAttribute('aria-label')), ['3 maps', '5 maps', '7 maps']);
-    assert.equal(doc.activeElement, first());
-    await click($('[data-ui=menu-back]'));
-    assert.equal(step(), 'mode', 'Back from the lengths returns to the first step');
-    assert.deepEqual(labels(), ['Casual', 'Tournament', 'Practice']);
-
-    // Practice kinds
-    await click(inSteps('Practice'));
-    assert.equal(step(), 'mode:practice');
-    assert.deepEqual(labels(), ['Whole map', 'One putt', 'Putt Pong'], 'Pong practice lives under Solo > Practice (owner, 2026-11-11)');
-    assert.ok(!/practis/i.test(steps().textContent), 'US spelling "practice" in the Solo steps (owner, 2026-11-14)');
-    assert.match(steps().textContent, /What do you want to practice\?/);
-    const cards = [...steps().querySelectorAll('button:not([data-ui=menu-back])')];
-    assert.ok(cards.every(b => b.querySelector('svg[aria-hidden=true]')), 'each practice card has a decorative icon (owner, 2026-11-14)');
-    assert.equal(new Set(cards.map(b => b.style.getPropertyValue('--tone'))).size, 3, 'and its own colour');
-    await click($('[data-ui=menu-back]'));
-    assert.equal(step(), 'mode');
-
-    // World step: a carousel of planets; Ares and Luna cannot be chosen yet
-    await click(inSteps('Tournament'));
-    await click(inSteps('5 maps'));
-    assert.equal(step(), 'world');
-    assert.deepEqual(views.at(-1), { space: true, target: 'gaia' }, 'the stage flies to space, focused on Gaia');
-    const choose = () => steps().querySelector('[data-ui=world-choose]');
-    const carousel = () => landing.querySelector('[data-ui=world-carousel]');
-    const key = async k => act(async () => { doc.activeElement.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: k, bubbles: true })); });
-    assert.equal(carousel().dataset.world, 'gaia');
-    assert.equal(choose().dataset.world, 'gaia');
-    assert.equal(choose().textContent, 'Choose Gaia');
-    assert.equal(choose().disabled, false);
-    assert.equal(doc.activeElement, choose(), 'focus lands on the choose button');
-    const arrow = id => landing.querySelector(`[data-ui=world-${id}]`);
-    const seen = [];
-    for (let k = 0; k < 3; k++) { await click(arrow('left')); seen.push(carousel().dataset.world); }
-    assert.deepEqual(seen, ['luna', 'ares', 'gaia'], 'left cycles gaia, luna, ares, gaia');
-    seen.length = 0;
-    for (let k = 0; k < 3; k++) { await click(arrow('right')); seen.push(carousel().dataset.world); }
-    assert.deepEqual(seen, ['ares', 'luna', 'gaia'], 'right goes the other way');
-    await click(arrow('left'));
-    assert.equal(choose().dataset.world, 'luna');
-    assert.equal(choose().textContent, 'Choose Luna', 'Luna has courses (VIS-G)');
-    assert.equal(choose().disabled, false);
-    assert.deepEqual(views.at(-1), { space: true, target: 'luna' }, 'the stage follows the focused planet');
-    await click(arrow('left'));
-    assert.equal(choose().textContent, 'Choose Ares');
-    assert.equal(choose().disabled, false);
-    assert.deepEqual(views.at(-1), { space: true, target: 'ares' });
-    await click(choose());
-    assert.equal(step(), 'ready', 'Ares can be chosen');
-    assert.equal($('[data-ui=solo-summary]').textContent, 'Tournament · 5 maps on Ares');
-    await click($('[data-ui=menu-back]'));
-    assert.equal(step(), 'world');
-    await act(async () => { choose().focus(); });
-    await key('ArrowRight');
-    assert.equal(carousel().dataset.world, 'luna', 'ArrowRight turns right');
-    await key('ArrowLeft'); await key('ArrowLeft');
-    assert.equal(carousel().dataset.world, 'gaia', 'ArrowLeft turns left');
-    assert.equal(choose().textContent, 'Choose Gaia');
-
-    // Ready step: summary, name, colour, Play Solo
-    await click(choose());
-    assert.equal(step(), 'ready');
-    assert.deepEqual(views.at(-1), { space: false, target: 'gaia' }, 'the Solo lobby flies the helicopter through Gaia\'s air');
-    assert.equal($('[data-ui=solo-summary]').textContent, 'Tournament · 5 maps on Gaia');
+    const lobby = $('[data-ui=solo-lobby]');
+    assert.ok(lobby, 'Solo opens straight onto its lobby: no mode or world steps');
     assert.equal(doc.activeElement, $('[data-ui=solo-play]'), 'focus lands on Play Solo');
-    assert.ok(button('Play Solo'));
     assert.ok($('[data-menu-view=solo]').hasAttribute('data-solo-lobby'), 'the menu card steps away for the full-screen lobby');
-    await click($('[data-ui=menu-back]'));
-    assert.equal(step(), 'world', 'Back from ready returns to the world');
-    await click($('[data-ui=menu-back]'));
-    assert.equal(step(), 'mode', 'and then to the mode');
-    assert.equal(doc.activeElement, first());
+    assert.equal($('[data-ui=solo-summary]').textContent, 'Casual · 1 map on Gaia', 'Casual on Gaia to start');
+    assert.deepEqual(views.at(-1), { space: false, target: 'gaia' }, "the helicopter flies through Gaia's air");
 
-    // Casual summary, then each mode reaches the command
+    // The planet picker: the same one as the party lobby, without votes
+    const planets = lobby.querySelector('[data-ui=planet-picker]');
+    assert.ok(planets, 'the planet picker is in the Solo lobby');
+    assert.ok(!planets.hasAttribute('data-voting'), 'no votes when alone');
+    assert.equal(lobby.querySelector('[data-ui=lobby-ticket] [data-ui=destination-pick]'), null, 'and not on the pass');
+    const name = () => planets.querySelector('[data-ui=planet-name]').textContent;
+    const chips = () => [...planets.querySelectorAll('[data-ui=destination-pick] button')];
+    assert.deepEqual(chips().map(b => b.dataset.world), ['gaia', 'luna', 'ares']);
+    assert.ok(chips().every(b => !b.disabled), 'Gaia, Luna and Ares all have courses (VIS-G)');
+    assert.equal(name(), 'Gaia');
+    const arrow = id => planets.querySelector(`[data-ui=world-${id}]`);
+    const seen = [];
+    for (let k = 0; k < 3; k++) { await click(arrow('left')); seen.push(name()); }
+    assert.deepEqual(seen, ['Luna', 'Ares', 'Gaia'], 'left cycles Gaia, Luna, Ares, Gaia');
+    seen.length = 0;
+    for (let k = 0; k < 3; k++) { await click(arrow('right')); seen.push(name()); }
+    assert.deepEqual(seen, ['Ares', 'Luna', 'Gaia'], 'right goes the other way');
+    await click(arrow('left'));
+    assert.equal(planets.dataset.world, 'luna');
+    assert.deepEqual(views.at(-1), { space: true, target: 'luna' }, 'the sky follows the planet');
+    assert.equal(lobby.querySelector('[data-ui=ticket-destination]').textContent, 'Luna', 'the pass shows it');
+    assert.equal($('[data-ui=solo-summary]').textContent, 'Casual · 1 map on Luna');
+    await act(async () => arrow('left').focus());
+    await key('ArrowLeft');
+    assert.equal(name(), 'Ares', 'ArrowLeft turns left');
+    assert.deepEqual(views.at(-1), { space: true, target: 'ares' });
+    await key('ArrowRight'); await key('ArrowRight');
+    assert.equal(name(), 'Gaia', 'ArrowRight turns right');
+    await click(chips()[2]);
+    assert.equal(chips()[2].getAttribute('aria-checked'), 'true', 'a chip picks its planet');
+    assert.equal(name(), 'Ares');
+
+    // Every mode on the bar reaches the command, with the chosen planet
+    const bar = lobby.querySelector('[data-ui=solo-modes] [data-ui=mode-picker]');
     const expected = [
-      [['Casual'], 'standard', 'Casual · 1 map on Gaia'],
-      [['Tournament', '3 maps'], 'tournament_3', 'Tournament · 3 maps on Gaia'],
-      [['Tournament', '5 maps'], 'tournament_5', 'Tournament · 5 maps on Gaia'],
-      [['Tournament', '7 maps'], 'tournament_7', 'Tournament · 7 maps on Gaia'],
-      [['Practice', 'Whole map'], 'practice', 'Practice · whole map on Gaia'],
-      [['Practice', 'One putt'], 'putt_practice', 'Practice · one putt on Gaia'],
-      [['Practice', 'Putt Pong'], 'pong', 'Practice · Putt Pong on Gaia'],
+      ['standard', 'Casual · 1 map on Ares'],
+      ['tournament_3', 'Tournament · 3 maps on Ares'],
+      ['tournament_5', 'Tournament · 5 maps on Ares'],
+      ['tournament_7', 'Tournament · 7 maps on Ares'],
+      ['practice', 'Practice · whole map on Ares'],
+      ['putt_practice', 'Practice · one putt on Ares'],
+      ['pong', 'Practice · Putt Pong on Ares'],
     ];
-    for (const [path, mode, summary] of expected) {
-      for (const label of path) await click(inSteps(label));
-      await click(choose());
+    for (const [mode, summary] of expected) {
+      await click(bar.querySelector(`[data-mode=${mode}]`));
       assert.equal($('[data-ui=solo-summary]').textContent, summary);
       const typed = $('[data-ui=ticket-name]').value;
       t.commands.length = 0;
       await click(button('Play Solo'));
-      assert.deepEqual(t.commands, [{ type: 'play-solo', name: typed, mode, world: 'gaia' }], mode);
-      for (let i = 0; i < 2; i++) await click($('[data-ui=menu-back]'));
-      assert.equal(step(), 'mode');
+      assert.deepEqual(t.commands, [{ type: 'play-solo', name: typed, mode, world: 'ares' }], mode);
     }
+    assert.ok(!/practis/i.test(lobby.textContent), 'US spelling "practice" (owner, 2026-11-14)');
 
-    // Back from the first step leaves Solo
-    assert.deepEqual(views.at(-1), { space: false, target: 'gaia' }, 'the first step brings the horizon back');
+    // Back leaves Solo and brings the horizon back
     await click($('[data-ui=menu-back]'));
     assert.equal(landing.dataset.view, 'home');
     assert.equal($('[data-ui=solo-steps]'), null);
-    assert.deepEqual(views.at(-1), { space: false, target: 'gaia' }, 'leaving Solo keeps the horizon');
+    assert.deepEqual(views.at(-1), { space: false, target: 'gaia' }, 'leaving Solo brings the horizon back');
+    // Escape leaves too
+    await click(landing.querySelector('[data-menu=solo]'));
+    await act(async () => { $('[data-ui=solo-play]').dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); });
+    assert.equal(landing.dataset.view, 'home', 'Escape leaves Solo');
     await t.teardown();
   });
 
@@ -358,14 +313,9 @@ function fakeClock() {
     const createLobbyScene = opts => { const sc = { opts, vehicle: opts.vehicle, colors: null, stats: { webgl: true }, setVehicle(k) { sc.vehicle = k; }, setPassengers(c) { sc.colors = c; }, onAnchors(fn) { sc.emit = fn; }, start() {}, dispose() { sc.disposed = true; } }; scenes.push(sc); return sc; };
     const t = await setup({ mountProps: { createLobbyScene } });
     await act(async () => t.store.setLocal({ active: false, connecting: false, colorPref: 4 }));
-    const steps = () => $('[data-ui=solo-steps]');
-    const inSteps = label => [...steps().querySelectorAll('button')].find(b => (b.getAttribute('aria-label') ?? b.textContent).startsWith(label));
     await click(t.within('[data-ui=landing]').querySelector('[data-menu=solo]'));
-    await click(inSteps('Casual'));
-    await click(steps().querySelector('[data-ui=world-choose]'));
-    assert.equal(steps().dataset.step, 'ready');
     const stage = $('[data-ui=solo-lobby]');
-    assert.ok(stage, 'the ready step shows the Solo lobby');
+    assert.ok(stage, 'Solo shows its lobby');
     const live = scenes.filter(sc => !sc.disposed);
     assert.equal(live.length, 1, 'one live 3D scene');
     const heli = live[0];
@@ -376,26 +326,15 @@ function fakeClock() {
     const ticket = stage.querySelector('[data-ui=lobby-ticket]');
     assert.ok(ticket, 'the boarding pass');
     assert.equal(ticket.querySelector('[data-ui=ticket-destination]').textContent, 'Gaia');
-    // The planet can be changed right on the pass (owner, 2026-11-17), among the planets with courses; the rest are greyed out.
-    const pickWorld = ticket.querySelector('[data-ui=destination-pick]');
-    assert.ok(pickWorld, 'Solo can switch planet on the pass');
-    assert.deepEqual([...pickWorld.querySelectorAll('[data-world]')].map(b => b.dataset.world), ['gaia', 'luna', 'ares']);
-    assert.equal(pickWorld.querySelector('[aria-checked=true]').dataset.world, 'gaia', 'the planet chosen in the steps');
-    const otherWorld = [...pickWorld.querySelectorAll('[data-world]')].find(b => b.dataset.world !== 'gaia' && !b.disabled);
-    if (otherWorld) {
-      await click(otherWorld);
-      assert.equal(ticket.querySelector('[data-ui=ticket-destination]').textContent, otherWorld.textContent, 'the route follows the pick');
-      assert.match($('[data-ui=solo-summary]').textContent, new RegExp(' on ' + otherWorld.textContent + '$'));
-      await click(pickWorld.querySelector('[data-world=gaia]'));
-    }
-    assert.equal(ticket.querySelector('[data-ui=ticket-destination]').textContent, 'Gaia');
+    // The planet is picked in the lobby's planet picker, so the Solo pass only shows it (owner, 2026-11-18).
+    assert.equal(ticket.querySelector('[data-ui=destination-pick]'), null, 'no planet picker on the Solo pass');
     assert.deepEqual([...ticket.querySelectorAll('dt')].map(d => d.textContent), ['Flight', 'Helipad', 'Seat'], 'flight, helipad and seat only');
     assert.equal(ticket.querySelector('dd').textContent, 'PP 4242', 'easter egg: Solo to Gaia flies GAIA on a phone keypad');
     assert.equal(ticket.querySelector('[data-gate]').dataset.gate, 'lily', 'the helicopter lifts off from a lily pad');
     assert.match(ticket.querySelector('[data-gate]').textContent, /^Lily Pad [1-9]$/);
     const bar = stage.querySelector('[data-ui=solo-modes] [data-ui=mode-picker]');
     assert.deepEqual([...bar.querySelectorAll('[data-mode]')].map(b => b.dataset.mode), ['standard', 'tournament_3', 'tournament_5', 'tournament_7', 'practice', 'putt_practice', 'pong'], 'the mode bar has every Solo mode');
-    assert.equal(bar.querySelector('[aria-checked=true]').dataset.mode, 'standard', 'the mode chosen in the steps');
+    assert.equal(bar.querySelector('[aria-checked=true]').dataset.mode, 'standard', 'Casual to start');
     assert.equal(bar.querySelector('[data-mode=standard] span span').textContent, 'Casual');
     await click(bar.querySelector('[data-mode=tournament_5]'));
     assert.equal($('[data-ui=solo-summary]').textContent, 'Tournament · 5 maps on Gaia', 'the bar changes the mode');
@@ -1002,10 +941,8 @@ function fakeClock() {
     await click(create);
     await click(landing.querySelector('[data-ui=menu-back]'));
     await click(landing.querySelector('[data-menu=solo]'));
-    await click([...landing.querySelectorAll('button')].find(b => b.textContent.startsWith('Casual')));
-    await click(landing.querySelector('[data-ui=world-choose]'));
-    assert.equal(landing.querySelector('input').value, '  Zed  ', 'the name carries from Party to Solo');
-    const solo = [...landing.querySelectorAll('button')].find(b => b.textContent === 'Play Solo');
+    assert.equal($('[data-ui=ticket-name]').value, '  Zed  ', 'the name carries from Party to Solo');
+    const solo = $('[data-ui=solo-play]');
     await click(solo);
     assert.deepEqual(t.commands, [
       { type: 'join', name: '  Zed  ', roomCode: 'Fun-Room!' },
@@ -1199,8 +1136,11 @@ function fakeClock() {
     assert.equal(manifest.length, 8, 'the manifest lists every seat');
     assert.deepEqual(manifest.slice(0, 3).map(li => li.textContent), ['01AnaHostYou', '02Bartholomew-', '03Open seat'], 'who is aboard, the host and me, then open seats');
     const ticket = lobby.querySelector('[data-ui=lobby-ticket]');
-    const worlds = [...ticket.querySelectorAll('[data-ui=destination-pick] button')];
-    assert.deepEqual(worlds.map(b => b.dataset.world), ['gaia', 'luna', 'ares'], 'everyone votes for the destination on the ticket');
+    assert.equal(ticket.querySelector('[data-ui=destination-pick]'), null, 'the pass only shows the destination (owner, 2026-11-18)');
+    const planets = lobby.querySelector('[data-ui=planet-picker]');
+    assert.ok(planets?.hasAttribute('data-voting'), 'the shared planet picker, voting');
+    const worlds = [...planets.querySelectorAll('[data-ui=destination-pick] button')];
+    assert.deepEqual(worlds.map(b => b.dataset.world), ['gaia', 'luna', 'ares'], 'everyone votes for the destination in the planet picker');
     assert.equal(ticket.querySelector('[data-gate]').textContent, 'Cloud 9', 'the plane boards at Cloud 9');
     t.commands.length = 0;
     await click(worlds[2]);
@@ -1209,6 +1149,13 @@ function fakeClock() {
     assert.equal(t.session.getSnapshot().destination, 'ares', 'the planet follows the vote');
     assert.equal(worlds[2].getAttribute('aria-checked'), 'true', 'my vote is checked');
     assert.deepEqual([...worlds[2].querySelectorAll('[data-ui=voters] [data-color]')].map(b => Number(b.dataset.color)), [t.session.getSnapshot().players.host.color], 'my ball sits on my planet');
+    assert.equal(planets.querySelector('[data-ui=planet-name]').textContent, 'Ares', 'the picker names my vote');
+    assert.ok(worlds[2].hasAttribute('data-leading'), 'and marks the leading planet');
+    t.commands.length = 0;
+    await click(planets.querySelector('[data-ui=world-right]'));
+    assert.deepEqual(t.commands, [{ type: 'session', event: { type: 'LOBBY_VOTE', mode: null, world: 'luna' } }], 'the arrows vote too');
+    await click(worlds[2]);
+    t.commands.length = 0;
     assert.equal(sc.vehicle, 'rocket', 'Ares takes the rocket');
     assert.equal(ticket.querySelector('[data-ui=ticket-destination]').textContent, 'Ares');
     assert.equal(ticket.querySelector('[data-ui=ticket-title]').textContent, 'Rocket Boarding Pass');

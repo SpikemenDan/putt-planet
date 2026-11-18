@@ -40,17 +40,6 @@
 .to b{color:var(--land);text-shadow:2px 2px 0 var(--ink)}
 .path{position:relative;height:14px;background:radial-gradient(circle,var(--ink) 2px,transparent 2.5px) 0 50%/12px 12px repeat-x}
 .path::after{content:'➜';position:absolute;right:-4px;top:50%;translate:0 -56%;font:900 20px var(--font);color:var(--sea);text-shadow:1px 1px 0 var(--ink)}
-.worlds{display:flex;gap:8px;padding:2px 16px 4px}
-.world{position:relative;display:flex;flex:1;align-items:center;justify-content:center;gap:6px;margin:0;padding:6px 6px;font:900 14px var(--font);letter-spacing:.5px;text-transform:none;text-shadow:none;color:var(--ink);background:#fff;border:3px solid var(--ink);border-radius:999px;box-shadow:0 3px 0 var(--ink);cursor:pointer;transition:translate .1s,background .15s}
-.world::before{content:'';flex:none;width:12px;height:12px;border-radius:50%;border:2px solid var(--ink);background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.8) 0 18%,transparent 20%),var(--tone)}
-.world[aria-checked=true]::before{border-color:#fff}
-.world[data-world=gaia]{--tone:#2fbf5b}
-.world[data-world=ares]{--tone:#e5484d}
-.world[data-world=luna]{--tone:#8e4ec6}
-.world:hover:not(:disabled){background:color-mix(in srgb,var(--tone) 22%,#fff)}
-.world:disabled{opacity:.45;cursor:not-allowed}
-.worlds[data-voting] .world[data-leading]{outline:3px dashed var(--tone);outline-offset:2px}
-.world[aria-checked=true]{background:var(--tone);color:#fff;text-shadow:1px 1px 0 var(--ink);translate:0 3px;box-shadow:0 0 0 var(--ink)}
 /* Flight details, three across, as on a real pass. */
 .details{display:grid;grid-template-columns:repeat(3,1fr);gap:6px 10px;margin:0;padding:0 18px}
 .details dd{margin:0;font:900 18px var(--font);letter-spacing:.5px;overflow-wrap:anywhere}

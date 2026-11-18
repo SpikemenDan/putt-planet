@@ -72,16 +72,11 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
           if (view && view !== 'home') await c.click(doc.querySelector('[data-ui=menu-back]'));
           await c.click(doc.querySelector(`[data-menu=${id}]`));
         },
-        /** Solo steps (VIS-M4): pick the mode and Gaia, name, Play Solo; lands on the map select with no lobby. */
+        /** Solo lobby (owner, 2026-11-18): pick the mode on the bar (Gaia is the default planet), name, Play Solo; lands on the map select. */
         async solo(mode = 'standard') {
           await c.menu('solo');
-          const [kind, sub] = { standard: ['Casual'], tournament_3: ['Tournament', '3 maps'], tournament_5: ['Tournament', '5 maps'], tournament_7: ['Tournament', '7 maps'], practice: ['Practice', 'Whole map'], putt_practice: ['Practice', 'One putt'] }[mode];
-          const step = () => doc.querySelector('[data-ui=solo-steps]')?.dataset.step;
-          while (step() && step() !== 'mode') await c.click(doc.querySelector('[data-ui=menu-back]'));
-          await c.click([...doc.querySelectorAll('[data-ui=solo-steps] button')].find(b => b.textContent.startsWith(kind) && shown(b)));
-          if (sub) await c.click([...doc.querySelectorAll('[data-ui=solo-steps] button')].find(b => (b.getAttribute('aria-label') ?? b.textContent).startsWith(sub) && shown(b)));
-          await c.click(doc.querySelector('[data-ui=solo-steps] [data-ui=world-choose]'));
-          await c.fill(doc.querySelector('[data-ui=landing] input'), name);
+          await c.click(doc.querySelector(`[data-ui=solo-modes] [data-mode=${mode}]`));
+          await c.fill(doc.querySelector('[data-ui=ticket-name]'), name);
           await c.click('Play Solo');
           await until(() => c.shown('[data-ui=map-select]'), 2000, name + ' map select');
         },

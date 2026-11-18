@@ -2,11 +2,8 @@ import { WORLDS } from '../shared/worlds.js';
 import { NAME_LIMIT } from './commands.js';
 import { Barcode } from './Barcode.jsx';
 import { ColorBadge } from './BadgePicker.jsx';
-import { Voters } from './ModePicker.jsx';
 import styles from './LobbyTicket.module.css';
 
-/** The planets a ticket can name, in the destination carousel's order, with airport-style codes. */
-export const TICKET_WORLDS = Object.freeze(['gaia', 'luna', 'ares']);
 const CODES = Object.freeze({ gaia: 'GAI', luna: 'LUN', ares: 'ARS' });
 /** What each vehicle's pass calls itself and where it boards, as on a real pass: a gate, a helipad or a launch pad. */
 export const PASS = Object.freeze({
@@ -68,12 +65,10 @@ function PassengerName({ name, onName, onNameDone }) {
  * everywhere) and name (`onName`: click it to edit), the route in airport-style codes, then flight, gate and seat, then
  * the lobby's buttons (`children`: Play or Start Game) and, on the stub, a real Code 39 barcode of the party code (the flight on a
  * Solo pass) with the code printed under it like a booking reference
- * (`code`, with a copy-invite icon: `onCopy`) and Back (`onBack`). In a party everyone
- * votes for the destination on the pass (`onDestination`, `worldVoters`: each voter's ball sits on their planet; `myWorld` is checked);
- * the route shows the planet the vote leads with. Solo picks its planet the same way, without votes; `openWorlds` lists the
- * planets that can be picked (the rest show greyed out, coming soon). Names render as React text only, cut to NAME_LIMIT.
+ * (`code`, with a copy-invite icon: `onCopy`) and Back (`onBack`). The route shows the destination only: both lobbies pick the planet
+ * on their planet picker (PlanetPicker.jsx, owner 2026-11-18). Names render as React text only, cut to NAME_LIMIT.
  */
-export function LobbyTicket({ vehicle = 'plane', name = '', onName = null, onNameDone = null, color = null, taken = {}, onPick, solo = false, destination = 'gaia', onDestination = null, openWorlds = TICKET_WORLDS, worldVoters = null, myWorld = null, code = '', onCopy = null, flight = 'PP 1000', seat = 1, onBack = null, backLabel = 'Back', hidden = false, children }) {
+export function LobbyTicket({ vehicle = 'plane', name = '', onName = null, onNameDone = null, color = null, taken = {}, onPick, solo = false, destination = 'gaia', code = '', onCopy = null, flight = 'PP 1000', seat = 1, onBack = null, backLabel = 'Back', hidden = false, children }) {
   const planet = WORLDS.find(w => w.id === destination)?.name ?? 'Gaia';
   const pass = PASS[vehicle] ?? PASS.plane;
   const gateMark = gateFor(vehicle, destination, flight);
@@ -96,17 +91,6 @@ export function LobbyTicket({ vehicle = 'plane', name = '', onName = null, onNam
         <span className={styles.path} aria-hidden="true" />
         <div className={styles.to}><b data-ui="ticket-code">{CODES[destination] ?? 'GAI'}</b><small data-ui="ticket-destination">{planet}</small></div>
       </div>
-      {onDestination && (
-        <div className={styles.worlds} role="radiogroup" aria-label="Destination" data-ui="destination-pick" data-voting={worldVoters ? '' : undefined}>
-          {TICKET_WORLDS.map(id => {
-            const mine = worldVoters ? id === myWorld : id === destination, open = openWorlds.includes(id);
-            return (
-              <button key={id} type="button" role="radio" aria-checked={mine} disabled={!open} title={open ? undefined : 'Coming soon'} data-world={id} data-leading={(worldVoters && id === destination) || undefined} className={styles.world}
-                onClick={() => { if (!mine) onDestination(id); }}>{WORLDS.find(w => w.id === id).name}{worldVoters && <Voters list={worldVoters[id]} />}</button>
-            );
-          })}
-        </div>
-      )}
       <dl className={styles.details}>
         {fields.map(([label, value]) => <div key={label} data-field={label}><dt>{label}</dt><dd data-gate={label === pass.gate ? gateMark.kind : undefined}>{value}</dd></div>)}
       </dl>
