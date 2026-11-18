@@ -869,14 +869,25 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
     draw();
   }
 
+  // Frame budget: when two drawn frames land more than SLOW_FRAME_MS apart (software WebGL, an overloaded
+  // machine), rest for RESTING times that gap before drawing again so input, timers and other pages still
+  // get the main thread. The gap, not the time inside step(), is measured because the GPU work finishes
+  // after step() returns. A real GPU never comes near the budget, so this never engages there.
+  const SLOW_FRAME_MS = 100, RESTING = 6;
+  let restUntil = 0, rested = false;
+
   function frame(now) {
     frameId = null;
     if (disposed) return;
+    if (now < restUntil) { rested = true; frameId = win.requestAnimationFrame(frame); return; }
+    const gap = last === null || rested ? 0 : now - last;
+    rested = false;
     const dt = last === null ? 0 : Math.min(0.1, Math.max(0, (now - last) / 1000));
     last = now;
     slowFrames = dt > 1 / 40 ? slowFrames + 1 : Math.max(0, slowFrames - 2);
     if (slowFrames > 45 && quality > 0.6) { quality -= 0.2; slowFrames = 0; sizeKey = ''; } // a struggling machine draws fewer pixels rather than stutter
     step(dt);
+    restUntil = gap > SLOW_FRAME_MS ? now + gap * RESTING : 0;
     frameId = win.requestAnimationFrame(frame);
   }
 
