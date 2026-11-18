@@ -50,7 +50,8 @@ test('party flow: Create shows the code afterwards, Join by code, plane lobby wi
     expect(start.Ana).not.toBe(start.Ben);
 
     // Only my own badge opens the picker; others' colours are crossed out; Escape closes it.
-    for (const p of [ana, ben]) await expect(p.ui('lobby-plane').locator('[role=listitem] button')).toHaveCount(1);
+    for (const p of [ana, ben]) await expect(p.ui('room-lobby').locator('[data-ui=my-color-badge]')).toHaveCount(1);
+    for (const p of [ana, ben]) await expect(p.ui('lobby-passengers').locator('button')).toHaveCount(0);
     const benBadge = ben.ui('my-color-badge');
     await benBadge.click();
     const benPicker = ben.ui('lobby-color-picker');
@@ -69,17 +70,18 @@ test('party flow: Create shows the code afterwards, Join by code, plane lobby wi
     await ben.page.keyboard.press('Escape');
     await expect(benPicker).toHaveCount(0);
     await expect(benBadge).toBeFocused();
-    await ana.ui('room-lobby').locator('h1').click();
+    // A click outside the picker closes it: here on the passenger manifest (the lobby's heading is screen-reader-only text).
+    await ana.ui('lobby-manifest').click({ position: { x: 24, y: 24 } });
     await expect(anaPicker).toHaveCount(0);
 
-    // The plane lobby: both balls in their colours for both players; Putt Pong is offered with exactly two.
+    // The plane lobby (owner, 2026-11-16: a 3D plane for Gaia): both balls in their colours for both players; Putt Pong is offered with exactly two.
     for (const p of [ana, ben]) {
-      const balls = p.ui('lobby-plane').locator('[role=listitem]');
+      const balls = p.ui('lobby-passengers').locator('[role=listitem]');
       await expect(balls).toHaveCount(2);
       await expect.poll(async () => (await balls.evaluateAll(els => els.map(e => Number(e.dataset.color)))).sort((a, b) => a - b))
         .toEqual([start.Ana, pick].sort((a, b) => a - b));
     }
-    await expect(ana.ui('room-lobby').locator('select option[value=pong]')).toHaveCount(1);
+    await expect(ana.ui('room-lobby').locator('[data-ui=mode-picker] [data-mode=pong]')).toHaveCount(1);
     await expect(ana.ui('room-lobby').locator('[data-ui=no-powerups]')).toHaveCount(0);
     expect(sockets.ben.filter(url => url.includes('/api/rooms/_new/')), 'joining never creates').toEqual([]);
     for (const p of [ana, ben]) expect(p.errors, p.name + ': no page or console errors').toEqual([]);

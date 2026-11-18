@@ -448,6 +448,17 @@ const assert = require('node:assert/strict');
     assert.equal(f.send('SET_COLOR', { color: 9 }, 'a'), false, 'colours are locked once voting starts');
     assert.equal(colorOf('a'), 10);
   });
+  run('names: SET_NAME renames a member in the lobby only (owner, 2026-11-17)', () => {
+    const f = make(['a', 'b']);
+    assert.equal(f.send('SET_NAME', { name: 'Zed' }, 'a'), true);
+    assert.equal(f.state().players.a.name, 'Zed');
+    assert.equal(f.send('SET_NAME', { name: '   ' }, 'a'), false, 'a blank name is refused');
+    assert.equal(f.send('SET_NAME', { name: 'x'.repeat(15) }, 'a'), false, 'a name past the limit is refused');
+    assert.equal(f.send('SET_NAME', { name: 'Ghost' }, 'stranger'), false, 'a non-member cannot rename');
+    f.send('START_VOTING');
+    assert.equal(f.send('SET_NAME', { name: 'Late' }, 'a'), false, 'names are locked once voting starts');
+    assert.equal(f.state().players.a.name, 'Zed');
+  });
   run('colours: a returning player keeps their colour and a rostered absentee keeps it reserved (#161)', () => {
     const f = make(['a', 'b']);
     start(f);

@@ -126,7 +126,9 @@ export async function connectServerRoom({ roomCode = null, create = false, name,
       state: sessionValue(s.session.node), phase: s.session.node.split('.')[0],
       ...(s.deployables ? { deployables: structuredClone(s.deployables) } : {}), // placed Bumpers and Orbital Bumpers (G1e)
       // Seats held for disconnected players inside their resume grace (VIS-C/VIS-D): their colours stay taken in the picker.
-      reserved: s.seats.filter(seat => seat.connectedSince === null && seat.resumeUntil !== null).map(seat => seat.playerId) };
+      reserved: s.seats.filter(seat => seat.connectedSince === null && seat.resumeUntil !== null).map(seat => seat.playerId),
+      // Everyone in the order they joined (the server sends seats by join order): the lobby's seat numbers (owner, 2026-11-17).
+      joinOrder: [...s.seats].sort((a, b) => a.joinOrder - b.joinOrder).map(seat => seat.playerId) };
     if (s.globalHazards) snapshot.globalHazards = structuredClone(s.globalHazards);
     positions = Object.fromEntries(Object.entries(positions).filter(([id]) => s.session.context.players[id]?.connected && s.session.context.roster.includes(id)));
     emit('snapshot', snapshot);

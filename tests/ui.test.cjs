@@ -215,7 +215,7 @@ function fakeClock() {
     assert.equal(doc.activeElement?.dataset.menu, 'custom', 'focus returns to the button that opened it');
     await click(landing.querySelector('[data-menu=solo]'));
     assert.equal($('[data-ui=solo-steps]').dataset.step, 'mode', 'Solo opens on its first step');
-    assert.ok(!button('Play solo'), 'Play solo waits for the last step');
+    assert.ok(!button('Play Solo'), 'Play Solo waits for the last step');
     assert.ok(!button('Create party'), 'and not the party one');
     await t.teardown();
     const invited = await setup({ mountProps: { initialView: 'party' }, inRoom: false });
@@ -244,14 +244,14 @@ function fakeClock() {
     assert.deepEqual(labels(), ['Casual', 'Tournament', 'Practice'], 'Casual, Tournament and the smaller Practice button');
     assert.ok(inSteps('Practice').className !== inSteps('Casual').className, 'Practice is styled smaller than the main options');
     assert.equal(doc.activeElement, first(), 'focus starts on the first button');
-    assert.ok(!button('Play solo'), 'no name or Play yet');
+    assert.ok(!button('Play Solo'), 'no name or Play yet');
 
     // Tournament lengths
     await click(inSteps('Tournament'));
     assert.equal(step(), 'mode:tournament');
     assert.deepEqual([...steps().querySelectorAll('button[aria-label$=" maps"]')].map(b => b.getAttribute('aria-label')), ['3 maps', '5 maps', '7 maps']);
     assert.equal(doc.activeElement, first());
-    await click(steps().querySelector('[data-ui=menu-back]'));
+    await click($('[data-ui=menu-back]'));
     assert.equal(step(), 'mode', 'Back from the lengths returns to the first step');
     assert.deepEqual(labels(), ['Casual', 'Tournament', 'Practice']);
 
@@ -264,7 +264,7 @@ function fakeClock() {
     const cards = [...steps().querySelectorAll('button:not([data-ui=menu-back])')];
     assert.ok(cards.every(b => b.querySelector('svg[aria-hidden=true]')), 'each practice card has a decorative icon (owner, 2026-11-14)');
     assert.equal(new Set(cards.map(b => b.style.getPropertyValue('--tone'))).size, 3, 'and its own colour');
-    await click(steps().querySelector('[data-ui=menu-back]'));
+    await click($('[data-ui=menu-back]'));
     assert.equal(step(), 'mode');
 
     // World step: a carousel of planets; Ares and Luna cannot be chosen yet
@@ -299,7 +299,7 @@ function fakeClock() {
     await click(choose());
     assert.equal(step(), 'ready', 'Ares can be chosen');
     assert.equal($('[data-ui=solo-summary]').textContent, 'Tournament · 5 maps on Ares');
-    await click(steps().querySelector('[data-ui=menu-back]'));
+    await click($('[data-ui=menu-back]'));
     assert.equal(step(), 'world');
     await act(async () => { choose().focus(); });
     await key('ArrowRight');
@@ -308,16 +308,17 @@ function fakeClock() {
     assert.equal(carousel().dataset.world, 'gaia', 'ArrowLeft turns left');
     assert.equal(choose().textContent, 'Choose Gaia');
 
-    // Ready step: summary, name, colour, Play solo
+    // Ready step: summary, name, colour, Play Solo
     await click(choose());
     assert.equal(step(), 'ready');
-    assert.deepEqual(views.at(-1), { space: true, target: 'gaia' }, 'the ready step stays in space');
+    assert.deepEqual(views.at(-1), { space: false, target: 'gaia' }, 'the Solo lobby flies the helicopter through Gaia\'s air');
     assert.equal($('[data-ui=solo-summary]').textContent, 'Tournament · 5 maps on Gaia');
-    assert.equal(doc.activeElement, first(), 'focus lands on the first field');
-    assert.ok(button('Play solo'));
-    await click(steps().querySelector('[data-ui=menu-back]'));
+    assert.equal(doc.activeElement, $('[data-ui=solo-play]'), 'focus lands on Play Solo');
+    assert.ok(button('Play Solo'));
+    assert.ok($('[data-menu-view=solo]').hasAttribute('data-solo-lobby'), 'the menu card steps away for the full-screen lobby');
+    await click($('[data-ui=menu-back]'));
     assert.equal(step(), 'world', 'Back from ready returns to the world');
-    await click(steps().querySelector('[data-ui=menu-back]'));
+    await click($('[data-ui=menu-back]'));
     assert.equal(step(), 'mode', 'and then to the mode');
     assert.equal(doc.activeElement, first());
 
@@ -335,20 +336,100 @@ function fakeClock() {
       for (const label of path) await click(inSteps(label));
       await click(choose());
       assert.equal($('[data-ui=solo-summary]').textContent, summary);
-      const typed = steps().querySelector('input').value;
+      const typed = $('[data-ui=ticket-name]').value;
       t.commands.length = 0;
-      await click(button('Play solo'));
+      await click(button('Play Solo'));
       assert.deepEqual(t.commands, [{ type: 'play-solo', name: typed, mode, world: 'gaia' }], mode);
-      for (let i = 0; i < 2; i++) await click(steps().querySelector('[data-ui=menu-back]'));
+      for (let i = 0; i < 2; i++) await click($('[data-ui=menu-back]'));
       assert.equal(step(), 'mode');
     }
 
     // Back from the first step leaves Solo
     assert.deepEqual(views.at(-1), { space: false, target: 'gaia' }, 'the first step brings the horizon back');
-    await click(steps().querySelector('[data-ui=menu-back]'));
+    await click($('[data-ui=menu-back]'));
     assert.equal(landing.dataset.view, 'home');
     assert.equal($('[data-ui=solo-steps]'), null);
     assert.deepEqual(views.at(-1), { space: false, target: 'gaia' }, 'leaving Solo keeps the horizon');
+    await t.teardown();
+  });
+
+  await scenario('solo lobby (owner, 2026-11-16): the 3D helicopter carries one ball in your colour; the ticket on the right has your name, the colour badge with the party picker (nothing crossed out) and Play', async () => {
+    const scenes = [];
+    const createLobbyScene = opts => { const sc = { opts, vehicle: opts.vehicle, colors: null, stats: { webgl: true }, setVehicle(k) { sc.vehicle = k; }, setPassengers(c) { sc.colors = c; }, onAnchors(fn) { sc.emit = fn; }, start() {}, dispose() { sc.disposed = true; } }; scenes.push(sc); return sc; };
+    const t = await setup({ mountProps: { createLobbyScene } });
+    await act(async () => t.store.setLocal({ active: false, connecting: false, colorPref: 4 }));
+    const steps = () => $('[data-ui=solo-steps]');
+    const inSteps = label => [...steps().querySelectorAll('button')].find(b => (b.getAttribute('aria-label') ?? b.textContent).startsWith(label));
+    await click(t.within('[data-ui=landing]').querySelector('[data-menu=solo]'));
+    await click(inSteps('Casual'));
+    await click(steps().querySelector('[data-ui=world-choose]'));
+    assert.equal(steps().dataset.step, 'ready');
+    const stage = $('[data-ui=solo-lobby]');
+    assert.ok(stage, 'the ready step shows the Solo lobby');
+    const live = scenes.filter(sc => !sc.disposed);
+    assert.equal(live.length, 1, 'one live 3D scene');
+    const heli = live[0];
+    assert.equal(heli.opts.vehicle, 'helicopter', 'Solo flies the helicopter');
+    assert.deepEqual(heli.colors, ['#25d1e6'], 'it carries one ball, in the saved colour (Cyan)');
+    const vehicle = stage.querySelector('[data-ui=lobby-vehicle]');
+    assert.equal(vehicle.dataset.mode, '3d');
+    const ticket = stage.querySelector('[data-ui=lobby-ticket]');
+    assert.ok(ticket, 'the boarding pass');
+    assert.equal(ticket.querySelector('[data-ui=ticket-destination]').textContent, 'Gaia');
+    // The planet can be changed right on the pass (owner, 2026-11-17), among the planets with courses; the rest are greyed out.
+    const pickWorld = ticket.querySelector('[data-ui=destination-pick]');
+    assert.ok(pickWorld, 'Solo can switch planet on the pass');
+    assert.deepEqual([...pickWorld.querySelectorAll('[data-world]')].map(b => b.dataset.world), ['gaia', 'luna', 'ares']);
+    assert.equal(pickWorld.querySelector('[aria-checked=true]').dataset.world, 'gaia', 'the planet chosen in the steps');
+    const otherWorld = [...pickWorld.querySelectorAll('[data-world]')].find(b => b.dataset.world !== 'gaia' && !b.disabled);
+    if (otherWorld) {
+      await click(otherWorld);
+      assert.equal(ticket.querySelector('[data-ui=ticket-destination]').textContent, otherWorld.textContent, 'the route follows the pick');
+      assert.match($('[data-ui=solo-summary]').textContent, new RegExp(' on ' + otherWorld.textContent + '$'));
+      await click(pickWorld.querySelector('[data-world=gaia]'));
+    }
+    assert.equal(ticket.querySelector('[data-ui=ticket-destination]').textContent, 'Gaia');
+    assert.deepEqual([...ticket.querySelectorAll('dt')].map(d => d.textContent), ['Flight', 'Helipad', 'Seat'], 'flight, helipad and seat only');
+    assert.equal(ticket.querySelector('dd').textContent, 'PP 4242', 'easter egg: Solo to Gaia flies GAIA on a phone keypad');
+    assert.equal(ticket.querySelector('[data-gate]').dataset.gate, 'lily', 'the helicopter lifts off from a lily pad');
+    assert.match(ticket.querySelector('[data-gate]').textContent, /^Lily Pad [1-9]$/);
+    const bar = stage.querySelector('[data-ui=solo-modes] [data-ui=mode-picker]');
+    assert.deepEqual([...bar.querySelectorAll('[data-mode]')].map(b => b.dataset.mode), ['standard', 'tournament_3', 'tournament_5', 'tournament_7', 'practice', 'putt_practice', 'pong'], 'the mode bar has every Solo mode');
+    assert.equal(bar.querySelector('[aria-checked=true]').dataset.mode, 'standard', 'the mode chosen in the steps');
+    assert.equal(bar.querySelector('[data-mode=standard] span span').textContent, 'Casual');
+    await click(bar.querySelector('[data-mode=tournament_5]'));
+    assert.equal($('[data-ui=solo-summary]').textContent, 'Tournament · 5 maps on Gaia', 'the bar changes the mode');
+    await click(bar.querySelector('[data-mode=standard]'));
+    assert.doesNotMatch(ticket.textContent, /Tap your|Esc closes/, 'no how-to text on the pass');
+    assert.equal(ticket.querySelector('[data-ui=menu-back]').textContent, 'Back', 'Back is on the pass');
+    assert.equal($$('[data-ui=color-picker]').length, 0, 'no inline palette: the badge opens it');
+    const name = $('[data-ui=ticket-name]');
+    assert.equal(name.maxLength, 12, 'names take at most 12 characters');
+    await act(async () => { const set = Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype, 'value').set; set.call(name, 'Ana'); name.dispatchEvent(new dom.window.Event('input', { bubbles: true })); });
+    assert.equal(ticket.querySelector('[data-ui=ticket-name]').value, 'Ana', 'the name is typed on the ticket');
+    const tag = vehicle.querySelector('[data-ui=lobby-passengers] [role=listitem]');
+    assert.equal(tag.textContent, 'Anayou', 'the ball carries a name tag');
+    await act(async () => heli.emit([{ seat: 0, x: 120, y: 80, r: 12 }], { width: 400, height: 300 }));
+    assert.match(tag.style.transform, /translate\(120\.0px, 34\.0px\) translate\(-50%, -100%\)/, 'the tag sits in the lane above its ball');
+    const badge = ticket.querySelector('[data-ui=my-color-badge]');
+    assert.equal(badge.dataset.color, '4');
+    await click(badge);
+    const picker = ticket.querySelector('[data-ui=lobby-color-picker]');
+    assert.ok(picker, 'the badge opens the party colour picker');
+    const swatches = [...picker.querySelectorAll('[data-ui=color-picker] [data-color]')];
+    assert.equal(swatches.length, 12, 'the same 12-colour palette');
+    assert.equal(swatches.filter(b => b.disabled).length, 0, 'alone: nothing is crossed out');
+    assert.doesNotMatch(picker.textContent, /Esc closes|taken/, 'no how-to text in the picker');
+    assert.equal(picker.querySelector('[aria-checked=true]').dataset.color, '4');
+    t.commands.length = 0;
+    await click(swatches[7]);
+    assert.deepEqual(t.commands, [{ type: 'set-color', color: 7 }], 'the same SET_COLOR command as the party lobby, saved the same way');
+    t.commands.length = 0;
+    await click(button('Play Solo'));
+    assert.deepEqual(t.commands, [{ type: 'play-solo', name: 'Ana', mode: 'standard', world: 'gaia' }], 'Play starts the chosen mode and world');
+    await click($('[data-ui=menu-back]'));
+    assert.equal($('[data-ui=solo-lobby]'), null, 'Back leaves the lobby');
+    assert.equal(heli.disposed, true, 'and disposes the 3D scene');
     await t.teardown();
   });
 
@@ -899,7 +980,7 @@ function fakeClock() {
     assert.equal(landing.querySelectorAll('[data-ui=color-picker]').length, 0, 'the colour is picked after Create or Join, before the lobby');
     assert.equal(landing.querySelector('[data-ui=party-code]'), null, 'opening Party shows no code');
     const [nameInput, codeInput] = landing.querySelectorAll('input');
-    assert.equal(nameInput.maxLength, 14); assert.equal(codeInput.maxLength, 12);
+    assert.equal(nameInput.maxLength, 12, 'names take at most 12 characters (owner, 2026-11-16)'); assert.equal(codeInput.maxLength, 12);
     assert.equal(codeInput.value, '', 'the Join box starts empty: the menu never makes up a code');
     assert.equal(codeInput.closest('form').dataset.ui, 'party-join');
     const create = button('Create party');
@@ -924,7 +1005,7 @@ function fakeClock() {
     await click([...landing.querySelectorAll('button')].find(b => b.textContent.startsWith('Casual')));
     await click(landing.querySelector('[data-ui=world-choose]'));
     assert.equal(landing.querySelector('input').value, '  Zed  ', 'the name carries from Party to Solo');
-    const solo = [...landing.querySelectorAll('button')].find(b => b.textContent === 'Play solo');
+    const solo = [...landing.querySelectorAll('button')].find(b => b.textContent === 'Play Solo');
     await click(solo);
     assert.deepEqual(t.commands, [
       { type: 'join', name: '  Zed  ', roomCode: 'Fun-Room!' },
@@ -940,7 +1021,7 @@ function fakeClock() {
     assert.equal(ui.parseJoinRequest({ multi: false, name: '' }).name, 'Player');
     assert.equal(ui.initialRoomCode('#room=AB-cd9'), 'abcd9');
     assert.equal(ui.parseJoinRequest({ multi: true, roomCode: 'abcdefghijklmnop' }).roomCode, 'abcdefghijkl', 'room codes keep 12 characters');
-    assert.equal(ui.sanitizeName('abcdefghijklmnopq'), 'abcdefghijklmn', 'names keep 14 characters');
+    assert.equal(ui.sanitizeName('abcdefghijklmnopq'), 'abcdefghijkl', 'names keep 12 characters (owner, 2026-11-16)');
     assert.equal(ui.initialRoomCode(''), '', 'no invite link: no code');
     assert.match(ui.connectErrorMessage('room-not-found'), /No party has that code/);
     await t.teardown();
@@ -953,10 +1034,11 @@ function fakeClock() {
     assert.ok(shown(lobby));
     assert.equal(lobby.querySelector('[data-ui=lobby-color-picker]'), null, 'the picker starts closed');
     await t.send({ type: 'JOIN_ROOM', playerId: 'g1', name: 'Ben', color: 3 });
-    const items = [...lobby.querySelectorAll('[data-ui=lobby-plane] [role=listitem]')];
+    const items = [...lobby.querySelectorAll('[data-ui=lobby-passengers] [role=listitem]')];
     assert.equal(items.length, 2);
-    assert.equal(items[0].querySelectorAll('button').length, 1, 'my badge is a button');
-    assert.equal(items[1].querySelectorAll('button').length, 0, "another player's badge is not");
+    assert.equal(lobby.querySelectorAll('[data-ui=lobby-passengers] button').length, 0, 'name tags are not buttons');
+    assert.equal(lobby.querySelectorAll('[data-ui=my-color-badge]').length, 1, 'my colour badge is on my ticket, the only one');
+    assert.ok(lobby.querySelector('[data-ui=lobby-ticket] [data-ui=my-color-badge]'));
     const badge = lobby.querySelector('[data-ui=my-color-badge]');
     assert.equal(badge.getAttribute('aria-haspopup'), 'dialog');
     assert.equal(badge.getAttribute('aria-expanded'), 'false');
@@ -998,41 +1080,72 @@ function fakeClock() {
     await t.teardown();
   });
 
-  await scenario('lobby: roster, host-only controls, solo-only modes disable for two players, Start sends SET_MODE then START_VOTING', async () => {
+  await scenario('lobby (owner, 2026-11-17): everyone votes for the mode with the tiles; voters show in the corner; the host starts the leading mode (a tie goes to the host); solo-only modes leave with a second player', async () => {
     const t = await setup();
     const lobby = t.within('[data-ui=room-lobby]');
     assert.ok(shown(lobby));
     assert.equal(lobby.querySelector('p').textContent, 'Room ABCD · 1 player · You are the host');
-    assert.deepEqual([...lobby.querySelectorAll('[data-ui=lobby-plane] [role=listitem]')].map(b => b.textContent), ['Ana (you)'], 'the lobby plane holds my ball');
+    assert.deepEqual([...lobby.querySelectorAll('[data-ui=lobby-passengers] [role=listitem]')].map(b => b.textContent), ['Anayou'], 'the lobby vehicle holds my ball, tagged as me');
+    assert.equal(lobby.querySelector('[data-ui=ticket-name]').value, 'Ana', 'my ticket names me');
+    {
+      // Rename on the pass (owner, 2026-11-17): typing sends nothing; leaving the field sends one SET_NAME with the cleaned name.
+      const field = lobby.querySelector('[data-ui=ticket-name]');
+      t.commands.length = 0;
+      await act(async () => { const set = Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype, 'value').set; set.call(field, '  Anabel '); field.dispatchEvent(new dom.window.Event('input', { bubbles: true })); });
+      assert.equal(t.commands.length, 0, 'no command per key');
+      await act(async () => { field.dispatchEvent(new dom.window.FocusEvent('focusout', { bubbles: true })); });
+      assert.deepEqual(t.commands, [{ type: ui.UiCommands.SET_NAME, name: 'Anabel' }], 'one rename when editing ends');
+      t.commands.length = 0;
+      await act(async () => { field.dispatchEvent(new dom.window.FocusEvent('focusout', { bubbles: true })); });
+      assert.equal(t.commands.length, 0, 'leaving the field again without typing sends nothing');
+    }
     assert.equal(lobby.querySelector('[data-ui=party-code] strong').textContent, 'ABCD');
-    const select = lobby.querySelector('select');
-    const setMode = async v => { await act(async () => { select.value = v; select.dispatchEvent(new dom.window.Event('change', { bubbles: true })); }); };
-    await setMode('practice');
-    assert.equal(select.value, 'practice');
+    assert.equal(lobby.querySelector('[data-ui=lobby-ticket] [data-ui=barcode]').dataset.value, 'ABCD', 'the barcode is the party code');
+    assert.equal(lobby.querySelector('[data-ui=lobby-ticket] dd').textContent, 'AB 23', 'easter egg: the flight is the code, airline AB, then C and D on a phone keypad');
+    const tile = v => lobby.querySelector(`[data-ui=mode-picker] [data-mode=${v}]`);
+    const chosen = () => lobby.querySelector('[data-ui=mode-picker] [aria-checked=true]')?.dataset.mode ?? null;
+    const leading = () => lobby.querySelector('[data-ui=mode-picker] [data-mode][data-leading]')?.dataset.mode;
+    const voters = v => [...tile(v).querySelectorAll('[data-ui=voters] [data-color]')].map(b => Number(b.dataset.color));
+    assert.equal(chosen(), null, 'no vote yet');
+    assert.equal(leading(), 'standard', 'with no votes the vote leads with Standard');
+    t.commands.length = 0;
+    await click(tile('practice'));
+    assert.deepEqual(t.commands, [{ type: 'session', event: { type: 'LOBBY_VOTE', mode: 'practice', world: null } }], 'a tile casts my vote');
+    await t.send({ type: 'LOBBY_VOTE', playerId: 'host', mode: 'practice', world: null });
+    assert.equal(chosen(), 'practice');
+    assert.deepEqual(voters('practice'), [t.session.getSnapshot().players.host.color], 'my ball sits in the corner of my choice');
     await t.send({ type: 'JOIN_ROOM', playerId: 'g1', name: 'Ben' });
     assert.equal(lobby.querySelector('p').textContent, 'Room ABCD · 2 players · You are the host');
-    assert.equal(select.value, 'standard', 'a second player resets a solo-only mode');
-    assert.deepEqual([...select.options].filter(o => o.disabled).map(o => o.value), ['practice', 'putt_practice']);
+    assert.deepEqual([...lobby.querySelectorAll('[data-ui=mode-picker] [data-mode]')].map(b => b.dataset.mode).filter(m => m.includes('practice')), [], 'solo-only practice leaves the tiles once a friend boards');
+    assert.equal(leading(), 'standard', 'a practice vote no longer counts');
     {
-      const plane = [...lobby.querySelectorAll('[data-ui=lobby-plane] [role=listitem]')];
+      const plane = [...lobby.querySelectorAll('[data-ui=lobby-passengers] [role=listitem]')];
       const players = t.session.getSnapshot().players;
-      assert.deepEqual(plane.map(b => [b.textContent, Number(b.dataset.color)]), [['Ana (you)', players.host.color], ['Ben', players.g1.color]], 'both balls stand on the plane in their own colours');
+      assert.deepEqual(plane.map(b => [b.textContent, Number(b.dataset.color), b.dataset.side]), [['Anayou', players.host.color, 'top'], ['Ben', players.g1.color, 'bottom']], 'both balls ride in their own colours; tags alternate top and bottom');
     }
     assert.ok(button('Copy invite'));
-    await setMode('tournament_3');
+    await t.send({ type: 'LOBBY_VOTE', playerId: 'g1', mode: 'tournament_5', world: null });
+    assert.equal(leading(), 'tournament_5', "Ben's vote leads");
+    assert.deepEqual(voters('tournament_5'), [t.session.getSnapshot().players.g1.color], "Ben's ball on his choice");
+    await t.send({ type: 'LOBBY_VOTE', playerId: 'host', mode: 'tournament_3', world: null });
+    assert.equal(leading(), 'tournament_3', 'one vote each: the tie goes to the host');
+    await t.send({ type: 'LOBBY_VOTE', playerId: 'g2', mode: 'tournament_7', world: null });
+    assert.equal(t.session.getSnapshot().lobbyVotes.g2, undefined, 'only players in the room vote');
+    const start = lobby.querySelector('[data-ui=lobby-ticket] [data-ui=start-game]');
+    assert.ok(start, 'Start Game is on the pass');
     t.commands.length = 0;
-    await click(button('Start Game'));
+    await click(start);
     assert.deepEqual(t.commands.map(c => c.event), [{ type: 'SET_MODE', mode: 'tournament_3' }, { type: 'START_VOTING' }]);
     assert.equal(t.session.getSnapshot().phase, 'select');
     t.commands.length = 0;
     await click(button('Leave room'));
     assert.deepEqual(t.commands, [{ type: 'leave' }], 'Leave room on the voting screen');
     await t.teardown();
-    // Guest view: no mode choice, no Start; solo: no invite.
+    // Guest view: the tiles to vote with, no Start; solo: no invite and no votes.
     const g = await setup({ localId: 'host', isHost: false });
-    assert.equal(g.within('[data-ui=room-lobby] label').hidden, true);
+    assert.ok(g.within('[data-ui=room-lobby] [data-ui=mode-picker]'), 'guests vote with the same tiles');
     assert.equal(button('Start Game'), undefined);
-    assert.equal(g.within('[data-ui=room-lobby] p:nth-of-type(2)').textContent, 'The host will pick the mode and start map voting.');
+    assert.equal(g.within('[data-ui=room-lobby] [data-ui=lobby-status]').textContent, 'Vote for the mode and the planet; the host starts the game.');
     await act(async () => g.store.setLocal({ roomCode: '' }));
     assert.equal(button('Copy invite'), undefined);
     assert.equal(g.within('[data-ui=room-lobby] p').textContent, 'Solo practice');
@@ -1043,41 +1156,172 @@ function fakeClock() {
     const t = await setup();
     const lobby = t.within('[data-ui=room-lobby]');
     assert.equal(lobby.querySelector('[data-ui=no-powerups]'), null, 'no lobby toggle: rules are fixed when the party is created');
-    const modes = () => [...lobby.querySelectorAll('select option')].map(o => o.value);
+    const modes = () => [...lobby.querySelectorAll('[data-ui=mode-picker] [data-mode]')].map(b => b.dataset.mode);
     assert.ok(!modes().includes('pong'), 'one player: no Putt Pong');
     await t.send({ type: 'JOIN_ROOM', playerId: 'g1', name: 'Ben' });
     assert.ok(modes().includes('pong'), 'exactly two players: Putt Pong is offered');
-    const select = lobby.querySelector('select');
-    await act(async () => { select.value = 'pong'; select.dispatchEvent(new dom.window.Event('change', { bubbles: true })); });
+    await t.send({ type: 'LOBBY_VOTE', playerId: 'host', mode: 'pong', world: null });
+    assert.equal(lobby.querySelector('[data-ui=mode-picker] [data-leading]').dataset.mode, 'pong');
     await t.send({ type: 'JOIN_ROOM', playerId: 'g2', name: 'Cy' });
     assert.ok(!modes().includes('pong'), 'three players: Putt Pong is gone');
-    assert.equal(select.value, 'standard', 'a Pong choice falls back to Standard');
+    assert.equal(lobby.querySelector('[data-ui=mode-picker] [data-leading]').dataset.mode, 'standard', 'a Pong vote falls back to Standard');
     t.commands.length = 0;
     await click(button('Start Game'));
     assert.deepEqual(t.commands.map(c => c.event), [{ type: 'SET_MODE', mode: 'standard' }, { type: 'START_VOTING' }], 'Start never sends SET_POWERUPS');
     await t.teardown();
     const solo = await setup({ roomCode: '' });
-    assert.ok([...solo.within('[data-ui=room-lobby]').querySelectorAll('select option')].some(o => o.value === 'pong'), 'solo keeps Putt Pong as practice');
+    assert.ok([...solo.within('[data-ui=room-lobby]').querySelectorAll('[data-ui=mode-picker] [data-mode]')].some(b => b.dataset.mode === 'pong'), 'solo keeps Putt Pong as practice');
     await solo.teardown();
   });
 
-  await scenario('lobby plane (VIS-M3): display.lobby reaches the plane, live from the development tuner', async () => {
+  await scenario('lobby vehicle (owner, 2026-11-16): the plane for Gaia, the host switches the ticket to Ares and everyone gets the rocket; tags follow their balls, alternating top and bottom; names cut to 12', async () => {
+    const scenes = [];
+    const createLobbyScene = opts => { const sc = { opts, vehicle: opts.vehicle, colors: null, stats: { webgl: true }, setVehicle(k) { sc.vehicle = k; }, setPassengers(c) { sc.colors = c; }, onAnchors(fn) { sc.emit = fn; }, start() {}, dispose() { sc.disposed = true; } }; scenes.push(sc); return sc; };
     const { createDisplay } = await import('../src/shared/display.js');
     const live = structuredClone(createDisplay());
-    live.lobby.ballSize = 80; live.lobby.tilt = 30; live.lobby.spacing = 1.5; live.lobby.bob = 0;
-    const t = await setup({ mountProps: { display: live } });
-    const plane = t.within('[data-ui=lobby-plane]');
-    assert.equal(plane.style.getPropertyValue('--lobby-ball'), '80px');
-    assert.equal(plane.style.getPropertyValue('--lobby-tilt'), '30deg');
-    assert.equal(plane.style.getPropertyValue('--lobby-spacing'), '1.5');
-    assert.equal(plane.style.getPropertyValue('--lobby-bob'), '0px');
-    live.lobby.tilt = 10;
-    await act(async () => { await new Promise(r => setTimeout(r, 40)); });
-    assert.equal(plane.style.getPropertyValue('--lobby-tilt'), '10deg', 'a live display object updates the plane without a re-render');
+    const t = await setup({ mountProps: { createLobbyScene, display: live } });
+    const lobby = t.within('[data-ui=room-lobby]');
+    assert.equal(scenes.length, 1);
+    assert.equal(scenes[0].opts.display, live, 'the scene reads the live display (display.lobby)');
+    assert.equal(scenes[0].vehicle, 'plane', 'a party bound for Gaia takes the plane');
+    await t.send({ type: 'JOIN_ROOM', playerId: 'g1', name: 'Bartholomew-the-3rd'.slice(0, 14) });
+    const sc = scenes[0];
+    assert.equal(sc.colors.length, 8, 'eight seats');
+    assert.equal(sc.colors.filter(Boolean).length, 2, 'two balls aboard');
+    const tags = () => [...lobby.querySelectorAll('[data-ui=lobby-passengers] [role=listitem]')];
+    assert.equal(tags()[1].querySelector('span + span').textContent, 'Bartholomew-', 'a long name is cut to 12 characters');
+    await act(async () => sc.emit([{ seat: 0, x: 100, y: 120, r: 10 }, { seat: 1, x: 160, y: 120, r: 10 }], { width: 600, height: 300 }));
+    assert.match(tags()[0].style.transform, /translate\(100\.0px, 76\.0px\) translate\(-50%, -100%\)/, 'seat 1: the tag sits in the lane above the balls');
+    assert.match(tags()[1].style.transform, /translate\(160\.0px, 186\.0px\) translate\(-50%, 0\)/, 'seat 2: the tag hangs in the lane below the vehicle');
+    const lines = [...lobby.querySelectorAll('[data-ui=lobby-vehicle] svg path')];
+    assert.equal(lines[0].getAttribute('d'), 'M100.0 76.0 L100.0 107.0', 'a leader line joins each tag to its ball');
+    const manifest = [...lobby.querySelectorAll('[data-ui=lobby-manifest] li')];
+    assert.equal(manifest.length, 8, 'the manifest lists every seat');
+    assert.deepEqual(manifest.slice(0, 3).map(li => li.textContent), ['01AnaHostYou', '02Bartholomew-', '03Open seat'], 'who is aboard, the host and me, then open seats');
+    const ticket = lobby.querySelector('[data-ui=lobby-ticket]');
+    const worlds = [...ticket.querySelectorAll('[data-ui=destination-pick] button')];
+    assert.deepEqual(worlds.map(b => b.dataset.world), ['gaia', 'luna', 'ares'], 'everyone votes for the destination on the ticket');
+    assert.equal(ticket.querySelector('[data-gate]').textContent, 'Cloud 9', 'the plane boards at Cloud 9');
+    t.commands.length = 0;
+    await click(worlds[2]);
+    assert.deepEqual(t.commands, [{ type: 'session', event: { type: 'LOBBY_VOTE', mode: null, world: 'ares' } }]);
+    await t.send({ type: 'LOBBY_VOTE', playerId: 'host', mode: null, world: 'ares' });
+    assert.equal(t.session.getSnapshot().destination, 'ares', 'the planet follows the vote');
+    assert.equal(worlds[2].getAttribute('aria-checked'), 'true', 'my vote is checked');
+    assert.deepEqual([...worlds[2].querySelectorAll('[data-ui=voters] [data-color]')].map(b => Number(b.dataset.color)), [t.session.getSnapshot().players.host.color], 'my ball sits on my planet');
+    assert.equal(sc.vehicle, 'rocket', 'Ares takes the rocket');
+    assert.equal(ticket.querySelector('[data-ui=ticket-destination]').textContent, 'Ares');
+    assert.equal(ticket.querySelector('[data-ui=ticket-title]').textContent, 'Rocket Boarding Pass');
+    assert.equal(ticket.querySelector('[data-ui=ticket-code]').textContent, 'ARS');
+    assert.match(ticket.querySelector('[data-gate]').textContent, /^Canyon [1-9]$/, 'the rocket to Ares launches from a canyon');
+    assert.equal(ticket.querySelector('dt:nth-of-type(1)') && [...ticket.querySelectorAll('dt')][1].textContent, 'Launch pad');
+    assert.equal(lobby.querySelector('[data-ui=lobby-vehicle]').dataset.vehicle, 'rocket');
+    const sky = t.within('[data-ui=planet-stage]');
+    assert.ok(sky?.hasAttribute('data-low'), 'the rocket flies over the planet: the sky puts it low');
+    assert.ok(ticket.querySelector('[data-ui=pass-leave]'), 'Leave room is on the pass');
+    await t.send({ type: 'LOBBY_VOTE', playerId: 'g1', mode: null, world: 'luna' });
+    assert.equal(t.session.getSnapshot().destination, 'ares', 'one vote each: the tie goes to the host');
+    assert.equal(worlds[1].querySelectorAll('[data-ui=voters] [data-color]').length, 1, "Ben's ball sits on Luna");
+    await t.send({ type: 'SET_DESTINATION', playerId: 'g1', world: 'luna' });
+    assert.equal(t.session.getSnapshot().destination, 'ares', 'a guest cannot set it outright');
+    await t.send({ type: 'LOBBY_VOTE', playerId: 'host', mode: null, world: 'mars' });
+    assert.equal(t.session.getSnapshot().lobbyVotes.host.world, 'ares', 'an unknown world is refused');
+    await t.send({ type: 'LOBBY_VOTE', playerId: 'host', mode: null, world: 'luna' });
+    assert.equal(t.session.getSnapshot().destination, 'luna', 'two votes for Luna');
+    assert.match(ticket.querySelector('[data-gate]').textContent, /^Crater [1-9]$/, 'to Luna: a crater');
+    assert.equal(sc.vehicle, 'rocket');
+    await t.send({ type: 'LOBBY_VOTE', playerId: 'host', mode: null, world: 'gaia' });
+    assert.equal(t.session.getSnapshot().destination, 'gaia', 'a tie again: the host');
+    assert.equal(sc.vehicle, 'plane', 'back to the plane');
     await t.teardown();
-    const shipped = await setup();
-    assert.equal(shipped.within('[data-ui=lobby-plane]').style.getPropertyValue('--lobby-ball'), '56px', 'the shipped defaults apply');
-    await shipped.teardown();
+    assert.equal(sc.disposed, true, 'leaving disposes the scene');
+    const guest = await setup({ localId: 'g1', isHost: false });
+    assert.ok(guest.within('[data-ui=destination-pick]'), 'guests vote for the destination too');
+    await guest.teardown();
+  });
+
+  await scenario('pass barcode (owner, 2026-11-17): the bars are a real Code 39 barcode of the party code', async () => {
+    const { code39 } = await import('../src/ui/code39.js');
+    const { bars, width, text } = code39('upcpw5za');
+    assert.equal(text, 'UPCPW5ZA', 'letters are upper-cased');
+    // Decode the bars back: every character is 5 bars and 4 gaps, 3 of the 9 wide, then a narrow gap.
+    const elements = [];
+    bars.forEach(([x, w], i) => { elements.push(w); const next = bars[i + 1]; if (next) elements.push(next[0] - x - w); });
+    const chars = [];
+    for (let i = 0; i < elements.length; i += 10) chars.push(elements.slice(i, i + 9).map(w => (w > 1.5 ? '1' : '0')).join(''));
+    assert.ok(chars.every(c => c.split('').filter(b => b === '1').length === 3), 'three wide elements per character');
+    assert.equal(chars[0], '010010100', 'starts with *');
+    assert.equal(chars.at(-1), '010010100', 'ends with *');
+    assert.equal(chars.length, 10, 'start, eight characters, stop');
+    assert.equal(width, 10 * 13.5 + 9, 'ten characters of 13.5 units with narrow gaps');
+    assert.equal(new Set(chars.slice(1, -1)).size, 7, 'U, P, C, W, 5, Z, A: seven different patterns (P twice)');
+    assert.equal(code39('a*b!').text, 'AB', 'characters Code 39 cannot encode are dropped');
+  });
+
+  await scenario('lobby seats (owner, 2026-11-17): seat numbers follow the order players joined, the server\'s join order when it sends one', async () => {
+    const { lobbyView } = await import('../src/ui/model.js');
+    const p = (id, name) => ({ id, name, color: 0, connected: true });
+    const room = { phase: 'lobby', players: { zed: p('zed', 'Zed'), ana: p('ana', 'Ana'), ben: p('ben', 'Ben') }, roster: [], hostId: 'ana' };
+    assert.deepEqual(lobbyView(room, { id: 'ben', roomCode: 'abcd' }, 0, []).roster.map(r => r.name), ['Zed', 'Ana', 'Ben'], 'a peer room: the order the room added them');
+    const online = { ...room, joinOrder: ['ana', 'ben', 'zed'] };
+    assert.deepEqual(lobbyView(online, { id: 'ben', roomCode: 'abcd' }, 0, []).roster.map(r => r.name), ['Ana', 'Ben', 'Zed'], 'an online room: the server\'s join order');
+    assert.deepEqual(lobbyView({ ...online, joinOrder: ['ben'] }, { id: 'ben', roomCode: 'abcd' }, 0, []).roster.map(r => r.name), ['Ben', 'Zed', 'Ana'], 'anyone missing from the order keeps the room order after it');
+  });
+
+  await scenario('lobby scene (owner, 2026-11-16): helicopter, plane and rocket models; balls only in occupied seats; anchors every frame; live display; disposal', async () => {
+    const THREE = await import('three');
+    const { createLobbyScene } = await import('../src/render/lobby-scene.js');
+    const { makeLobbyVehicle, lobbyVehicleFor, LOBBY_VEHICLES } = await import('../src/render/lobby-models.js');
+    const { createDisplay } = await import('../src/shared/display.js');
+    for (const kind of LOBBY_VEHICLES) {
+      const v = makeLobbyVehicle(THREE, kind);
+      assert.equal(v.seats.length, kind === 'helicopter' ? 1 : 8, kind + ' seats');
+      assert.ok(v.body.attributes.color.count === v.body.attributes.position.count && v.drop > 0 && v.glass, kind + ' is one vertex-coloured body under glass');
+      const top = v.seats.map(p => p.y);
+      assert.ok(top.every(y => Math.abs(y - top[0]) < 1e-9), kind + ': every seat at one height');
+    }
+    assert.equal(makeLobbyVehicle(THREE, 'helicopter').spinners.length, 2, 'main and tail rotors');
+    assert.equal(makeLobbyVehicle(THREE, 'plane').spinners.length, 2, 'two jet fans');
+    assert.ok(makeLobbyVehicle(THREE, 'rocket').flame, 'the rocket has a flame');
+    assert.deepEqual([lobbyVehicleFor({ solo: true, destination: 'ares' }), lobbyVehicleFor({ destination: 'gaia' }), lobbyVehicleFor({ destination: 'ares' }), lobbyVehicleFor({ destination: 'luna' }), lobbyVehicleFor({})], ['helicopter', 'plane', 'rocket', 'rocket', 'plane']);
+    const sd = new JSDOM('<canvas></canvas>', { pretendToBeVisual: true });
+    sd.window.HTMLCanvasElement.prototype.getContext = () => new Proxy({}, { get: (_, k) => (k === 'createRadialGradient' ? () => ({ addColorStop() {} }) : () => {}), set: () => true });
+    const canvas = sd.window.document.querySelector('canvas');
+    Object.defineProperty(canvas, 'clientWidth', { value: 600 }); Object.defineProperty(canvas, 'clientHeight', { value: 300 });
+    let frames = 0, disposed = 0;
+    const createWebGLRenderer = () => ({ render() { frames++; }, setPixelRatio() {}, setSize() {}, setClearColor() {}, dispose() { disposed++; }, capabilities: { getMaxAnisotropy: () => 1 } });
+    const display = structuredClone(createDisplay());
+    const lobby = createLobbyScene({ THREE, canvas, display, vehicle: 'plane', win: sd.window, createWebGLRenderer });
+    let anchors = null;
+    lobby.onAnchors(a => { anchors = a; });
+    lobby.setPassengers(['#ff4fb8', null, '#3e8ef7', null, null, null, null, null]);
+    assert.equal(lobby.stats.passengers, 2, 'balls only in occupied seats');
+    lobby.start();
+    await new Promise(r => setTimeout(r, 120));
+    assert.ok(frames > 1, 'it animates');
+    assert.deepEqual(anchors.map(a => a.seat), [0, 2], 'one anchor per ball, by seat');
+    assert.ok(anchors.every(a => a.x > 0 && a.x < 600 && a.y > 0 && a.y < 300 && a.r > 2), 'each ball lands inside the frame');
+    assert.ok(anchors[0].x < anchors[1].x, 'seats run left to right');
+    const near = anchors[0].r;
+    display.lobby.zoom = 1.6;
+    await new Promise(r => setTimeout(r, 60));
+    assert.ok(anchors[0].r > near * 1.3, 'display.lobby.zoom brings the vehicle closer, live');
+    lobby.setVehicle('rocket');
+    assert.equal(lobby.stats.vehicle, 'rocket');
+    assert.equal(lobby.stats.passengers, 2, 'the balls move to the new vehicle');
+    await new Promise(r => setTimeout(r, 120));
+    assert.ok(lobby.stats.swapping, 'the switch glides: the plane leaves while the rocket arrives (owner, 2026-11-17)');
+    for (let k = 0; k < 40 && lobby.stats.swapping; k++) await new Promise(r => setTimeout(r, 100));
+    assert.equal(lobby.stats.swapping, false, 'and settles within a few seconds');
+    lobby.dispose();
+    const after = frames;
+    await new Promise(r => setTimeout(r, 60));
+    assert.equal(frames, after, 'no frames after dispose');
+    assert.equal(disposed, 1);
+    const none = createLobbyScene({ THREE, canvas, display, win: sd.window, createWebGLRenderer: () => { throw new Error('no WebGL'); } });
+    assert.equal(none.stats.webgl, false, 'without WebGL it stays inert');
+    none.setPassengers(['#fff']); none.start(); none.dispose();
+    sd.window.close();
   });
 
   await scenario('tournament: voting countdown, votes, start countdown, putt banners, HUD, hole in one, map results and the champion', async () => {
@@ -1098,7 +1342,7 @@ function fakeClock() {
     await t.send({ type: 'CAST_VOTE', playerId: 'g1', mapIndex: 8 });
     assert.equal(t.session.getSnapshot().phase, 'play');
     assert.ok(shown(t.within('[data-ui=room-lobby]')), 'countdown shows on the lobby card');
-    assert.equal(t.within('[data-ui=room-lobby] p:nth-of-type(2)').textContent, 'Dune Serpent · putt 1/6 starts in 3…');
+    assert.equal(t.within('[data-ui=room-lobby] [data-ui=lobby-status]').textContent, 'Dune Serpent · putt 1/6 starts in 3…');
     await act(async () => t.store.setLocal({ mode: 'play', strokes: 0 }));
     await t.step(2600);
     assert.ok(shown(t.within('[data-ui=game]')));
@@ -1367,7 +1611,7 @@ function fakeClock() {
     const t = await setup({ hostName: '<img src=x>' });
     await t.send({ type: 'JOIN_ROOM', playerId: 'g1', name: '<b>Ben</b>' });
     assert.equal(t.root.querySelectorAll('img, b b').length, 0);
-    assert.ok(t.within('[data-ui=room-lobby]').textContent.includes('<img src=x> (you)'));
+    assert.ok(t.within('[data-ui=room-lobby]').textContent.includes('<img src=x>'));
     assert.ok(t.within('[data-ui=room-lobby]').textContent.includes('<b>Ben</b>'));
     await t.teardown();
   });
@@ -1459,7 +1703,7 @@ function fakeClock() {
     assert.ok(t.within('[data-ui=tie-picker]'), 'tie picker mounted in lobby');
     const options = [...t.within('[data-ui=tie-picker]').querySelectorAll('[data-ui=tie-option]')];
     assert.equal(options.length, 2);
-    assert.match(t.within('[data-ui=room-lobby] p:nth-of-type(2)').textContent, /^Vote tied! Random pick: /);
+    assert.match(t.within('[data-ui=room-lobby] [data-ui=lobby-status]').textContent, /^Vote tied! Random pick: /);
     await t.step(2600);
     await t.teardown();
   });

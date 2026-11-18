@@ -1,0 +1,35 @@
+/* Party game mode tiles (owner, 2026-11-16, 2026-11-17): chunky comic buttons in one row, each in its mode's colour with its icon; the
+   chosen one is pressed in with a check and a glow. The tournament lengths are chips inside one Tournament tile. */
+.picker{display:flex;flex-wrap:nowrap;align-items:stretch;gap:10px;min-width:0}
+.picker[hidden]{display:none}
+.tile{position:relative;display:flex;align-items:center;gap:8px;margin:0;padding:7px 24px 7px 8px;color:var(--ink);cursor:pointer;text-align:left;text-transform:none;text-shadow:none;
+  background:linear-gradient(color-mix(in srgb,var(--tone) 28%,#fff),color-mix(in srgb,var(--tone) 52%,#fff));border:3px solid var(--ink);border-radius:16px;box-shadow:0 5px 0 var(--ink);
+  transition:translate .1s,box-shadow .1s,filter .15s,background .15s}
+.tile:hover{translate:0 -2px;box-shadow:0 7px 0 var(--ink);filter:saturate(1.2)}
+.tile[aria-checked=true],.group[data-on]{background:var(--tone);color:#fff;translate:0 4px;box-shadow:0 1px 0 var(--ink),0 0 0 4px #fff,0 0 20px 6px color-mix(in srgb,var(--tone) 70%,transparent)}
+.tile[aria-checked=true]::after,.group[data-on]::after{content:'✓';position:absolute;top:-13px;right:-13px;display:grid;place-items:center;width:24px;height:24px;font:900 15px var(--font);color:var(--ink);background:#fff;border:3px solid var(--ink);border-radius:50%}
+.icon{flex:none;width:34px;height:34px;padding:2px;background:#fff;border:3px solid var(--ink);border-radius:50%;pointer-events:none}
+.words{display:flex;flex-direction:column;gap:3px;min-width:0;pointer-events:none}
+.title{font:900 16px/1 var(--font);letter-spacing:.4px;white-space:nowrap}
+.tile[aria-checked=true] .title,.group[data-on] .title{text-shadow:1px 1px 0 var(--ink)}
+.tile small{font:900 11px var(--font);letter-spacing:1px;text-transform:uppercase;opacity:.85;white-space:nowrap}
+/* The Tournament tile: its lengths are small round chips. */
+.group{cursor:default}
+.chips{display:flex;gap:5px;pointer-events:auto}
+.chip{display:grid;place-items:center;min-width:28px;height:24px;margin:0;padding:0 7px;font:900 14px var(--font);color:var(--ink);text-shadow:none;cursor:pointer;
+  background:#fff;border:2px solid var(--ink);border-radius:999px;box-shadow:0 2px 0 var(--ink);transition:translate .1s,background .15s}
+.chip:hover{background:color-mix(in srgb,var(--tone) 35%,#fff)}
+.chip[aria-checked=true]{background:var(--yellow);translate:0 2px;box-shadow:0 0 0 var(--ink)}
+/* Votes (party, owner 2026-11-17): each voter's ball sits in the corner of their choice; the choice the vote leads with wears a star. */
+.chip{position:relative}
+.voters{position:absolute;top:-12px;right:-8px;display:flex;flex-direction:row-reverse;pointer-events:none}
+.voter{width:20px;height:20px;margin-left:-7px;border-radius:50%;border:2px solid var(--ink);box-shadow:0 2px 0 var(--ink);animation:hop .35s cubic-bezier(.2,1.6,.4,1) both;
+  background:radial-gradient(circle at 34% 30%,rgba(255,255,255,.85) 0 16%,transparent 17%),var(--ball)}
+.mine{box-shadow:0 0 0 2px #fff,0 2px 0 3px var(--ink)}
+.chip .voters{top:auto;bottom:-11px;right:50%;translate:50% 0}
+.chip .voter{width:14px;height:14px;margin-left:-5px;border-width:2px;box-shadow:none}
+.picker[data-voting] .tile::after{display:none}
+.picker[data-voting] .tile[data-leading]::before,.picker[data-voting] .group[data-leading]::before{content:'★';position:absolute;top:-12px;left:-10px;display:grid;place-items:center;width:24px;height:24px;
+  font:900 14px/1 var(--font);color:var(--ink);background:var(--yellow);border:3px solid var(--ink);border-radius:50%;animation:hop .35s cubic-bezier(.2,1.6,.4,1) both}
+@keyframes hop{from{scale:0;translate:0 6px}to{scale:1;translate:0 0}}
+@media (prefers-reduced-motion:reduce){.tile,.chip{transition:none}.voter,.tile::before{animation:none}}

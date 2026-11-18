@@ -60,7 +60,11 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
           const setter = Object.getOwnPropertyDescriptor(win.w.HTMLInputElement.prototype, 'value').set;
           await act(async () => { setter.call(input, value); input.dispatchEvent(new win.w.Event('input', { bubbles: true })); });
         },
-        async select(value) { const s = doc.querySelector('[data-ui=room-lobby] select'); await act(async () => { s.value = value; s.dispatchEvent(new win.w.Event('change', { bubbles: true })); }); },
+        async select(value) {
+          const tile = () => doc.querySelector(`[data-ui=room-lobby] [data-ui=mode-picker] [data-mode=${value}]`);
+          await act(async () => { tile().click(); });
+          await until(() => tile()?.getAttribute('aria-checked') === 'true', 3000, name + ' mode vote ' + value); // a party vote travels to the room and back
+        },
         /** Main menu (VIS-M2): open Solo, Party, Custom or Settings, stepping back first from another sub-menu. */
         async menu(id) {
           const view = doc.querySelector('[data-ui=landing]')?.dataset.view;
@@ -68,7 +72,7 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
           if (view && view !== 'home') await c.click(doc.querySelector('[data-ui=menu-back]'));
           await c.click(doc.querySelector(`[data-menu=${id}]`));
         },
-        /** Solo steps (VIS-M4): pick the mode and Gaia, name, Play solo; lands on the map select with no lobby. */
+        /** Solo steps (VIS-M4): pick the mode and Gaia, name, Play Solo; lands on the map select with no lobby. */
         async solo(mode = 'standard') {
           await c.menu('solo');
           const [kind, sub] = { standard: ['Casual'], tournament_3: ['Tournament', '3 maps'], tournament_5: ['Tournament', '5 maps'], tournament_7: ['Tournament', '7 maps'], practice: ['Practice', 'Whole map'], putt_practice: ['Practice', 'One putt'] }[mode];
@@ -78,7 +82,7 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
           if (sub) await c.click([...doc.querySelectorAll('[data-ui=solo-steps] button')].find(b => (b.getAttribute('aria-label') ?? b.textContent).startsWith(sub) && shown(b)));
           await c.click(doc.querySelector('[data-ui=solo-steps] [data-ui=world-choose]'));
           await c.fill(doc.querySelector('[data-ui=landing] input'), name);
-          await c.click('Play solo');
+          await c.click('Play Solo');
           await until(() => c.shown('[data-ui=map-select]'), 2000, name + ' map select');
         },
         /** Party menu: Create; the party opens straight on the lobby. Returns the code the party was given. */
@@ -283,8 +287,8 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
     const colorOf = id => ana.snapshot.players[id].color;
     assert.notEqual(colorOf(anaId), colorOf(benId), 'arrivals get distinct colours');
     // Ben opens the picker from his own badge: Ana's colour is crossed out; his pick reaches the room and Ana's picker live.
-    const badges = c => [...c.doc.querySelectorAll('[data-ui=lobby-plane] [role=listitem] button')];
-    assert.equal(badges(ben).length, 1, 'only my own badge is a button');
+    const badges = c => [...c.doc.querySelectorAll('[data-ui=room-lobby] [data-ui=my-color-badge]')];
+    assert.equal(badges(ben).length, 1, 'only my own badge, on my ticket, is a button');
     await ben.click(ben.$('[data-ui=my-color-badge]'));
     const swatch = (c, i) => c.$(`[data-ui=lobby-color-picker] [data-ui=color-picker] button[data-color="${i}"]`);
     assert.equal(swatch(ben, colorOf(anaId)).disabled, true, "Ana's colour is crossed out");
@@ -296,12 +300,12 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
     await W.until(() => swatch(ana, pick)?.disabled === true, 3000, "Ana's open picker crosses out Ben's new colour");
     assert.equal(swatch(ana, before).disabled, false, "Ben's old colour is free again for Ana");
     for (const c of [ana, ben]) {
-      const balls = [...c.doc.querySelectorAll('[data-ui=lobby-plane] [role=listitem]')].map(b => Number(b.dataset.color));
+      const balls = [...c.doc.querySelectorAll('[data-ui=lobby-passengers] [role=listitem]')].map(b => Number(b.dataset.color));
       assert.deepEqual(balls.sort((a, b) => a - b), [colorOf(anaId), pick].sort((a, b) => a - b), c.name + ': both balls on the plane, in their colours');
     }
-    assert.ok([...ana.doc.querySelectorAll('[data-ui=room-lobby] select option')].some(o => o.value === 'pong'), 'two players: Putt Pong is offered');
+    assert.ok([...ana.doc.querySelectorAll('[data-ui=room-lobby] [data-ui=mode-picker] [data-mode]')].some(b => b.dataset.mode === 'pong'), 'two players: Putt Pong is offered');
     await cy.joinCode(code);
-    assert.ok(![...ana.doc.querySelectorAll('[data-ui=room-lobby] select option')].some(o => o.value === 'pong'), 'three players: it is not');
+    assert.ok(![...ana.doc.querySelectorAll('[data-ui=room-lobby] [data-ui=mode-picker] [data-mode]')].some(b => b.dataset.mode === 'pong'), 'three players: it is not');
     const colors = Object.values(ana.snapshot.players).map(p => p.color);
     assert.equal(new Set(colors).size, 3, 'colours are unique in the party');
     for (const c of [ana, ben, cy]) await c.dispose();
@@ -317,7 +321,7 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
     assert.ok(ana.shown('[data-ui=map-select]'));
     await ana.click(ana.$('[data-ui=map-select] button[data-v]'));
     await W.run(100);
-    assert.equal(ana.text('[data-ui=room-lobby] p:nth-of-type(2)'), 'Switchback Garden · putt 1/6 starts in 3…');
+    assert.equal(ana.text('[data-ui=room-lobby] [data-ui=lobby-status]'), 'Switchback Garden · putt 1/6 starts in 3…');
     await W.until(() => ana.shown('[data-ui=game]'), 5000, 'game screen');
     assert.equal(ana.text('[data-ui=hud-info]'), 'Switchback Garden · PUTT 1/6 · PAR 2 · STROKES 0 · 2:00');
     assert.equal(W.renderers.instances.length, 1, 'one WebGL renderer for the app');
@@ -509,7 +513,8 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
     await W.run(300);
     assert.equal(ana.text('[data-ui=room-lobby] p'), 'Room ' + W.code('party').toUpperCase() + ' · 4 players · You are the host');
     assert.equal(ben.text('[data-ui=room-lobby] p'), 'Room ' + W.code('party').toUpperCase() + ' · 4 players · Waiting for host');
-    assert.equal(ben.$('[data-ui=room-lobby] label').hidden, true, 'guests cannot choose the mode');
+    assert.ok(ben.$('[data-ui=room-lobby] [data-ui=mode-picker]'), 'guests vote for the mode too');
+    assert.equal(ben.$('[data-ui=room-lobby] [data-ui=start-game]'), null, 'only the host starts');
     await ana.select('tournament_3');
     await ana.click('Start Game');
     await W.until(() => guests.every(g => g.shown('[data-ui=map-select]')), 3000, 'guests voting');

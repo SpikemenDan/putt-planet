@@ -5,6 +5,18 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    # A manual run can narrow the browser jobs to one browser and one spec file, to retry a single failing test
+    # quickly. Pull requests, merges and the nightly run always run every browser and every spec.
+    inputs:
+      browser:
+        description: 'Browser job to run (all, chromium, firefox or webkit)'
+        type: choice
+        options: [all, chromium, firefox, webkit]
+        default: all
+      spec:
+        description: 'Optional spec file under tests/browser/, for example tests/browser/lifecycle.spec.cjs (empty = every spec)'
+        type: string
+        default: ''
   # Nightly full run, including the tests tagged @slow that pull requests and merges skip.
   schedule:
     - cron: '17 3 * * *'
@@ -114,7 +126,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        browser: [chromium, firefox, webkit]
+        browser: ${{ fromJSON((github.event_name == 'workflow_dispatch' && inputs.browser != 'all') && format('["{0}"]', inputs.browser) || '["chromium","firefox","webkit"]') }}
     steps:
       - name: Check out the proposed changes
         uses: actions/checkout@v7
@@ -175,13 +187,23 @@ jobs:
           # Tests tagged @slow (for example nine real browser windows at once) run nightly and on manual runs only.
           SKIP='join repro'
           if [ "${{ github.event_name }}" = pull_request ] || [ "${{ github.event_name }}" = push ]; then SKIP='join repro|@slow'; fi
+          # A manual run may name one spec file; it must be an existing file under tests/browser/.
+          set --
+          if [ -n "$SPEC" ]; then
+            case "$SPEC" in
+              tests/browser/*.spec.cjs) [ -f "$SPEC" ] || { echo "No such spec: $SPEC"; exit 1; } ;;
+              *) echo "Spec must be a tests/browser/*.spec.cjs file: $SPEC"; exit 1 ;;
+            esac
+            set -- "$SPEC"
+          fi
           if [ "${{ matrix.browser }}" != webkit ]; then
-            xvfb-run -a --server-args="-screen 0 1280x1024x24" npx playwright test --grep-invert "$SKIP" --project=${{ matrix.browser }} --headed
+            xvfb-run -a --server-args="-screen 0 1280x1024x24" npx playwright test "$@" --grep-invert "$SKIP" --project=${{ matrix.browser }} --headed
           else
-            npx playwright test --grep-invert "$SKIP" --project=${{ matrix.browser }}
+            npx playwright test "$@" --grep-invert "$SKIP" --project=${{ matrix.browser }}
           fi
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
+          SPEC: ${{ github.event_name == 'workflow_dispatch' && inputs.spec || '' }}
       - name: Upload the Playwright report on failure
         if: failure() && steps.scope.outputs.docs-only != 'true'
         uses: actions/upload-artifact@v7

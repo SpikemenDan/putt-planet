@@ -273,6 +273,9 @@ async function run() {
     assert.equal(validCommand({ type: 'SET_COLOR', color: 3 }, false), true, 'any member may choose a colour');
     assert.equal(validCommand({ type: 'SET_COLOR', color: -2 }, false), false);
     assert.equal(validCommand({ type: 'SET_COLOR' }, false), false);
+    assert.equal(validCommand({ type: 'SET_NAME', name: 'Zed' }, false), true, 'any member may rename');
+    assert.equal(validCommand({ type: 'SET_NAME', name: ' ' }, false), false);
+    assert.equal(validCommand({ type: 'SET_NAME', name: 'Zed', extra: 1 }, false), false);
     const base = { phase: 'lobby', mode: 'standard', powerups: true, hostId: 'h', mapIndex: 0, puttIndex: 0, roundNumber: 0, roundLimitSeconds: 120, roundStartTime: 0, votingDeadline: 0,
       votes: {}, roster: [], isHost: true, completedMaps: [], totals: {}, last: null, state: 'lobby',
       players: { h: { id: 'h', name: 'Host', color: 2, connected: true, strokes: 0, done: false, timedOut: false, score: null, scores: [] } } };

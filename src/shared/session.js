@@ -32,7 +32,10 @@ export const SessionCommands = Object.freeze({
   LEAVE_ROOM: 'LEAVE_ROOM',
   SET_MODE: 'SET_MODE',
   SET_POWERUPS: 'SET_POWERUPS', // host: power-ups on or off for the room (GM1)
+  SET_DESTINATION: 'SET_DESTINATION', // host, lobby only: the party's planet (Gaia, Ares or Luna), shown as the lobby's plane or rocket
   SET_COLOR: 'SET_COLOR', // any member, lobby only: choose an unused ball colour (#161)
+  SET_NAME: 'SET_NAME', // any member, lobby only: rename yourself on your boarding pass (owner, 2026-11-17)
+  LOBBY_VOTE: 'LOBBY_VOTE', // any member, lobby only: vote for a game mode and/or a planet (owner, 2026-11-17)
   START_VOTING: 'START_VOTING',
   CAST_VOTE: 'CAST_VOTE',
   START_ROUND: 'START_ROUND',
@@ -52,6 +55,8 @@ export function createInitialSessionState(options = {}) {
   return {
     phase: SessionPhases.LOBBY,
     mode: options.mode ?? GameModes.STANDARD,
+    destination: 'gaia', // the party's planet, voted for on the lobby ticket (owner, 2026-11-16, 2026-11-17); the map vote opens on it
+    lobbyVotes: {}, // playerId -> { mode?, world? }: each player's lobby vote (owner, 2026-11-17)
     powerups: options.powerups ?? options.rules?.powerups ?? true, // false = No Power-Ups: no boxes, no inventory (GM1)
     rules: { ...(options.rules ?? DEFAULT_RULES) }, // Custom rules (VIS-U #168), fixed when the room is created
     mapIndex: 0,
@@ -181,6 +186,31 @@ export function resolveOptionVote(votes, eligibleOptions, options = {}) {
 }
 
 /**
+ * The winner of a lobby vote (owner, 2026-11-17): every player in `voters` may vote for a mode and a planet (`key` 'mode' or 'world').
+ * The option with the most votes wins; a tie goes to the host's pick when it is one of the tied options, else to the first tied option
+ * in `order`. Votes for options not in `order` are ignored. With no valid vote, `fallback`.
+ *
+ * @param {Record<string, {mode?: string, world?: string}>} lobbyVotes
+ * @param {'mode'|'world'} key
+ * @param {string[]} voters
+ * @param {string} hostId
+ * @param {string[]} order
+ * @param {string} fallback
+ */
+export function lobbyWinner(lobbyVotes, key, voters, hostId, order, fallback) {
+  const counts = new Map();
+  for (const id of voters) {
+    const pick = lobbyVotes?.[id]?.[key];
+    if (order.includes(pick)) counts.set(pick, (counts.get(pick) ?? 0) + 1);
+  }
+  if (!counts.size) return fallback;
+  const top = Math.max(...counts.values());
+  const tied = order.filter(option => counts.get(option) === top);
+  const hostPick = voters.includes(hostId) ? lobbyVotes?.[hostId]?.[key] : undefined;
+  return tied.includes(hostPick) ? hostPick : tied[0];
+}
+
+/**
  * Validates whether a command is permissible in the given phase.
  *
  * @param {string} phase Current phase
@@ -191,6 +221,7 @@ export function resolveOptionVote(votes, eligibleOptions, options = {}) {
 export function canExecuteCommand(phase, commandType, isHost) {
   // Only hosts can trigger room transitions
   const hostOnlyCommands = [
+    SessionCommands.SET_DESTINATION,
     SessionCommands.START_VOTING,
     SessionCommands.START_ROUND,
     SessionCommands.ADVANCE_PUTT,
@@ -209,7 +240,10 @@ export function canExecuteCommand(phase, commandType, isHost) {
         SessionCommands.LEAVE_ROOM,
         SessionCommands.SET_MODE,
         SessionCommands.SET_POWERUPS,
+        SessionCommands.SET_DESTINATION,
         SessionCommands.SET_COLOR,
+        SessionCommands.SET_NAME,
+        SessionCommands.LOBBY_VOTE,
         SessionCommands.START_VOTING,
       ].includes(commandType);
 

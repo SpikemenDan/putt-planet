@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { UiCommands } from './commands.js';
+import { NAME_LIMIT, UiCommands } from './commands.js';
 import { useCommands, useUiContext, useView } from './context.js';
 import { ColorPicker } from './ColorPicker.jsx';
 import { SoloSteps } from './SoloSteps.jsx';
@@ -86,7 +86,7 @@ export function Landing({ hidden, initialName = '', initialRoomCode = '', initia
     if (view !== 'home') root.current?.querySelector('[data-menu-view] input, [data-menu-view] button')?.focus();
   }, [view]);
 
-  const nameField = <label>Your name<input maxLength={14} autoComplete="off" value={name} onChange={e => setName(e.target.value)} /></label>;
+  const nameField = <label>Your name<input maxLength={NAME_LIMIT} autoComplete="off" value={name} onChange={e => setName(e.target.value)} /></label>;
   const colorField = <div className={menu.field}>Ball colour<ColorPicker selected={color} onPick={c => send(UiCommands.SET_COLOR, { color: c })} /></div>;
   const backButton = <button type="button" className={menu.back} onClick={back} data-ui="menu-back">Back</button>;
   const homeButton = (id, label, sub, cls, icon) => (

@@ -73,7 +73,7 @@ async function openApp(page, name) {
       if (sub) await steps.getByRole('button', { name: new RegExp('^' + sub) }).click();
       await steps.locator('[data-ui=world-choose]').click();
       await visible('landing').getByLabel('Your name').fill(name);
-      await p.button('Play solo').click();
+      await p.button('Play Solo').click();
       await expect(visible('map-select')).toBeVisible();
       await p.loaded();
     },

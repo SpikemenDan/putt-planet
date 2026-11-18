@@ -4,9 +4,14 @@ import { GameModes } from '../shared/session.js';
 import { WORLDS } from '../shared/worlds.js';
 import { OFFWORLD_REGIONS } from '../shared/world-regions.js';
 import { UiCommands } from './commands.js';
-import { useUiContext } from './context.js';
+import { useUiContext, useView } from './context.js';
+import { flightOf, LobbyTicket } from './LobbyTicket.jsx';
+import { LobbyVehicle } from './LobbyVehicle.jsx';
+import solo from './SoloLobby.module.css';
 import menu from './Landing.module.css';
 import { MenuIcon } from './MenuIcons.jsx';
+import { ModePicker } from './ModePicker.jsx';
+import room from './RoomLobby.module.css';
 
 /** Colour and icon of each Solo choice (owner, 2026-11-14). Presentation only. */
 const TONES = Object.freeze({
@@ -34,28 +39,46 @@ export const SOLO_MODES = Object.freeze({
 
 const STEPS = ['mode', 'world', 'ready'];
 
+/** The Solo lobby's mode bar (owner, 2026-11-17): every Solo mode, changeable right up to Play. */
+const SOLO_MODE_OPTIONS = Object.freeze(Object.entries(SOLO_MODES).map(([value, label]) => ({ value, label })));
+
 /** Arrow order in the destination view (owner, 2026-11-12): left goes Gaia → Luna → Ares → Gaia, right goes back the other way. */
 export const WORLD_ORDER = Object.freeze(['gaia', 'luna', 'ares']);
 const WORLD_BLURB = Object.freeze({ gaia: 'Home: six regions of courses', luna: 'Low gravity: long, floaty putts in two regions', ares: 'Lighter gravity: red canyons and highlands' });
 
 /**
  * Solo, one question per screen (owner, 2026-11-12, layout A): how to play (Casual, Tournament and its length, or the
- * smaller Practice button), then the destination, then name, colour and Play. Play opens the solo room and goes straight
- * to the level select with the chosen mode (no lobby). Back steps back; from the first step it leaves Solo.
+ * smaller Practice button), then the destination, then the Solo lobby (owner, 2026-11-16, 2026-11-17): full screen, a 3D helicopter
+ * carrying the player's ball, and on the right a boarding pass with their name (edited on the pass), the colour badge that opens the
+ * party lobby's colour picker, the planet (switchable right there, like the mode), the flight, Play Solo and Back; along the bottom, the same mode bar as the party lobby. The menu card steps away for it. Play opens the solo room and
+ * goes straight to the level select with the chosen mode. Back (or Escape) steps back; from the first step it leaves Solo. `colorField` is no longer shown here (the ticket's badge replaces it);
+ * it stays accepted so Landing.jsx needs no change.
  */
 export function SoloSteps({ name, onName, colorField, connecting, send, onExit, overlay = null }) {
   const { stage } = useUiContext();
+  const color = useView(v => v.landing?.color ?? null);
   const [step, setStep] = useState('mode');
   const [focus, setFocus] = useState('gaia'); // the planet the destination view is showing
   const [pick, setPick] = useState(null); // 'tournament' | 'practice' while choosing a length or practice kind
   const [mode, setMode] = useState(null);
   const [world, setWorld] = useState('gaia');
   const body = useRef(null);
-  useEffect(() => { body.current?.querySelector('button:not(:disabled), input')?.focus(); }, [step, pick]);
-  // The destination and ready steps show space; the first step and leaving Solo bring the horizon back.
-  const inSpace = step === 'world' || step === 'ready';
+  useEffect(() => {
+    const doc = body.current?.ownerDocument;
+    (step === 'ready' ? doc?.querySelector('[data-ui=solo-play]') : body.current?.querySelector('button:not(:disabled), input'))?.focus();
+  }, [step, pick]);
+  // The Solo lobby takes the whole screen: the menu card steps away while it shows (the pass has the name, Play and Back).
+  useEffect(() => {
+    const card = body.current?.closest('[data-menu-view]');
+    card?.toggleAttribute('data-solo-lobby', step === 'ready');
+    return () => card?.removeAttribute('data-solo-lobby');
+  }, [step]);
+  // The destination step shows space; the Solo lobby flies the helicopter through Gaia's air (owner, 2026-11-16); the first step and
+  // leaving Solo bring the horizon back. The big title steps aside for both the destination and the lobby.
+  const inSpace = step === 'world';
+  const titleAside = step === 'world' || step === 'ready';
   useEffect(() => { stage?.setView({ space: inSpace, target: inSpace ? focus : 'gaia' }); }, [stage, inSpace, focus]);
-  useEffect(() => { if (overlay) overlay.toggleAttribute('data-space', inSpace); return () => overlay?.removeAttribute('data-space'); }, [overlay, inSpace]); // the title steps aside for space
+  useEffect(() => { if (overlay) overlay.toggleAttribute('data-space', titleAside); return () => overlay?.removeAttribute('data-space'); }, [overlay, titleAside]);
   useEffect(() => () => stage?.setView({ space: false, target: 'gaia' }), [stage]);
   const turn = dir => setFocus(f => WORLD_ORDER[(WORLD_ORDER.indexOf(f) + (dir === 'left' ? 1 : WORLD_ORDER.length - 1)) % WORLD_ORDER.length]);
   const onKeyDown = e => {
@@ -127,14 +150,41 @@ export function SoloSteps({ name, onName, colorField, connecting, send, onExit, 
         </>;
       })()}
 
-      {step === 'ready' && <>
-        <p className={menu.summary} data-ui="solo-summary">{SOLO_MODES[mode]} on {WORLDS.find(w => w.id === world)?.name}</p>
-        <label>Your name<input maxLength={14} autoComplete="off" value={name} onChange={e => onName(e.target.value)} /></label>
-        {colorField}
-        <button type="button" className={menu.go} disabled={connecting} onClick={() => send(UiCommands.PLAY_SOLO, { name, mode, world })}>Play solo</button>
-      </>}
+      {step === 'ready' && (() => {
+        const { flight } = flightOf('', world);
+        // The helicopter is framed between the left edge, the pass on the right and the mode bar below.
+        const insets = () => {
+          const view = body.current?.ownerDocument.defaultView;
+          if (!view) return null;
+          const box = sel => view.document.querySelector('[data-ui=solo-lobby] ' + sel)?.getBoundingClientRect();
+          const pass = box('[data-ui=lobby-ticket]');
+          const bar = box('[data-ui=solo-modes]');
+          return { left: 24, right: pass ? view.innerWidth - pass.left + 16 : 0, top: 8, bottom: bar ? view.innerHeight - bar.top + 8 : 8 };
+        };
+        const lobby = (
+          <div data-ui="solo-lobby" onKeyDown={e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); back(); } }}>
+            <LobbyVehicle vehicle="helicopter" passengers={[{ id: 'you', name: name.trim() || 'Player', color: color ?? 0, you: true }]} insets={insets} />
+            <div className={room.hiddenText} data-ui="solo-title">
+              <h1>Solo lobby</h1>
+              <p data-ui="solo-summary" aria-live="polite">{SOLO_MODES[mode]} on {WORLDS.find(w => w.id === world)?.name}</p>
+            </div>
+            <div className={solo.pass}>
+              <LobbyTicket vehicle="helicopter" solo name={name} onName={onName} color={color} onPick={c => send(UiCommands.SET_COLOR, { color: c })} destination={world}
+                onDestination={setWorld} openWorlds={PLAYABLE_WORLDS} flight={flight} seat={1} onBack={back}>
+                <button type="button" className={solo.go} disabled={connecting} onClick={() => send(UiCommands.PLAY_SOLO, { name, mode, world })} data-ui="solo-play">Play Solo</button>
+              </LobbyTicket>
+            </div>
+            <div className={solo.dock} data-ui="solo-modes">
+              <div className={room.controls}>
+                <ModePicker modes={SOLO_MODE_OPTIONS} value={mode} onChange={setMode} pongIsPractice names={{ [GameModes.STANDARD]: 'Casual' }} />
+              </div>
+            </div>
+          </div>
+        );
+        return overlay ? createPortal(lobby, overlay) : lobby;
+      })()}
 
-      <button type="button" className={menu.back} onClick={back} data-ui="menu-back">Back</button>
+      {step !== 'ready' && <button type="button" className={menu.back} onClick={back} data-ui="menu-back">Back</button>}
     </div>
   );
 }

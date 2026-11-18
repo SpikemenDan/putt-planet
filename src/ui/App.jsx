@@ -22,7 +22,7 @@ function Screens({ onCanvas, initialName, initialRoomCode, initialView }) {
     <div className={app.app}>
       <div className={app.netnotice} hidden={!webglUnavailable} role="status" data-ui="webgl-notice">{webglUnavailable ? MESSAGES.webglUnavailable : ''}</div>
       <Landing hidden={!screens.landing} initialName={initialName} initialRoomCode={initialRoomCode} initialView={initialView} />
-      <LoadingGate connecting={landing.connecting} failed={!!landing.error} menu={screens.landing} />
+      <LoadingGate connecting={landing.connecting} failed={!!landing.error} menu={screens.landing || screens.lobby} />
       <RoomLobby hidden={!screens.lobby} />
       <MapSelect hidden={!screens.voting} />
       <div className={app.netnotice} hidden={!screens.netNotice} role="alert">{screens.netNotice ? (screens.reconnecting ? MESSAGES.reconnecting : screens.connectionReason || MESSAGES.connectionLost) : ''}</div>
@@ -47,11 +47,12 @@ function Screens({ onCanvas, initialName, initialRoomCode, initialView }) {
  * @param {typeof DISPLAY} [props.display] Presentation settings (read live by the planet behind the menu and loading screen); defaults to DISPLAY
  * @param {Function} [props.createAtlasScene] Builds the 3D level select on a canvas; without it the plain course list shows
  * @param {Function} [props.createLoadingScene] Builds the 3D planet behind the menu and loading screen; without it only the CSS sky shows
+ * @param {Function} [props.createLobbyScene] Builds the 3D lobby vehicle (helicopter, plane or rocket); without it the passengers show as a plain row
  */
-export function PuttPalsUi({ store, dispatch, aim = null, onCanvas, initialName = '', initialRoomCode = '', initialView = 'home', display = DISPLAY, createLoadingScene = null, createAtlasScene = null }) {
+export function PuttPalsUi({ store, dispatch, aim = null, onCanvas, initialName = '', initialRoomCode = '', initialView = 'home', display = DISPLAY, createLoadingScene = null, createAtlasScene = null, createLobbyScene = null }) {
   const [stage] = useState(createStageHandle);
   return (
-    <UiContext.Provider value={{ store, dispatch, aim, display, createLoadingScene, createAtlasScene, stage }}>
+    <UiContext.Provider value={{ store, dispatch, aim, display, createLoadingScene, createAtlasScene, createLobbyScene, stage }}>
       <Screens onCanvas={onCanvas} initialName={initialName} initialRoomCode={initialRoomCode} initialView={initialView} />
     </UiContext.Provider>
   );

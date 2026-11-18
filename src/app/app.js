@@ -21,8 +21,9 @@ import { GameModes, SessionPhases } from '../shared/session.js';
 import { DEFAULT_WORLD, worldGravity, courseWorld, isWorldId } from '../shared/worlds.js';
 import { AIM_WOBBLE, DEFAULT_RULES, rulesTuning, seriesMaps, validateRules, validRules } from '../shared/rules.js';
 import { createAtlasScene } from '../render/atlas-scene.js';
+import { createLobbyScene } from '../render/lobby-scene.js';
 import { createPlanetScene } from '../render/planet-scene.js';
-import { colorOf, connectErrorMessage, createCourseInfo, createUiDispatcher, createUiStore, initialRoomCode, MESSAGES, mountUi, parseJoinRequest, UiCommands } from '../ui/index.js';
+import { colorOf, connectErrorMessage, createCourseInfo, createUiDispatcher, createUiStore, initialRoomCode, MESSAGES, mountUi, parseJoinRequest, sanitizeName, UiCommands } from '../ui/index.js';
 import { reducedMotion as isReducedMotion } from '../ui/motion.js';
 import { CAMERA_PREFS_KEY, MOTION_PREFS_KEY, normalizeCameraPrefs, normalizeMotionPref, readPref, writePref } from '../shared/preferences.js';
 import { createPutt } from './putt.js';
@@ -545,6 +546,14 @@ export function createApp({ worldPreview = null, soloHazards = false, root, THRE
         setLocal({ colorPref });
         room?.command({ type: 'SET_COLOR', color: colorPref });
         break;
+      case UiCommands.SET_NAME: {
+        const name = typeof command.name === 'string' ? sanitizeName(command.name) : null;
+        if (!name || !room || room.snapshot?.players?.[room.localId]?.name === name) break;
+        room.command({ type: 'SET_NAME', name });
+        setLocal({ name });
+        if (room.identity) resume.write(room.roomCode, { ...room.identity, name });
+        break;
+      }
       case UiCommands.SET_COSMETIC:
         cosmetics = selectCosmetic(cosmetics, command.kind, command.id);
         if (cosmeticsStorage) saveCosmetics(cosmeticsStorage, cosmetics);
@@ -671,7 +680,7 @@ export function createApp({ worldPreview = null, soloHazards = false, root, THRE
   root.addEventListener('pointerover', onHover);
   root.addEventListener('click', onPress);
   setLocal({ volume: audio.getStatus?.().volume ?? 1, camera: cameraPrefs, motion: motionPref });
-  const unmount = mountUi(root, { store, dispatch, aim, onCanvas, initialRoomCode: startCode, initialView: inviteLink ? 'party' : 'home', initialName: resume.read(startCode)?.name || '', display, createLoadingScene: options => createPlanetScene({ THREE, ...options }), createAtlasScene: options => createAtlasScene({ THREE, ...options }) });
+  const unmount = mountUi(root, { store, dispatch, aim, onCanvas, initialRoomCode: startCode, initialView: inviteLink ? 'party' : 'home', initialName: resume.read(startCode)?.name || '', display, createLoadingScene: options => createPlanetScene({ THREE, ...options }), createLobbyScene: options => createLobbyScene({ THREE, ...options }), createAtlasScene: options => createAtlasScene({ THREE, ...options }) });
 
   return {
     store,

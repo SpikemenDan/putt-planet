@@ -1,6 +1,6 @@
 import { setup, assign, createActor } from 'xstate';
 import { sessionDomain, sessionValue, sessionNode } from './recovery.js';
-import { createInitialSessionState, GameModes, resolveVote, resolveVoteDetailed, SessionCommands } from '../shared/session.js';
+import { createInitialSessionState, GameModes, lobbyWinner, resolveVote, resolveVoteDetailed, SessionCommands } from '../shared/session.js';
 import { STARTER_COURSE_INDICES, MAX_PLAYERS, MAX_PLAYER_NAME_LENGTH, VOTING_COUNTDOWN_SECONDS } from '../shared/constants.js';
 import { PLAYER_COLOR_COUNT, isColorIndex } from '../shared/colors.js';
 import { calculateTimeoutScore, calculateMissedHoleScore } from '../shared/scoring.js';
@@ -8,6 +8,7 @@ import { TUNING } from '../shared/tuning.js';
 import { DEFAULT_RULES, holeLimitSeconds, seriesMaps, validateRules } from '../shared/rules.js';
 import { createCourseDocument, validateCourseDocument } from '../courses/document.js';
 import { createPongSession } from './pong.js';
+import { isWorldId, WORLD_IDS } from '../shared/worlds.js';
 
 export const SessionEvents = Object.freeze({ ...SessionCommands, UPDATE_STROKES: 'UPDATE_STROKES', REPORT_SCORE: 'REPORT_SCORE', PRACTICE_STEP: 'PRACTICE_STEP', PRACTICE_MAPS: 'PRACTICE_MAPS' });
 const eventTypes = new Set(Object.values(SessionEvents));
@@ -151,11 +152,15 @@ export function createRoomSession({ hostId, controllerId = hostId, hostName = 'H
         return true;
       },
       canLeave: ({ context: c, event: e }) => member(c, e),
+      canSetName: ({ context: c, event: e }) => member(c, e) && validName(e.name),
       canSetColor: ({ context: c, event: e }) => member(c, e) && isColorIndex(e.color) && !heldColors(c, e.playerId).has(e.color),
       // Online rooms fix their rules (power-ups included) when they are created (VIS-U, VIS-M3): No Power-Ups is a Custom rule.
       powerups: ({ context: c, event: e }) => !serverOwned && host(c, e) && typeof e.enabled === 'boolean',
       // Putt Pong is 1v1 (solo plays it as practice): it never starts with more than two players.
       canStartVoting: ({ context: c, event: e }) => host(c, e) && (c.mode !== GameModes.PONG || ids(c).length <= 2),
+      destination: ({ context: c, event: e }) => host(c, e) && isWorldId(e.world),
+      // Lobby votes (owner, 2026-11-17): any player, a mode and/or a planet; null leaves that part of their vote as it was.
+      lobbyVote: ({ context: c, event: e }) => member(c, e) && (e.mode == null || modes.includes(e.mode)) && (e.world == null || isWorldId(e.world)) && (e.mode != null || e.world != null),
       mode: ({ context: c, event: e }) => host(c, e) && modes.includes(e.mode) && (![GameModes.PRACTICE, GameModes.PUTT_PRACTICE].includes(e.mode) || ids(c).length === 1),
       vote: ({ context: c, event: e }) => validVote(c, e),
       practice: ({ context: c }) => c.mode === GameModes.PRACTICE,
@@ -243,9 +248,19 @@ export function createRoomSession({ hostId, controllerId = hostId, hostName = 'H
           players: { ...c.players, [e.playerId]: fresh(e.playerId, e.name, color, token) },
         };
       }),
+      setName: assign(({ context: c, event: e }) => ({ players: { ...c.players, [e.playerId]: { ...c.players[e.playerId], name: e.name } } })),
       setColor: assign(({ context: c, event: e }) => ({ players: { ...c.players, [e.playerId]: { ...c.players[e.playerId], color: e.color } } })),
-      leave: assign(({ context: c, event: e }) => ({ players: { ...c.players, [e.playerId]: { ...c.players[e.playerId], connected: false } }, votes: Object.fromEntries(Object.entries(c.votes).filter(([id]) => id !== e.playerId)) })),
+      leave: assign(({ context: c, event: e }) => ({ players: { ...c.players, [e.playerId]: { ...c.players[e.playerId], connected: false } }, votes: Object.fromEntries(Object.entries(c.votes).filter(([id]) => id !== e.playerId)), lobbyVotes: Object.fromEntries(Object.entries(c.lobbyVotes ?? {}).filter(([id]) => id !== e.playerId)) })),
       mode: assign(({ event: e }) => ({ mode: e.mode })),
+      destination: assign(({ event: e }) => ({ destination: e.world })),
+      // The planet follows the vote at once (most votes, a tie to the host), so the lobby shows the plane or rocket it leads to.
+      lobbyVote: assign(({ context: c, event: e }) => {
+        const mine = { ...(c.lobbyVotes?.[e.playerId] ?? {}) };
+        if (e.mode != null) mine.mode = e.mode;
+        if (e.world != null) mine.world = e.world;
+        const lobbyVotes = { ...(c.lobbyVotes ?? {}), [e.playerId]: mine };
+        return { lobbyVotes, destination: lobbyWinner(lobbyVotes, 'world', ids(c), controller(c), WORLD_IDS, c.destination) };
+      }),
       powerups: assign(({ context: c, event: e }) => ({ powerups: e.enabled, rules: { ...c.rules, powerups: e.enabled } })),
       clearSeries: assign(({ context: c }) => clearSeries(c)),
       clearVotes: assign({ votes: () => ({}), votingDeadline: 0, tie: null }),
@@ -311,7 +326,7 @@ export function createRoomSession({ hostId, controllerId = hostId, hostName = 'H
       } : {}),
     },
     states: {
-      lobby: { on: { SET_COLOR: { guard: 'canSetColor', actions: 'setColor' }, SET_MODE: { guard: 'mode', actions: 'mode' }, SET_POWERUPS: { guard: 'powerups', actions: 'powerups' }, START_VOTING: { guard: 'canStartVoting', target: 'select', actions: 'clearSeries' } } },
+      lobby: { on: { SET_COLOR: { guard: 'canSetColor', actions: 'setColor' }, SET_NAME: { guard: 'canSetName', actions: 'setName' }, SET_MODE: { guard: 'mode', actions: 'mode' }, SET_POWERUPS: { guard: 'powerups', actions: 'powerups' }, SET_DESTINATION: { guard: 'destination', actions: 'destination' }, LOBBY_VOTE: { guard: 'lobbyVote', actions: 'lobbyVote' }, START_VOTING: { guard: 'canStartVoting', target: 'select', actions: 'clearSeries' } } },
       select: {
         initial: 'waiting',
         states: {

@@ -32,12 +32,12 @@ function installProbe() {
   const nativeRaf = window.requestAnimationFrame, nativeCancel = window.cancelAnimationFrame;
   window.requestAnimationFrame = fn => { const id = nativeRaf.call(window, t => { frames.delete(id); fn(t); }); frames.add(id); return id; };
   window.cancelAnimationFrame = id => { frames.delete(id); return nativeCancel.call(window, id); };
-  // The game draws on one canvas for the page's life. The planet behind the menu and the 3D map select are backdrops with canvases of
-  // their own, built and released as those screens come and go; they must give their context back when they go.
+  // The game draws on one canvas for the page's life. The planet behind the menu, the 3D map select and the lobby's 3D vehicle are
+  // backdrops with canvases of their own, built and released as those screens come and go; they must give their context back when they go.
   const webgl = new Map();
   const getContext = HTMLCanvasElement.prototype.getContext;
   HTMLCanvasElement.prototype.getContext = function (type, ...rest) { const gl = getContext.call(this, type, ...rest); if (/webgl/.test(type) && gl) webgl.set(this, gl); return gl; };
-  const backdrop = canvas => canvas.matches('[data-ui=loading-planet], [data-ui=atlas-canvas]');
+  const backdrop = canvas => canvas.matches('[data-ui=loading-planet], [data-ui=atlas-canvas], [data-ui=lobby-canvas]');
   window.__ppProbe = () => ({
     listeners: [...listeners.values()].reduce((n, keys) => n + keys.size, 0),
     timers: timers.size,
@@ -52,23 +52,30 @@ test('lifecycle: repeated join/leave keeps one loop and no leaked listeners, tim
   await page.addInitScript(installProbe);
   const ana = await openApp(page, 'Ana');
   const probe = () => page.evaluate(() => window.__ppProbe());
+  // Printed inline so a cancelled CI job still shows how far the test got.
+  const trace = (label, data) => console.log(`[lifecycle ${testInfo.project.name}] ${label} ${JSON.stringify(data ?? '')}`);
+  page.on('console', msg => { if (msg.type() === 'error' || msg.type() === 'warning') trace(`console.${msg.type()}`, msg.text()); });
+  page.on('pageerror', error => trace('pageerror', String(error)));
   const settledAt = async (limit, label) => {
     // Banner and toast timers finish on their own; a leak is a count that never comes back down.
     let last = null;
     try {
       await until(async () => { last = await probe(); return last.listeners <= limit.listeners && last.timers <= limit.timers; }, { timeout: 20_000, label });
     } catch (error) {
+      trace(`unsettled ${label}`, { baseline: limit, now: last });
       throw new Error(`${label}: baseline ${JSON.stringify(limit)}, now ${JSON.stringify(last)}`, { cause: error });
     }
   };
   await page.waitForTimeout(1000);
   const base = await probe();
+  trace('baseline', base);
   testInfo.annotations.push({ type: 'baseline', description: JSON.stringify(base) });
   // The game's loop, plus the planet's while the menu shows it.
   expect(base.frames, "one animation loop and the planet's").toBeLessThanOrEqual(2);
 
   for (let i = 0; i < 5; i++) {
     // Putt practice is the mode with an in-game Exit; other modes leave from the lobby or map picker.
+    trace(`cycle ${i + 1} start`, await probe());
     await ana.solo('putt_practice');
     await pickMap(ana.page);
     await ana.button('Putt 1 · Par 2').click();
@@ -79,16 +86,19 @@ test('lifecycle: repeated join/leave keeps one loop and no leaked listeners, tim
     await ana.button('Card').click();
     await expect(ana.ui('scorecard')).toBeVisible();
     await page.getByRole('button', { name: 'Close scorecard' }).click();
+    trace(`cycle ${i + 1} exit`, await probe());
     await ana.button('Exit').click();
     await expect(ana.ui('room-lobby')).toBeVisible();
     await ana.button('Leave room').click();
     await expect(ana.ui('landing')).toBeVisible();
     expect(await page.evaluate(() => window.__ppApp.room === null && window.__ppApp.putt === null), `cycle ${i + 1}: room and putt released`).toBe(true);
+    trace(`cycle ${i + 1} left`, await probe());
     await settledAt(base, `cycle ${i + 1}: listeners and timers back to baseline`);
     const now = await probe();
+    trace(`cycle ${i + 1} settled`, now);
     expect(now.frames, `cycle ${i + 1}: still one animation loop and the planet's`).toBeLessThanOrEqual(2);
     expect(now.webglCanvases, `cycle ${i + 1}: the WebGL renderer is reused`).toBe(1);
-    expect(now.liveBackdrops, `cycle ${i + 1}: only the menu's planet holds a context; the map select's was released`).toBeLessThanOrEqual(1);
+    expect(now.liveBackdrops, `cycle ${i + 1}: only the menu's planet holds a context; the map select's and the lobby vehicle's were released`).toBeLessThanOrEqual(1);
     testInfo.annotations.push({ type: `cycle ${i + 1}`, description: JSON.stringify(now) });
   }
 
@@ -104,5 +114,6 @@ test('lifecycle: repeated join/leave keeps one loop and no leaked listeners, tim
     await settledAt(base, `online cycle ${i + 1}: listeners and timers back to baseline`);
   }
   testInfo.annotations.push({ type: 'final', description: JSON.stringify(await probe()) });
+  trace('errors', ana.errors);
   expect(ana.errors, 'no page or console errors').toEqual([]);
 });
