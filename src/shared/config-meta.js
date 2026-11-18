@@ -77,6 +77,7 @@ export const DISPLAY_UNITS = Object.freeze({
   'loading.citySize': 'multiplier',
   'loading.outlineWidth': 'CSS px at 1280 wide',
   'loading.lunaSize': 'multiplier of true apparent size',
+  'loading.backgroundDim': 'brightness multiplier, 1 is full',
   'loading.planes': 'count',
   'loading.boats': 'count',
   'loading.satellites': 'count',

@@ -12,7 +12,7 @@
 
 import { createMaterialLibrary } from './materials.js';
 import { createInkMaterial, sizeInk, smoothHullGeometry } from './outline.js';
-import { ATMOSPHERE_FRAGMENT, ATMOSPHERE_VERTEX, CLOUD_FRAGMENT, CLOUD_SHELL_FRAGMENT, CLOUD_VERTEX, CONTRAIL_FRAGMENT, GALAXY_FRAGMENT, GALAXY_VERTEX, PLANET_FRAGMENT, SPHERE_VERTEX, STAR_FRAGMENT, STAR_VERTEX, STREAK_FRAGMENT, STREAK_VERTEX, TRAIL_VERTEX, WAKE_FRAGMENT } from './planet-shaders.js';
+import { ATMOSPHERE_FRAGMENT, ATMOSPHERE_VERTEX, CLOUD_FRAGMENT, CLOUD_SHELL_FRAGMENT, CLOUD_VERTEX, CONTRAIL_FRAGMENT, GALAXY_FRAGMENT, GALAXY_VERTEX, PLANET_FRAGMENT, SPHERE_VERTEX, STAR_FRAGMENT, STAR_VERTEX, STREAK_FRAGMENT, STREAK_VERTEX, TRAIL_VERTEX, WAKE_FRAGMENT, WORLD_FRAGMENT } from './planet-shaders.js';
 import { worldMap } from './map-paint.js';
 import { MAX_BOATS, MAX_PLANES, MAX_SATELLITES, TEX_W, TEX_H, gaiaPlanet, laneRoutes, shipRoutes, surfaceDir } from './planet-data.js';
 import { MODEL_REACH, PLANE_KINDS, PLANT_KINDS, SHIP_KINDS, makeBalloon, makeBase, makeCity, makeMoonlet, makeObservatory, makeRadioDish, makeSpaceport, makeCumulus, makeFlag, makeLighthouse, makeMill, makePeak, makePlane, makePlant, makePort, makeSatellite, makeShip, makeTown, makeVillage, makeVolcano } from './sky-models.js';
@@ -374,9 +374,14 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
   const streakPath = { x: 0, y: 0, dx: 0, dy: 0 };
 
   // ---- Luna and Ares, real spheres in the scene, each with its ice, its signs of life and one tiny base.
+  // Lit by Gaia's own sun shader (WORLD_FRAGMENT), not the game's Lambert toon, so all three worlds share one light; `map` and `opacity`
+  // stay ordinary properties (the painted-map switch and the space view set them).
+  const worldDim = { value: 1 };
   const world = (rgb, distance, opacity = 1) => {
-    const material = own(library.toon(0xffffff, opacity < 1 ? { transparent: true, opacity } : {}));
-    material.map = data(rgba(rgb), WORLD_TEX_W, WORLD_TEX_H, true);
+    const uniforms = { sun: shared.sun, dotCell: shared.dotCell, dim: worldDim, map: { value: data(rgba(rgb), WORLD_TEX_W, WORLD_TEX_H, true) }, alpha: { value: opacity } };
+    const material = own(new THREE.ShaderMaterial({ vertexShader: SPHERE_VERTEX, fragmentShader: WORLD_FRAGMENT, uniforms, transparent: opacity < 1 }));
+    Object.defineProperty(material, 'map', { get: () => uniforms.map.value, set: v => { uniforms.map.value = v; } });
+    Object.defineProperty(material, 'opacity', { get: () => uniforms.alpha.value, set: v => { uniforms.alpha.value = v; } });
     const mesh = new THREE.Mesh(sphere(1, 64, 48), material);
     scene.add(mesh);
     return { mesh, distance };
@@ -666,7 +671,7 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
     const t = Math.tan(FOV * Math.PI / 360);
     const place = ({ mesh, distance }, nx, ny, radius) => { mesh.position.set(nx * distance * t * camera.aspect, framing.y + ny * distance * t, framing.z - distance); mesh.scale.setScalar(radius); };
     place(luna, 0.86, 0.5, LUNA_RADIUS * s.lunaSize);
-    place(ares, -0.6, 0.8, ARES_SHARE * ARES_DISTANCE * t * 2);
+    place(ares, -0.6, 0.8, ARES_SHARE * ARES_DISTANCE * t * 1.4); // smaller than before (owner, 2026-11-18): a background world, not a rival to Gaia
     home.luna.position.copy(luna.mesh.position); home.luna.scale = luna.mesh.scale.x;
     stats.lunaPixels = LUNA_RADIUS * s.lunaSize / (LUNA_DISTANCE * t) * h;
     stats.limb = 1 - 2 * s.horizonHeight;
@@ -792,6 +797,7 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
   function applySpace() {
     if (focus) return;
     const k = ease(space.t), x = Math.min(1, space.travel), e = snap.on ? 1 - Math.pow(1 - x, 3) : ease(x); // a redirected flight is already moving
+    worldDim.value = 1 + ((settings().backgroundDim ?? 1) - 1) * (1 - k); // Luna and Ares sit back in the horizon sky, full bright in space
     revolve(clock, k);
     sunBody.visible = k > 0.001;
     if (sunBody.visible) { sunBody.position.copy(sunNow); sunBody.userData.rays.rotation.z = reducedMotion ? 0 : clock * 0.12; }

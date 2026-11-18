@@ -32,6 +32,7 @@ export const DISPLAY_FIELDS = Object.freeze([
   ['loading.atmosphereHeight', 0.1, 0.8, 'Loading screen: how high the blue air reaches above the ground, as a fraction of the planet radius.'],
   ['loading.citySize', 0.5, 3, 'Loading screen: size of cities, towns, villages, ports and mills as a multiplier of their audited sizes (docs/GAIA_MAP.md).'],
   ['loading.lunaSize', 1, 8, 'Loading screen: size of Luna in the sky: 1 is its true apparent size at the real Earth-Moon distance, higher is magnified.'],
+  ['loading.backgroundDim', 0.2, 1, 'Loading screen: brightness of Luna and Ares in the horizon sky, so they sit behind Gaia. 1 is lit like Gaia; the space view always shows them at 1.'],
   ['loading.outlineWidth', 0, 4, 'Loading screen: ink outline width on cities, ships, planes and clouds, in pixels at 1280 wide; 0 turns outlines off.'],
   ['loading.planes', 0, 12, 'Loading screen: planes flying between cities, with contrails (rounded to whole planes; 0 hides them).'],
   ['loading.boats', 0, 20, 'Loading screen: boats on the sea (rounded to whole boats; 0 hides them).'],
@@ -66,7 +67,7 @@ export const DISPLAY_FIELDS = Object.freeze([
 export const DEFAULT_DISPLAY = {
   ball: { visualScale: 1 },
   aim: { arrowMaxLength: 100, arrowShaftHalfWidth: 2.6, arrowHeadHalfWidth: 7, arrowHeadLength: 14, arrowOpacity: 0.92 },
-  loading: { spinSpeed: 4, axisTilt: 12, horizonHeight: 0.48, cameraAltitude: 0.4, cloudCover: 0.6, cloudDrift: 1.4, finishTime: 0.8, atmosphere: 0.75, atmosphereHeight: 0.62, citySize: 1, lunaSize: 2.6, outlineWidth: 1.6, planes: 3, boats: 9, satellites: 2, paintedMaps: 1, ballPulse: 1.6, ballBounce: 3 },
+  loading: { spinSpeed: 4, axisTilt: 12, horizonHeight: 0.48, cameraAltitude: 0.4, cloudCover: 0.6, cloudDrift: 1.4, finishTime: 0.8, atmosphere: 0.75, atmosphereHeight: 0.62, citySize: 1, lunaSize: 2, backgroundDim: 0.72, outlineWidth: 1.6, planes: 3, boats: 9, satellites: 2, paintedMaps: 1, ballPulse: 1.6, ballBounce: 3 },
   space: { orbitSeconds: 120, travelSeconds: 1.8, aresZoom: 0.5, nebula: 0.6, distance: 1, revolveSeconds: 180 },
   menu: { buttonScale: 1, stagger: 0.07, bob: 2, tilt: 1.5, shineSeconds: 5, cardTint: 0.22 },
   lobby: { zoom: 1, sway: 4, bob: 0.08, spinSeconds: 0.4 },

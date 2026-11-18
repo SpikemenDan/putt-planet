@@ -26,7 +26,8 @@ Units: world units (ball radius 5) and multipliers. Opacity is 0..1. The shaft h
 | `loading.atmosphere` | 0.75 | 0 to 1 | Loading screen: strength of the blue air around the planet. |
 | `loading.atmosphereHeight` | 0.62 | 0.1 to 0.8 | Loading screen: how high the blue air reaches above the ground, fraction of the planet radius. |
 | `loading.citySize` | 1 | 0.5 to 3 | Loading screen: size of cities, towns, villages, ports and mills, as a multiplier of their audited sizes (docs/GAIA_MAP.md). |
-| `loading.lunaSize` | 2.6 | 1 to 8 | Loading screen: Luna's size in the sky; 1 is its true apparent size at the real Earth-Moon distance. |
+| `loading.lunaSize` | 2 | 1 to 8 | Loading screen: Luna's size in the sky; 1 is its true apparent size at the real Earth-Moon distance. |
+| `loading.backgroundDim` | 0.72 | 0.2 to 1 | Loading screen: brightness of Luna and Ares in the horizon sky, so they sit behind Gaia; the space view always shows them at full brightness. |
 | `loading.outlineWidth` | 1.6 | 0 to 4 | Loading screen: ink outline width on cities, ships, planes and clouds, px at 1280 wide; 0 is off. |
 | `loading.planes` | 3 | 0 to 12 | Loading screen: planes flying between cities with contrails (whole planes; 0 hides them). |
 | `loading.boats` | 9 | 0 to 20 | Loading screen: boats on the sea (whole boats; 0 hides them). |

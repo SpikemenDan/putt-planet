@@ -107,10 +107,10 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
       scene.step(0.5);
       seen.updateMatrixWorld(true);
       const axis = new THREE.Vector3(0, 1, 0).applyQuaternion(seen.children.find(o => o.isGroup).quaternion);
-      let glow = null, gate = null;
-      seen.traverse(o => { const u = o.material?.uniforms; if (u?.atmosphere && glow === null) glow = u.atmosphere.value; if (u?.cloudGate && gate === null) gate = u.cloudGate.value; });
+      let glow = null, gate = null, dim = null;
+      seen.traverse(o => { const u = o.material?.uniforms; if (u?.atmosphere && glow === null) glow = u.atmosphere.value; if (u?.cloudGate && gate === null) gate = u.cloudGate.value; if (u?.dim && dim === null) dim = u.dim.value; });
       const cloudLead = seen.children.find(o => o.isGroup).children.map(g => g.rotation.y);
-      const out = { spin: scene.spin, axisX: axis.x, glow, gate, cloudLead: cloudLead[1] - cloudLead[0], traffic: scene.traffic, stats: scene.stats, camera: scene.cameraPosition };
+      const out = { spin: scene.spin, axisX: axis.x, glow, gate, dim, cloudLead: cloudLead[1] - cloudLead[0], traffic: scene.traffic, stats: scene.stats, camera: scene.cameraPosition };
       scene.dispose(); dom.window.close();
       return out;
     };
@@ -127,7 +127,8 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
     assert.ok(changed('atmosphereHeight', 0.8).stats.airTop > lbase.stats.airTop && Math.abs(lbase.stats.airTop - 162) < 1e-9, 'loading.atmosphereHeight lifts the top of the air');
     assert.ok(changed('citySize', 3).stats.tallestCity > lbase.stats.tallestCity * 1.5 && lbase.stats.tallestCity > 5 && lbase.stats.tallestCity < 10, 'loading.citySize makes the skylines taller; by default the tallest stands clear of the ground but below the big mountains');
     assert.ok(Math.abs(changed('outlineWidth', 3).stats.ink - 3) < 1e-9 && Math.abs(lbase.stats.ink - 1.6) < 1e-9, 'loading.outlineWidth sets the ink width in pixels at 1280 wide');
-    assert.ok(Math.abs(changed('lunaSize', 1).stats.lunaPixels * 2.6 - lbase.stats.lunaPixels) < 1e-6 && changed('lunaSize', 1).stats.lunaPixels > 5 && changed('lunaSize', 1).stats.lunaPixels < 16, 'loading.lunaSize scales Luna, and 1 is its true size at the real distance');
+    assert.ok(Math.abs(lbase.dim - 0.72) < 1e-9 && Math.abs(changed('backgroundDim', 0.3).dim - 0.3) < 1e-9, 'loading.backgroundDim dims Luna and Ares in the horizon sky');
+    assert.ok(Math.abs(changed('lunaSize', 1).stats.lunaPixels * 2 - lbase.stats.lunaPixels) < 1e-6 && changed('lunaSize', 1).stats.lunaPixels > 5 && changed('lunaSize', 1).stats.lunaPixels < 16, 'loading.lunaSize scales Luna, and 1 is its true size at the real distance');
     assert.equal(changed('planes', 2).traffic.planes, 2, 'loading.planes sets the number of planes');
     assert.equal(changed('boats', 5).traffic.boats, 5, 'loading.boats sets the number of boats');
     assert.equal(changed('satellites', 6).traffic.satellites, 6, 'loading.satellites sets the number of satellites');
@@ -229,7 +230,7 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
     // and the progress balls carry the other two as CSS variables, and so is the menu group
     // (VIS-M2), where each value lands on its own CSS variable on the real main menu, and the lobby group, on the lobby vehicle scene.
     // The table covers every DISPLAY setting, so a new setting cannot be added without a reach check.
-    assert.deepEqual([...Object.keys(expectations), 'ball.visualScale', ...['spinSpeed', 'axisTilt', 'horizonHeight', 'cameraAltitude', 'cloudCover', 'cloudDrift', 'finishTime', 'atmosphere', 'atmosphereHeight', 'citySize', 'lunaSize', 'outlineWidth', 'planes', 'boats', 'satellites', 'paintedMaps', 'ballPulse', 'ballBounce'].map(k => 'loading.' + k), ...['orbitSeconds', 'travelSeconds', 'aresZoom', 'nebula', 'distance', 'revolveSeconds'].map(k => 'space.' + k), ...['buttonScale', 'stagger', 'bob', 'tilt', 'shineSeconds', 'cardTint'].map(k => 'menu.' + k), ...['zoom', 'sway', 'bob', 'spinSeconds'].map(k => 'lobby.' + k), ...['aresWind', 'aresWindDensity', 'lunaDust', 'lunaDustDensity', 'lunaSolar'].map(k => 'environment.' + k)].sort(), DISPLAY_FIELDS.map(f => f[0]).sort());
+    assert.deepEqual([...Object.keys(expectations), 'ball.visualScale', ...['spinSpeed', 'axisTilt', 'horizonHeight', 'cameraAltitude', 'cloudCover', 'cloudDrift', 'finishTime', 'atmosphere', 'atmosphereHeight', 'citySize', 'lunaSize', 'backgroundDim', 'outlineWidth', 'planes', 'boats', 'satellites', 'paintedMaps', 'ballPulse', 'ballBounce'].map(k => 'loading.' + k), ...['orbitSeconds', 'travelSeconds', 'aresZoom', 'nebula', 'distance', 'revolveSeconds'].map(k => 'space.' + k), ...['buttonScale', 'stagger', 'bob', 'tilt', 'shineSeconds', 'cardTint'].map(k => 'menu.' + k), ...['zoom', 'sway', 'bob', 'spinSeconds'].map(k => 'lobby.' + k), ...['aresWind', 'aresWindDensity', 'lunaDust', 'lunaDustDensity', 'lunaSolar'].map(k => 'environment.' + k)].sort(), DISPLAY_FIELDS.map(f => f[0]).sort());
   });
 
   // ---- TUNING probes: [name, setting, value, code printing one number, expected default, expected with the override]

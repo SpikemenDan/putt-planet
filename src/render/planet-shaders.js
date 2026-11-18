@@ -66,7 +66,7 @@ void main(){
   float soft=smoothstep(-.16,.72,ndl),band=smoothstep(.1,.13,ndl)*.5+smoothstep(.44,.47,ndl)*.5;
   float day=mix(soft,band,.34);
   vec3 c=albedo*mix(vec3(.13,.17,.38),vec3(1.06,1.03,.98),day);
-  if(day<.5)c*=1.-.14*halftone(dotCell,day<.3?.62:.4);
+  if(day<.5)c*=1.-.06*halftone(dotCell,day<.3?.62:.4);
   // Cloud shadows on the ground.
   float cs=texture2D(cloudMap,uv+vec2(cloudShift+.006,.006)).r;
   c*=1.-.34*smoothstep(cloudGate,cloudGate+.08,cs);
@@ -83,8 +83,27 @@ void main(){
   c+=vec3(1.,.78,.4)*lights*1.2;
   // Air: the limb fades into a lit blue haze.
   float rim=pow(1.-max(dot(N,V),0.),2.2);
-  c=mix(c,vec3(.62,.84,1.),rim*(.25+atmosphere*.75)*(.2+.8*smoothstep(-.2,.5,dot(N,sun))));
+  c=mix(c,vec3(.62,.84,1.),rim*(.12+atmosphere*.45)*(.2+.8*smoothstep(-.2,.5,dot(N,sun))));
   gl_FragColor=vec4(c,1.);
+}`;
+
+/** Luna and Ares: the same sun, day/night ramp, halftone and limb haze as Gaia, so the three worlds read as lit by one light.
+ * The map is an sRGB texture (sampled linear), turned back to display values; `dim` darkens the far worlds into the backdrop. */
+export const WORLD_FRAGMENT = `
+uniform sampler2D map;uniform vec3 sun;uniform float dotCell,alpha,dim;
+varying vec2 vUv;varying vec3 vObj;varying vec3 vN;varying vec3 vView;varying vec3 vEast;
+${NOISE}
+void main(){
+  vec3 albedo=pow(texture2D(map,vUv).rgb,vec3(1./2.2));
+  vec3 N=normalize(vN),V=normalize(vView);
+  float ndl=dot(N,sun);
+  float soft=smoothstep(-.16,.72,ndl),band=smoothstep(.1,.13,ndl)*.5+smoothstep(.44,.47,ndl)*.5;
+  float day=mix(soft,band,.34);
+  vec3 c=albedo*mix(vec3(.13,.17,.38),vec3(1.06,1.03,.98),day);
+  if(day<.5)c*=1.-.06*halftone(dotCell,day<.3?.62:.4);
+  float rim=pow(1.-max(dot(N,V),0.),2.6);
+  c=mix(c,albedo*1.15+.08,rim*.18*smoothstep(-.2,.5,ndl));
+  gl_FragColor=vec4(c*dim,alpha);
 }`;
 
 /** Thin high cloud painted on a shell just above the ground; the piled-up 3D clouds sit among it. */
@@ -103,7 +122,7 @@ void main(){
   vec3 c=mix(vec3(.72,.8,.98),vec3(1.),thick);
   c*=mix(vec3(.16,.2,.42),vec3(1.),day);
   float rim=pow(1.-max(dot(N,normalize(vView)),0.),3.2);
-  c=mix(c,vec3(.7,.87,1.),rim*atmosphere*.8);
+  c=mix(c,vec3(.7,.87,1.),rim*atmosphere*.45);
   gl_FragColor=vec4(c,a);
 }`;
 
@@ -116,7 +135,7 @@ void main(){
   float t=dot(-cameraPosition,rd);
   vec3 closest=cameraPosition+rd*mix(t,max(t,0.),ahead); // ahead=1 (space): only air in front of the camera counts, so none glows from behind it
   float h=clamp((length(closest)-radius)/(shell-radius),0.,1.);
-  float g=(1.-pow(h,1.5))*(.5+atmosphere*.75);
+  float g=(1.-pow(h,1.5))*(.35+atmosphere*.5);
   g*=.6+.4*smoothstep(-.3,.7,dot(normalize(closest),sun));
   g=clamp(g,0.,1.);
   vec3 c=mix(vec3(.08,.24,.72),vec3(.26,.58,.98),exp(-h*2.4));
