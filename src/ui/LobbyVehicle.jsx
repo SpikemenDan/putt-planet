@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { colorHex } from '../shared/colors.js';
 import { NAME_LIMIT } from './commands.js';
 import { useUiContext } from './context.js';
+import { lobbyCanvasSlot } from './lobby-canvas.js';
 import styles from './LobbyVehicle.module.css';
 
 /** Seats per vehicle: the Solo helicopter carries one ball, the party plane and rocket eight (the room cap). */
@@ -50,7 +51,8 @@ export function layoutTags(anchors, width, widths = []) {
  */
 export function LobbyVehicle({ vehicle = 'plane', passengers = [], hidden = false, insets = null, sun = true }) {
   const { display, createLobbyScene } = useUiContext();
-  const canvas = useRef(null);
+  const host = useRef(null); // the pooled canvas is attached here while the lobby shows; React never renders it
+  const label = useRef(null); // that canvas while attached, for its aria-label
   const scene = useRef(null);
   const tags = useRef([]);
   const lines = useRef([]);
@@ -62,37 +64,58 @@ export function LobbyVehicle({ vehicle = 'plane', passengers = [], hidden = fals
   const colors = Array.from({ length: seats }, (_, i) => (riders[i] ? colorHex(riders[i].color) : null));
   const latest = useRef(colors);
   latest.current = colors;
+  const now = useRef(null);
+  now.current = { vehicle, sun };
+  const ariaLabel = useRef('');
+  ariaLabel.current = `A ${VEHICLE_NAMES[vehicle] ?? 'vehicle'} carrying ${riders.length === 1 ? 'one ball' : riders.length + ' balls'}`;
+  useEffect(() => { label.current?.setAttribute('aria-label', ariaLabel.current); });
 
   useEffect(() => {
-    const el = canvas.current;
-    if (hidden || !el || !createLobbyScene) return undefined;
-    const win = el.ownerDocument.defaultView;
+    const box = host.current;
+    if (hidden || !box || !createLobbyScene) return undefined;
+    const doc = box.ownerDocument, win = doc.defaultView;
     const reducedMotion = !!win?.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    let made = null;
-    try { made = createLobbyScene({ canvas: el, display, vehicle, reducedMotion, win }); } catch { made = null; }
-    if (!made?.stats?.webgl) { made?.dispose?.(); return undefined; }
-    scene.current = made;
-    wrap.current?.setAttribute('data-mode', '3d');
-    const fit = () => { const box = measure.current?.(); if (box) made.setInsets?.(box); };
-    fit();
-    const refit = win.setInterval(fit, 400); // panels can grow (a picker opens, a player joins): keep the framing current
-    made.onAnchors((anchors, { width }) => {
-      const widths = tags.current.map(tag => tag?.offsetWidth ?? 0); // read every width before any write, so layout runs once
-      for (const t of layoutTags(anchors, width, widths)) {
-        const tag = tags.current[t.seat], line = lines.current[t.seat];
-        if (!tag) continue;
-        tag.style.transform = `translate(${t.x.toFixed(1)}px, ${t.y.toFixed(1)}px) translate(-50%, ${t.side === 'top' ? '-100%' : '0'})`;
-        tag.style.visibility = 'visible';
-        if (line) {
-          const [x1, y1, x2, y2] = t.line;
-          line.setAttribute('d', `M${x1.toFixed(1)} ${y1.toFixed(1)} L${x2.toFixed(1)} ${y2.toFixed(1)}`);
-          line.style.visibility = 'visible';
+    // One canvas for every visit, so the lobby holds one WebGL context slot per page, not one per visit (src/ui/lobby-canvas.js).
+    const slot = lobbyCanvasSlot(doc, styles.canvas);
+    let made = null, refit = 0, el = null;
+    const begin = () => {
+      el = slot.canvas;
+      box.append(el);
+      label.current = el;
+      el.setAttribute('aria-label', ariaLabel.current);
+      try { made = createLobbyScene({ canvas: el, display, vehicle: now.current.vehicle, reducedMotion, win }); } catch { made = null; }
+      if (!made?.stats?.webgl) { made?.dispose?.(); made = null; el.remove(); label.current = null; return; }
+      slot.adopt(made.context);
+      scene.current = made;
+      wrap.current?.setAttribute('data-mode', '3d');
+      const fit = () => { const panels = measure.current?.(); if (panels) made.setInsets?.(panels); };
+      fit();
+      refit = win.setInterval(fit, 400); // panels can grow (a picker opens, a player joins): keep the framing current
+      made.onAnchors((anchors, { width }) => {
+        const widths = tags.current.map(tag => tag?.offsetWidth ?? 0); // read every width before any write, so layout runs once
+        for (const t of layoutTags(anchors, width, widths)) {
+          const tag = tags.current[t.seat], line = lines.current[t.seat];
+          if (!tag) continue;
+          tag.style.transform = `translate(${t.x.toFixed(1)}px, ${t.y.toFixed(1)}px) translate(-50%, ${t.side === 'top' ? '-100%' : '0'})`;
+          tag.style.visibility = 'visible';
+          if (line) {
+            const [x1, y1, x2, y2] = t.line;
+            line.setAttribute('d', `M${x1.toFixed(1)} ${y1.toFixed(1)} L${x2.toFixed(1)} ${y2.toFixed(1)}`);
+            line.style.visibility = 'visible';
+          }
         }
-      }
-    });
-    made.setPassengers(latest.current);
-    made.start();
-    return () => { win.clearInterval(refit); made.dispose(); scene.current = null; wrap.current?.removeAttribute('data-mode'); };
+      });
+      made.setSun?.(now.current.sun); // a restored canvas starts a moment later: catch up with what changed meanwhile
+      made.setPassengers(latest.current);
+      made.start();
+    };
+    const stopWaiting = slot.ready(begin);
+    return () => {
+      stopWaiting?.();
+      if (made) { win.clearInterval(refit); slot.release(); made.dispose(); scene.current = null; wrap.current?.removeAttribute('data-mode'); }
+      el?.remove();
+      label.current = null;
+    };
   }, [createLobbyScene, display, hidden]); // eslint-disable-line react-hooks/exhaustive-deps -- vehicle and riders are pushed below
 
   useEffect(() => { scene.current?.setVehicle(vehicle); }, [vehicle]);
@@ -102,7 +125,7 @@ export function LobbyVehicle({ vehicle = 'plane', passengers = [], hidden = fals
 
   return (
     <div ref={wrap} className={styles.wrap} data-ui="lobby-vehicle" data-vehicle={vehicle}>
-      {!hidden && <canvas ref={canvas} className={styles.canvas} data-ui="lobby-canvas" role="img" aria-label={`A ${VEHICLE_NAMES[vehicle] ?? 'vehicle'} carrying ${riders.length === 1 ? 'one ball' : riders.length + ' balls'}`} />}
+      <div ref={host} className={styles.host} />
       <svg className={styles.lines} aria-hidden="true">
         {riders.map((p, i) => <path key={p.id} ref={el => { lines.current[i] = el; }} style={{ '--ball': colorHex(p.color) }} />)}
       </svg>

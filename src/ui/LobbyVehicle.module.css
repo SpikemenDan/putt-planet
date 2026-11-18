@@ -2,6 +2,7 @@
    behind it), with name tags in a lane above and a lane below, each joined to its ball by a leader line. Without WebGL the tags
    fall back to a plain row of balls. */
 .wrap{position:fixed;inset:0;z-index:1;pointer-events:none}
+.host{position:absolute;inset:0}
 .canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .lines{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
 .lines path{visibility:hidden;fill:none;stroke:var(--ink);stroke-width:3;stroke-linecap:round;stroke-dasharray:1 7;filter:drop-shadow(0 0 1.5px #fff)}

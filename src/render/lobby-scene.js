@@ -388,6 +388,8 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', re
   const loop = time => { if (disposed) return; frame(time); raf = win.requestAnimationFrame(loop); };
   return {
     stats,
+    /** The WebGL context drawn with, so the lobby can keep its canvas and restore this context next visit (src/ui/lobby-canvas.js). */
+    context: renderer.getContext?.() ?? null,
     setVehicle(kind) { if (kind !== stats.vehicle) build(kind, !reducedMotion && stats.frames > 0); },
     /** Shows or hides the corner sun (it shrinks away): off when the planet sky behind draws its own sun, as in Ares's air. */
     setSun(on) { sunWanted = !!on; },
@@ -404,7 +406,7 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', re
       clear();
       for (const r of owned) r.dispose?.();
       renderer.dispose?.();
-      renderer.forceContextLoss?.(); // release the context now: browsers cap live contexts and drop the oldest, which can be the game's
+      if (!renderer.getContext?.()?.isContextLost?.()) renderer.forceContextLoss?.(); // release the context now: browsers cap live contexts and drop the oldest, which can be the game's; an evicted one is already gone
     },
   };
 }
