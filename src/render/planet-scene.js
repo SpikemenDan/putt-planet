@@ -953,8 +953,19 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
       }
       if (reducedMotion) { space.t = space.goal; space.travel = 1; space.near = space.nearGoal; snap.on = false; draw(); }
     },
+    /**
+     * Where a planet ('gaia', 'luna' or 'ares') is from the camera right now: camera-space x (right) and y (up) per unit ahead, or
+     * null when it is behind. The lobby points its departing rocket at it.
+     */
+    screenOf(id) {
+      const body = { gaia: null, luna: luna.mesh, ares: ares.mesh }[id];
+      if (body === undefined) return null;
+      camera.updateMatrixWorld();
+      const p = (body ? body.position.clone() : new THREE.Vector3()).applyMatrix4(camera.matrixWorldInverse);
+      return p.z < -1e-3 ? { x: p.x / -p.z, y: p.y / -p.z } : null;
+    },
     /** Destination view state, for checks: blend into space (0..1), the planet shown, trip progress, Luna's orbit phase, lens and camera. */
-    get space() { return { t: space.t, goal: space.goal, near: space.near, air: aresAir.visible ? aresAir.material.uniforms.fade.value : 0, from: space.from, to: space.to, travel: space.travel, orbit: space.orbit, fov: camera.fov, camera: camera.position.toArray(), luna: luna.mesh.position.toArray(), ares: ares.mesh.position.toArray(), aresRadius: ares.mesh.scale.x, sun: sunBody.visible ? sunBody.position.toArray() : null, light: sun.toArray(), nebula: nebulae[0]?.opacity ?? 0 }; },
+    get space() { return { t: space.t, goal: space.goal, near: space.near, nearGoal: space.nearGoal, air: aresAir.visible ? aresAir.material.uniforms.fade.value : 0, from: space.from, to: space.to, travel: space.travel, orbit: space.orbit, fov: camera.fov, camera: camera.position.toArray(), luna: luna.mesh.position.toArray(), ares: ares.mesh.position.toArray(), aresRadius: ares.mesh.scale.x, sun: sunBody.visible ? sunBody.position.toArray() : null, light: sun.toArray(), nebula: nebulae[0]?.opacity ?? 0 }; },
     /** How many planes, ships and satellites the current settings show. */
     get traffic() { const s = settings(); return { planes: count(s.planes, MAX_PLANES), boats: Math.min(count(s.boats, MAX_BOATS), ships.length), satellites: count(s.satellites, MAX_SATELLITES) }; },
     /** What the last frame used, for checks. */

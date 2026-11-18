@@ -67,7 +67,7 @@ export function RoomLobby({ hidden }) {
   };
   return (
     <div className={styles.lobby} hidden={hidden} data-ui="room-lobby">
-      <LobbyVehicle vehicle={vehicle} passengers={roster} hidden={hidden || !lobby} insets={insets} sun={!ownSky} />
+      <LobbyVehicle vehicle={vehicle} destination={destination} air={destination === 'gaia' || (destination === 'ares' && ownSky)} passengers={roster} hidden={hidden || !lobby} insets={insets} sun={!ownSky} />
       <div ref={left} className={styles.left}>
         {/* No title board (owner, 2026-11-17): the heading and room line stay for screen readers only. */}
         <div className={styles.hiddenText}>

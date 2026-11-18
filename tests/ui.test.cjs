@@ -1222,7 +1222,7 @@ function fakeClock() {
     const { createDisplay } = await import('../src/shared/display.js');
     for (const kind of LOBBY_VEHICLES) {
       const v = makeLobbyVehicle(THREE, kind);
-      assert.equal(v.seats.length, kind === 'helicopter' ? 1 : 8, kind + ' seats');
+      assert.equal(v.seats.length, (kind === 'helicopter' || kind === 'minirocket') ? 1 : 8, kind + ' seats');
       assert.ok(v.body.attributes.color.count === v.body.attributes.position.count && v.drop > 0 && v.glass, kind + ' is one vertex-coloured body under glass');
       const top = v.seats.map(p => p.y);
       assert.ok(top.every(y => Math.abs(y - top[0]) < 1e-9), kind + ': every seat at one height');
@@ -1230,7 +1230,7 @@ function fakeClock() {
     assert.equal(makeLobbyVehicle(THREE, 'helicopter').spinners.length, 2, 'main and tail rotors');
     assert.equal(makeLobbyVehicle(THREE, 'plane').spinners.length, 2, 'two jet fans');
     assert.ok(makeLobbyVehicle(THREE, 'rocket').flame, 'the rocket has a flame');
-    assert.deepEqual([lobbyVehicleFor({ solo: true, destination: 'ares' }), lobbyVehicleFor({ destination: 'gaia' }), lobbyVehicleFor({ destination: 'ares' }), lobbyVehicleFor({ destination: 'luna' }), lobbyVehicleFor({})], ['helicopter', 'plane', 'rocket', 'rocket', 'plane']);
+    assert.deepEqual([lobbyVehicleFor({ solo: true, destination: 'ares' }), lobbyVehicleFor({ solo: true, destination: 'gaia' }), lobbyVehicleFor({ destination: 'gaia' }), lobbyVehicleFor({ destination: 'ares' }), lobbyVehicleFor({ destination: 'luna' }), lobbyVehicleFor({})], ['minirocket', 'helicopter', 'plane', 'rocket', 'rocket', 'plane']);
     const sd = new JSDOM('<canvas></canvas>', { pretendToBeVisual: true });
     sd.window.HTMLCanvasElement.prototype.getContext = () => new Proxy({}, { get: (_, k) => (k === 'createRadialGradient' ? () => ({ addColorStop() {} }) : () => {}), set: () => true });
     const canvas = sd.window.document.querySelector('canvas');
@@ -1260,6 +1260,24 @@ function fakeClock() {
     assert.ok(lobby.stats.swapping, 'the switch glides: the plane leaves while the rocket arrives (owner, 2026-11-17)');
     for (let k = 0; k < 40 && lobby.stats.swapping; k++) await new Promise(r => setTimeout(r, 100));
     assert.equal(lobby.stats.swapping, false, 'and settles within a few seconds');
+    // A trip (owner, 2026-11-18): Gaia to Luna flies the plane off, launches a rocket, waits for the sky, then the next craft arrives.
+    lobby.setVehicle('plane');
+    for (let k = 0; k < 40 && lobby.stats.swapping; k++) await new Promise(r => setTimeout(r, 100));
+    let skyThere = false;
+    lobby.setSkyProbe(to => skyThere && to === 'luna');
+    lobby.setTrip({ vehicle: 'rocket', destination: 'luna', air: false, toward: { x: 0.7, y: 0.5 } });
+    await new Promise(r => setTimeout(r, 120));
+    assert.equal(lobby.stats.trip, 'leaving', 'the plane flies off screen first');
+    const tripSeen = new Set();
+    for (let k = 0; k < 40; k++) { tripSeen.add(lobby.stats.trip); await new Promise(r => setTimeout(r, 100)); }
+    assert.ok(tripSeen.has('launching'), 'a rocket launches toward Luna');
+    assert.equal(lobby.stats.trip, 'between', 'and the next craft waits for the sky');
+    assert.equal(anchors.length, 0, 'no tags while nobody is aboard');
+    skyThere = true;
+    for (let k = 0; k < 40 && lobby.stats.swapping; k++) await new Promise(r => setTimeout(r, 100));
+    assert.equal(lobby.stats.vehicle, 'rocket');
+    assert.ok(lobby.stats.air < 0.05, 'no wind in space');
+    assert.deepEqual(anchors.map(a => a.seat), [0, 2], 'the passengers arrive aboard');
     lobby.dispose();
     const after = frames;
     await new Promise(r => setTimeout(r, 60));

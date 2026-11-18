@@ -5,9 +5,23 @@ import { useUiContext } from './context.js';
 import { lobbyCanvasSlot } from './lobby-canvas.js';
 import styles from './LobbyVehicle.module.css';
 
-/** Seats per vehicle: the Solo helicopter carries one ball, the party plane and rocket eight (the room cap). */
-export const VEHICLE_SEATS = Object.freeze({ helicopter: 1, plane: 8, rocket: 8 });
-const VEHICLE_NAMES = Object.freeze({ helicopter: 'helicopter', plane: 'plane', rocket: 'rocket' });
+/** Seats per vehicle: the Solo helicopter and Solo rocket carry one ball, the party plane and rocket eight (the room cap). */
+export const VEHICLE_SEATS = Object.freeze({ helicopter: 1, minirocket: 1, plane: 8, rocket: 8 });
+const VEHICLE_NAMES = Object.freeze({ helicopter: 'helicopter', minirocket: 'rocket', plane: 'plane', rocket: 'rocket' });
+
+/** Where each planet roughly sits on screen, when the sky cannot say: Luna up and right, Ares up and left, Gaia below. */
+const TOWARD = Object.freeze({ luna: { x: 0.8, y: 0.6 }, ares: { x: -0.8, y: 0.6 }, gaia: { x: 0.25, y: -1 } });
+
+/**
+ * True once the planet sky has finished flying to `destination`: the camera is there and settled (VIS-M4, src/render/planet-scene.js).
+ * Without a live sky there is nothing to wait for.
+ */
+export function skyArrived(scene, destination) {
+  const s = scene?.space;
+  if (!s || typeof s.t !== 'number') return true;
+  const settled = Math.abs(s.t - s.goal) < 0.02 && s.travel >= 1 && Math.abs(s.near - (s.nearGoal ?? s.near)) < 0.02;
+  return settled && (destination === 'gaia' ? s.goal === 0 : s.to === destination);
+}
 
 /** A tag's place: tags alternate between a lane above the vehicle and a lane below it, seat by seat (owner, 2026-11-16). */
 export const tagSide = seat => (seat % 2 === 0 ? 'top' : 'bottom');
@@ -49,8 +63,8 @@ export function layoutTags(anchors, width, widths = []) {
  * framed in the space between them. Without a scene (no WebGL, tests) the tags show as a plain row. Names render as React text only
  * and are cut to NAME_LIMIT characters.
  */
-export function LobbyVehicle({ vehicle = 'plane', passengers = [], hidden = false, insets = null, sun = true }) {
-  const { display, createLobbyScene } = useUiContext();
+export function LobbyVehicle({ vehicle = 'plane', destination = 'gaia', air = true, passengers = [], hidden = false, insets = null, sun = true }) {
+  const { display, createLobbyScene, stage } = useUiContext();
   const host = useRef(null); // the pooled canvas is attached here while the lobby shows; React never renders it
   const label = useRef(null); // that canvas while attached, for its aria-label
   const scene = useRef(null);
@@ -65,7 +79,7 @@ export function LobbyVehicle({ vehicle = 'plane', passengers = [], hidden = fals
   const latest = useRef(colors);
   latest.current = colors;
   const now = useRef(null);
-  now.current = { vehicle, sun };
+  now.current = { vehicle, sun, destination, air, stage };
   const ariaLabel = useRef('');
   ariaLabel.current = `A ${VEHICLE_NAMES[vehicle] ?? 'vehicle'} carrying ${riders.length === 1 ? 'one ball' : riders.length + ' balls'}`;
   useEffect(() => { label.current?.setAttribute('aria-label', ariaLabel.current); });
@@ -83,7 +97,7 @@ export function LobbyVehicle({ vehicle = 'plane', passengers = [], hidden = fals
       box.append(el);
       label.current = el;
       el.setAttribute('aria-label', ariaLabel.current);
-      try { made = createLobbyScene({ canvas: el, display, vehicle: now.current.vehicle, reducedMotion, win }); } catch { made = null; }
+      try { made = createLobbyScene({ canvas: el, display, vehicle: now.current.vehicle, destination: now.current.destination, air: now.current.air, reducedMotion, win }); } catch { made = null; }
       if (!made?.stats?.webgl) { made?.dispose?.(); made = null; el.remove(); label.current = null; return; }
       slot.adopt(made.context);
       scene.current = made;
@@ -93,7 +107,10 @@ export function LobbyVehicle({ vehicle = 'plane', passengers = [], hidden = fals
       refit = win.setInterval(fit, 400); // panels can grow (a picker opens, a player joins): keep the framing current
       made.onAnchors((anchors, { width }) => {
         const widths = tags.current.map(tag => tag?.offsetWidth ?? 0); // read every width before any write, so layout runs once
-        for (const t of layoutTags(anchors, width, widths)) {
+        const placed = layoutTags(anchors, width, widths), seated = new Set(placed.map(t => t.seat));
+        // Nobody aboard on screen (the vehicle is flying between planets): the tags wait out of sight.
+        tags.current.forEach((tag, seat) => { if (tag && !seated.has(seat)) { tag.style.visibility = 'hidden'; if (lines.current[seat]) lines.current[seat].style.visibility = 'hidden'; } });
+        for (const t of placed) {
           const tag = tags.current[t.seat], line = lines.current[t.seat];
           if (!tag) continue;
           tag.style.transform = `translate(${t.x.toFixed(1)}px, ${t.y.toFixed(1)}px) translate(-50%, ${t.side === 'top' ? '-100%' : '0'})`;
@@ -105,7 +122,9 @@ export function LobbyVehicle({ vehicle = 'plane', passengers = [], hidden = fals
           }
         }
       });
+      made.setSkyProbe?.(to => skyArrived(now.current.stage?.scene, to));
       made.setSun?.(now.current.sun); // a restored canvas starts a moment later: catch up with what changed meanwhile
+      made.setTrip?.({ vehicle: now.current.vehicle, destination: now.current.destination, air: now.current.air });
       made.setPassengers(latest.current);
       made.start();
     };
@@ -118,7 +137,16 @@ export function LobbyVehicle({ vehicle = 'plane', passengers = [], hidden = fals
     };
   }, [createLobbyScene, display, hidden]); // eslint-disable-line react-hooks/exhaustive-deps -- vehicle and riders are pushed below
 
-  useEffect(() => { scene.current?.setVehicle(vehicle); }, [vehicle]);
+  // A new planet or vehicle: the vehicle leaves and the next one arrives once the sky has flown there (lobby-scene.js, setTrip).
+  // This child effect runs before the parent's sky move (useLobbySky), so the sky still shows where the destination lies from here.
+  useEffect(() => {
+    const made = scene.current;
+    if (!made) return;
+    if (!made.setTrip) { made.setVehicle(vehicle); return; }
+    const toward = stage?.scene?.screenOf?.(destination) ?? TOWARD[destination];
+    made.setTrip({ vehicle, destination, air, toward });
+  }, [vehicle, destination]); // eslint-disable-line react-hooks/exhaustive-deps -- air follows on its own
+  useEffect(() => { scene.current?.setAir?.(air); }, [air]);
   useEffect(() => { scene.current?.setSun?.(sun); }, [sun, hidden]);
   const key = colors.join(',');
   useEffect(() => { scene.current?.setPassengers(colors); }, [key, vehicle]); // eslint-disable-line react-hooks/exhaustive-deps

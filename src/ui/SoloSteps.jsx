@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { GameModes } from '../shared/session.js';
+import { lobbyVehicleFor } from '../render/lobby-models.js';
 import { WORLDS } from '../shared/worlds.js';
 import { UiCommands } from './commands.js';
 import { useUiContext, useView } from './context.js';
@@ -52,6 +53,7 @@ export function SoloSteps({ name, onName, colorField, connecting, send, onExit, 
   // The big title steps aside for the lobby; the sky follows the chosen planet.
   useEffect(() => { overlay?.setAttribute('data-space', ''); return () => overlay?.removeAttribute('data-space'); }, [overlay]);
   const ownSky = useLobbySky(stage, true, world, body);
+  const vehicle = lobbyVehicleFor({ solo: true, destination: world }); // the helicopter over Gaia, the Solo rocket to Luna and Ares
   const { flight } = flightOf('', world);
   // The helicopter is framed between the planet picker on the left, the pass on the right and the mode bar below.
   const insets = () => {
@@ -63,7 +65,7 @@ export function SoloSteps({ name, onName, colorField, connecting, send, onExit, 
   };
   const lobby = (
     <div data-ui="solo-lobby" onKeyDown={e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); onExit(); } }}>
-      <LobbyVehicle vehicle="helicopter" passengers={[{ id: 'you', name: name.trim() || 'Player', color: color ?? 0, you: true }]} insets={insets} sun={!ownSky} />
+      <LobbyVehicle vehicle={vehicle} destination={world} air={world === 'gaia' || (world === 'ares' && ownSky)} passengers={[{ id: 'you', name: name.trim() || 'Player', color: color ?? 0, you: true }]} insets={insets} sun={!ownSky} />
       <div className={room.hiddenText} data-ui="solo-title">
         <h1>Solo lobby</h1>
         <p data-ui="solo-summary" aria-live="polite">{SOLO_MODES[mode]} on {WORLDS.find(w => w.id === world)?.name}</p>
@@ -72,7 +74,7 @@ export function SoloSteps({ name, onName, colorField, connecting, send, onExit, 
         <PlanetPicker value={world} onPick={setWorld} />
       </div>
       <div className={solo.pass}>
-        <LobbyTicket vehicle="helicopter" solo name={name} onName={onName} color={color} onPick={c => send(UiCommands.SET_COLOR, { color: c })} destination={world}
+        <LobbyTicket vehicle={vehicle} solo name={name} onName={onName} color={color} onPick={c => send(UiCommands.SET_COLOR, { color: c })} destination={world}
           flight={flight} seat={1} onBack={onExit}>
           <button type="button" className={solo.go} disabled={connecting} onClick={() => send(UiCommands.PLAY_SOLO, { name, mode, world })} data-ui="solo-play">Play Solo</button>
         </LobbyTicket>

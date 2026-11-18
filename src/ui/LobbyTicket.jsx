@@ -10,6 +10,7 @@ export const PASS = Object.freeze({
   plane: { title: 'Plane Boarding Pass', gate: 'Gate' },
   helicopter: { title: 'Helicopter Boarding Pass', gate: 'Helipad' },
   rocket: { title: 'Rocket Boarding Pass', gate: 'Launch pad' },
+  minirocket: { title: 'Rocket Boarding Pass', gate: 'Launch pad' }, // the Solo rocket to Luna and Ares
 });
 
 /**
@@ -19,7 +20,7 @@ export const PASS = Object.freeze({
 export function gateFor(vehicle, destination, flight = '') {
   const n = 1 + (Number(String(flight).replace(/\D/g, '')) || 0) % 9;
   if (vehicle === 'helicopter') return { kind: 'lily', text: 'Lily Pad ' + n };
-  if (vehicle === 'rocket') {
+  if (vehicle === 'rocket' || vehicle === 'minirocket') {
     return destination === 'luna' ? { kind: 'crater', text: 'Crater ' + n } : { kind: 'canyon', text: 'Canyon ' + n };
   }
   return { kind: 'cloud', text: 'Cloud 9' };
