@@ -1272,12 +1272,16 @@ function fakeClock() {
     assert.ok(chase > 0.9, 'on the way the rocket turns to chase Luna');
     assert.equal(sky.lobbyStats.trip, null, 'arrived');
     assert.equal(sky.lobbyStats.chase, 0, 'and back side-on');
+    assert.ok(Math.abs(sky.lobbyStats.side) === 1 && Math.sign(sky.lobbyStats.nose[0]) === -sky.lobbyStats.side, 'parked facing along its orbit (owner, 2026-11-18)');
     assert.equal(sky.lobbyStats.vehicle, 'rocket');
     assert.ok(sky.lobbyStats.air < 0.05, 'no wind in space');
     assert.deepEqual(anchors.map(a => a.seat), [0, 2], 'the passengers arrive aboard');
     // A plane bound for space becomes a rocket for the trip; spamming planets never builds a second vehicle.
     sky.setView({ space: false, target: 'gaia' });
     sky.setLobby(lobby('plane', ['#ff4fb8']));
+    run(6); assert.equal(sky.lobbyStats.vehicle, 'plane', 'home again: a plane');
+    sky.setView({ space: true, target: 'luna' }); run(0.3);
+    assert.equal(sky.space.travel, 0, 'the trip waits while the plane becomes a rocket (owner, 2026-11-18)');
     for (const target of ['luna', 'ares', 'luna', 'ares']) { sky.setView({ space: true, target }); run(0.3); }
     assert.equal(sky.lobbyStats.vehicle, 'rocket', 'in space the plane rides as a rocket');
     passes.length = 0; sky.step(0.05);

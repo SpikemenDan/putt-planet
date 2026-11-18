@@ -476,7 +476,11 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
   const SPACE_FRAME = { gaia: 700, luna: 240, ares: 400 }; // camera distance from each planet's centre, before `space.distance`: each about 7 radii, so every planet fills the view alike
   const SPACE_VIEW_DIR = new THREE.Vector3(0.42, 0.16, 1).normalize(); // seen a little from the right and above: the sun lights the near side
   const SPACE_BACKDROP = 0x03050f; // the darkest tone of the page's own backdrop, so the fade in is seamless
-  const space = { goal: 0, t: 0, from: 'gaia', to: 'gaia', travel: 1, orbit: 0.96, near: 0, nearGoal: 0, nearFrom: 0 };
+  const space = { goal: 0, t: 0, from: 'gaia', to: 'gaia', travel: 1, orbit: 0.96, near: 0, nearGoal: 0, nearFrom: 0, waiting: false, waited: 0, sweep: 0 };
+  // A trip waits for the lobby vehicle to change (owner, 2026-11-18: the helicopter becomes the rocket first, then they leave together),
+  // at most WAIT_MAX seconds. It ends with the camera sweeping ORBIT_ARC radians round the planet ahead, level with the view it arrives
+  // at, as if falling into orbit: `sweep` is that way round (1 moving left on screen, -1 right), fixed when the trip starts.
+  const WAIT_MAX = 2.5, ORBIT_ARC = 0.7;
   // A change of planet mid-flight (owner, 2026-11-17: smoother switching) starts from where the camera is, not from the planet it left:
   // `snap` holds that pose, and the new flight leaves it already moving.
   const snap = { on: false, pos: new THREE.Vector3(), look: new THREE.Vector3(), up: new THREE.Vector3(), fov: FOV };
@@ -796,13 +800,18 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
     pos.copy(look).addScaledVector(SPACE_VIEW_DIR, SPACE_FRAME[id] * spaceSettings().distance); // the planet sits centred, like Luna and Ares
   }
   const aimAt = new THREE.Vector3(), armFrom = new THREE.Vector3(), armTo = new THREE.Vector3(), swingQ = new THREE.Quaternion(), noSwing = new THREE.Quaternion();
+  const armOrbit = new THREE.Vector3(), arcQ = new THREE.Quaternion(), orbitHeading = new THREE.Vector3();
+  let orbitIn = 0;
   const fromQ = new THREE.Quaternion(), trackQ = new THREE.Quaternion(), toQ = new THREE.Quaternion(), clamp01 = v => Math.max(0, Math.min(1, v));
   const smoother = v => v * v * v * (v * (v * 6 - 15) + 10); // starts and ends at rest, with no kick in its speed either
   const easeOutCubic = v => 1 - Math.pow(1 - v, 3);
-  /** The journey's phases at progress `x` (0..1): how far in (`go`), how far round (`swing`), facing the planet (`turn`), into the view (`land`). */
+  /**
+   * The journey's phases at progress `x` (0..1): how far in (`go`), how far round to the orbit's start (`swing`), facing the planet
+   * (`turn`), into the view (`land`) and along the orbit (`arc`).
+   */
   function journey(x, moving = false) {
     const curve = moving ? easeOutCubic : smoother; // a redirected flight is already moving
-    return { go: curve(clamp01(x)), swing: smoother(clamp01((x - 0.2) / 0.8)), turn: curve(clamp01(x / 0.35)), land: smoother(clamp01((x - 0.45) / 0.55)) };
+    return { go: curve(clamp01(x)), swing: smoother(clamp01((x - 0.1) / 0.6)), turn: curve(clamp01(x / 0.35)), land: smoother(clamp01((x - 0.45) / 0.55)), arc: smoother(clamp01((x - 0.4) / 0.6)) };
   }
   const poseOf = (pos, look, up, out) => out.setFromRotationMatrix(lookAtMatrix.lookAt(pos, look, up));
   /** Blends the horizon view into the space view (`space.t`) and flies between planets (`space.travel`). */
@@ -852,13 +861,23 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
     // swings round it to the side the view is seen from as it descends, and turns from the planet to that view as it slows to rest.
     // Every part starts and finishes together at rest, so nothing jumps when the trip ends.
     if (space.travel < 1) {
-      const { go, swing, turn, land } = journey(x, snap.on);
+      const { go, swing, turn, land, arc } = journey(x, snap.on);
       bodyCentre(space.to, aimAt);
       armFrom.subVectors(camFrom, aimAt); armTo.subVectors(camTo, aimAt);
       const dFrom = Math.max(1e-3, armFrom.length()), dTo = Math.max(1e-3, armTo.length());
-      swingQ.setFromUnitVectors(armFrom.divideScalar(dFrom), armTo.divideScalar(dTo));
+      armFrom.divideScalar(dFrom); armTo.divideScalar(dTo);
+      // Falling into orbit (owner, 2026-11-18): the camera comes in to one side of the view and sweeps round the planet into it,
+      // level, the way it was already heading round (home is always toward the left, the way the lobby vehicle faces over Gaia).
+      if (!space.sweep) space.sweep = space.to === 'gaia' || armOrbit.crossVectors(armTo, armFrom).dot(upTo) >= 0 ? 1 : -1;
+      armOrbit.copy(armTo).applyAxisAngle(upTo, space.sweep * ORBIT_ARC);
+      swingQ.setFromUnitVectors(armFrom, armOrbit);
       noSwing.identity().slerp(swingQ, swing);
-      spacePos.copy(armFrom).applyQuaternion(noSwing).multiplyScalar(dFrom * Math.pow(dTo / dFrom, go)).add(aimAt);
+      arcQ.setFromAxisAngle(upTo, -space.sweep * ORBIT_ARC * arc);
+      spacePos.copy(armFrom).applyQuaternion(noSwing).applyQuaternion(arcQ).multiplyScalar(dFrom * Math.pow(dTo / dFrom, go)).add(aimAt);
+      // Which way the vehicle flies round the planet now (world), and how far it has turned to it: it starts turning a little before
+      // the camera starts round, as a pilot would.
+      orbitHeading.subVectors(spacePos, aimAt).normalize().cross(upTo).multiplyScalar(space.sweep).normalize();
+      orbitIn = smoother(clamp01((x - 0.3) / 0.45));
       upNow.lerpVectors(upFrom, upTo, swing);
       if (upNow.lengthSq() < 1e-6) upNow.copy(upTo);
       upNow.normalize();
@@ -869,6 +888,7 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
     } else {
       spacePos.copy(camTo);
       poseOf(camTo, lookTo, upTo, poseQuat);
+      orbitIn = 0;
     }
     camera.position.set(0, framing.y, framing.z).lerp(spacePos, k);
     camera.quaternion.slerpQuaternions(horizonQuat, poseQuat, k);
@@ -893,7 +913,7 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
     bodyCentre(space.to, flightCentre);
     flight.update({
       camera, sun: sunNow, width: w, height: h, ratio: renderer.getPixelRatio?.() ?? 1, dt: lobbyDt, airAt,
-      trip: { travelling, land, inSpace: travelling && land < 0.9, aim: flightCentre },
+      trip: { travelling, land, inSpace: travelling && land < 0.9, aim: flightCentre, orbit: orbitIn, heading: orbitHeading, sweep: space.sweep || 1 },
     });
     lobbyDt = 0;
   }
@@ -945,12 +965,16 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
       stepStreak(dt);
     }
     const sp = spaceSettings();
+    if (!reducedMotion && space.t > 0) space.orbit = (space.orbit + dt / sp.orbitSeconds) % 1;
+    if (space.waiting) { // the lobby vehicle changes first
+      space.waited += dt;
+      if (reducedMotion || !flight?.holds?.(space.goal === 1) || space.waited > WAIT_MAX) space.waiting = false;
+    }
     if (reducedMotion) { space.t = space.goal; space.travel = 1; space.near = space.nearGoal; }
-    else {
+    else if (!space.waiting) {
       const homing = space.goal < space.t && (space.travel < 0.55 || space.near > 0.4); // back to the horizon: fly home first, then settle
       if (!homing) space.t = Math.max(0, Math.min(1, space.t + Math.sign(space.goal - space.t) * dt / 1.4));
       if (space.travel < 1) space.travel = Math.min(1, space.travel + dt / (sp.travelSeconds * (longTrip() ? 1.6 : 1)));
-      if (space.t > 0) space.orbit = (space.orbit + dt / sp.orbitSeconds) % 1;
       space.near = Math.max(0, Math.min(1, space.near + Math.sign(space.nearGoal - space.near) * dt / (sp.travelSeconds * 1.2)));
     }
     draw();
@@ -1006,6 +1030,8 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
         // The trip carries the camera from the closeness it had to the one asked for, so the view it arrives at holds still once there.
         space.nearFrom = space.near;
         if (space.travel < 1) space.near = space.nearGoal;
+        space.sweep = 0;
+        space.waiting = space.travel < 1; space.waited = 0;
       }
       if (reducedMotion) { space.t = space.goal; space.travel = 1; space.near = space.nearGoal; snap.on = false; draw(); }
     },
