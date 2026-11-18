@@ -214,11 +214,12 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', de
   // is bound for, while the planet sky behind rides along with it. A plane or helicopter bound for space is swapped for the rocket as
   // it sets off; a rocket bound for Gaia stays a rocket until it is home. Seconds.
   // The switch is a cartoon dash (owner, 2026-11-18): the old craft zips off ahead, the new one zooms in from behind with a little
-  // overshoot, and only then does it turn to set off. On arrival it rides the sky's lap of the planet before turning side-on again.
+  // overshoot, and only then does it turn to set off. On arrival it turns back side-on in step with the sky settling into its view
+  // (`settle` from the aim probe), so both come to rest together.
   const TRIP = { chase: 1.4, settle: 0.3, maxWait: 20 };
   const DASH = { out: 0.32, in: 0.6, gap: 0.06, reach: 46 };
   const FALLBACK = { luna: { x: 0.3, y: 0.2 }, ares: { x: -0.3, y: 0.2 }, gaia: { x: 0.1, y: -0.4 } };
-  let craft = null, leaving = null, swap = SWAP, trip = null, chase = 0, arriveAt = -1, frameHalf = null, lastNow = null;
+  let craft = null, leaving = null, swap = SWAP, trip = null, chase = 0, settle = 0, sighted = false, arriveAt = -1, frameHalf = null, lastNow = null;
   const easeOutBack = x => 1 + 2.2 * Math.pow(x - 1, 3) + 1.2 * Math.pow(x - 1, 2);
   const easeIn = x => x * x * x, easeOut = x => 1 - Math.pow(1 - x, 3), easeInOut = x => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
   const clamp01 = x => Math.max(0, Math.min(1, x));
@@ -336,6 +337,7 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', de
   const rideFor = (kind, from, to) => (from === 'gaia' && to === 'gaia') || isRocket(kind) ? kind : isRocket(craft?.kind) ? craft.kind : 'rocket';
   const startTrip = ({ kind, to, air: nextAir }) => {
     trip = { kind, to, air: !!nextAir, t0: null };
+    settle = 0; sighted = false;
     airWanted = false; // out of the air and into space for the journey
     const ride = rideFor(kind, place, to);
     if (ride === 'rocket' && !isRocket(craft.kind)) popTo(kind === 'minirocket' || craft.kind === 'helicopter' ? 'minirocket' : 'rocket');
@@ -374,7 +376,11 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', de
     if ((there && e >= TRIP.settle + DASH.out + DASH.in && arriveAt === -1) || e >= TRIP.maxWait) { land(); return; }
     // Where the planet is on the sky's screen, steered toward smoothly: the nose points left, into the scene and toward it.
     const seen = aimProbe?.(trip.to);
-    const { x, y } = seen && Number.isFinite(seen.x) && Number.isFinite(seen.y) ? seen : FALLBACK[trip.to] ?? FALLBACK.luna;
+    settle = seen && Number.isFinite(seen.settle) ? clamp01(seen.settle) : 0;
+    const spotted = seen && Number.isFinite(seen.x) && Number.isFinite(seen.y);
+    if (!spotted && sighted) return; // the sky has turned away from the planet into its view: hold the heading while turning side-on
+    sighted = sighted || !!spotted;
+    const { x, y } = spotted ? seen : FALLBACK[trip.to] ?? FALLBACK.luna;
     const sx = Math.max(-1, Math.min(1, x)), sy = Math.max(-1, Math.min(1, y));
     wantDir.copy(right).multiplyScalar(-0.75 + 0.35 * sx).addScaledVector(up, 0.06 + 0.3 * sy).addScaledVector(back, -0.9).normalize();
     chaseDir.lerp(wantDir, Math.min(1, dt * 2)).normalize();
@@ -419,9 +425,11 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', de
     if (trip) travel(now, dt);
     // Chasing: ease into the three-quarter view from behind while travelling, and back to side-on once there.
     chase += ((trip && arriveAt === -1 ? 1 : 0) - chase) * (reducedMotion ? 1 : Math.min(1, dt / TRIP.chase * 2.5));
+    if (trip) chase = Math.min(chase, 1 - settle); // the sky's own settling paces the turn back, so it ends as the camera rests
     if (chase < 0.001) chase = 0;
     stats.swapping = !!leaving || arriveAt !== -1 || !!trip || chase > 0.01;
     stats.trip = trip ? 'travelling' : chase > 0.01 ? 'arriving' : null;
+    if (!trip) settle = 0;
     // The air fades in and out over about a second.
     const airEase = reducedMotion ? 1 : Math.min(1, dt * 1.2);
     airLevel += ((airWanted ? 1 : 0) - airLevel) * airEase;

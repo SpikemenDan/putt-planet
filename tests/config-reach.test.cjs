@@ -201,20 +201,26 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
       fly('gaia', 6);
       assert.equal(fly('ares', 1).fov, 32, 'the long trip to Ares keeps the lens too: the planets never zoom (owner, 2026-11-18)');
       reset();
-      // The lap on arrival (owner, 2026-11-18): the camera circles the planet once, then rests on the usual view.
+      // The arrival (owner, 2026-11-18: smooth and continuous, no loop and no jolt): measured from Luna, which keeps moving along its
+      // orbit, the camera's step from frame to frame grows and shrinks gradually, never jumping, and comes to rest on the usual view.
       fly('gaia', 12);
-      const atLuna = fly('luna', 3.3);
-      assert.ok(atLuna.travel === 1 && atLuna.lap < 0.1, 'the lap starts once the ride is over');
-      const mid = run(2.2);
-      assert.ok(mid.lap > 0.3 && mid.lap < 0.7, 'and takes space.lapSeconds');
-      const seen = s => s.camera.map((v, i) => v - s.luna[i]); // from Luna, which keeps moving along its orbit
-      const rest = seen(run(3)), still = seen(run(1));
-      assert.ok(Math.hypot(rest[0] - still[0], rest[1] - still[1], rest[2] - still[2]) < 2, 'then the camera rests on the usual view');
-      const away = seen(mid);
-      assert.ok(Math.hypot(away[0] - rest[0], away[1] - rest[1], away[2] - rest[2]) > 100, 'halfway round, the camera is on the far side of Luna');
-      live.space.lapSeconds = 0;
-      fly('gaia', 6);
-      assert.equal(fly('luna', 3.4).lap, 1, 'space.lapSeconds 0 lands straight away');
+      scene.setView({ space: true, target: 'luna', near: true });
+      const seen = s => s.camera.map((v, i) => v - s.luna[i]);
+      const steps = [];
+      let before = seen(scene.space), done = null;
+      for (let i = 0; i < 30 * 7; i++) {
+        scene.step(1 / 30);
+        const s = scene.space, now = seen(s);
+        steps.push(Math.hypot(now[0] - before[0], now[1] - before[1], now[2] - before[2]));
+        if (done === null && s.travel === 1) done = i;
+        before = now;
+      }
+      const fastest = Math.max(...steps);
+      assert.ok(done !== null && fastest > 1, 'the camera flies to Luna within the trip time');
+      const kick = Math.max(...steps.slice(1).map((v, i) => Math.abs(v - steps[i])));
+      assert.ok(kick < fastest * 0.08, `the camera's speed changes gradually, with no jolt (largest change ${kick.toFixed(3)} of ${fastest.toFixed(3)})`);
+      assert.ok(steps[done] < fastest * 0.01 && Math.max(...steps.slice(done + 1)) < fastest * 0.01, 'it slows to a stop as the trip ends and then holds still: no loop after');
+      assert.equal(scene.space.arrive, 1, 'and the turn into the view has finished with it');
       reset();
       assert.ok(run(0.1).nebula > 0, 'the nebula shows in space');
       live.space.nebula = 0;
@@ -242,7 +248,7 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
     // and the progress balls carry the other two as CSS variables, and so is the menu group
     // (VIS-M2), where each value lands on its own CSS variable on the real main menu, and the lobby group, on the lobby vehicle scene.
     // The table covers every DISPLAY setting, so a new setting cannot be added without a reach check.
-    assert.deepEqual([...Object.keys(expectations), 'ball.visualScale', ...['spinSpeed', 'axisTilt', 'horizonHeight', 'cameraAltitude', 'cloudCover', 'cloudDrift', 'finishTime', 'atmosphere', 'atmosphereHeight', 'citySize', 'lunaSize', 'backgroundDim', 'outlineWidth', 'planes', 'boats', 'satellites', 'paintedMaps', 'ballPulse', 'ballBounce'].map(k => 'loading.' + k), ...['orbitSeconds', 'travelSeconds', 'lapSeconds', 'nebula', 'distance', 'revolveSeconds'].map(k => 'space.' + k), ...['buttonScale', 'stagger', 'bob', 'tilt', 'shineSeconds', 'cardTint'].map(k => 'menu.' + k), ...['zoom', 'sway', 'bob', 'spinSeconds'].map(k => 'lobby.' + k), ...['aresWind', 'aresWindDensity', 'lunaDust', 'lunaDustDensity', 'lunaSolar'].map(k => 'environment.' + k)].sort(), DISPLAY_FIELDS.map(f => f[0]).sort());
+    assert.deepEqual([...Object.keys(expectations), 'ball.visualScale', ...['spinSpeed', 'axisTilt', 'horizonHeight', 'cameraAltitude', 'cloudCover', 'cloudDrift', 'finishTime', 'atmosphere', 'atmosphereHeight', 'citySize', 'lunaSize', 'backgroundDim', 'outlineWidth', 'planes', 'boats', 'satellites', 'paintedMaps', 'ballPulse', 'ballBounce'].map(k => 'loading.' + k), ...['orbitSeconds', 'travelSeconds', 'nebula', 'distance', 'revolveSeconds'].map(k => 'space.' + k), ...['buttonScale', 'stagger', 'bob', 'tilt', 'shineSeconds', 'cardTint'].map(k => 'menu.' + k), ...['zoom', 'sway', 'bob', 'spinSeconds'].map(k => 'lobby.' + k), ...['aresWind', 'aresWindDensity', 'lunaDust', 'lunaDustDensity', 'lunaSolar'].map(k => 'environment.' + k)].sort(), DISPLAY_FIELDS.map(f => f[0]).sort());
   });
 
   // ---- TUNING probes: [name, setting, value, code printing one number, expected default, expected with the override]

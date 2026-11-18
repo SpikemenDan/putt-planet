@@ -475,7 +475,7 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
   const SPACE_FRAME = { gaia: 700, luna: 240, ares: 400 }; // camera distance from each planet's centre, before `space.distance`: each about 7 radii, so every planet fills the view alike
   const SPACE_VIEW_DIR = new THREE.Vector3(0.42, 0.16, 1).normalize(); // seen a little from the right and above: the sun lights the near side
   const SPACE_BACKDROP = 0x03050f; // the darkest tone of the page's own backdrop, so the fade in is seamless
-  const space = { goal: 0, t: 0, from: 'gaia', to: 'gaia', travel: 1, lap: 1, orbit: 0.96, near: 0, nearGoal: 0 };
+  const space = { goal: 0, t: 0, from: 'gaia', to: 'gaia', travel: 1, orbit: 0.96, near: 0, nearGoal: 0, nearFrom: 0 };
   // A change of planet mid-flight (owner, 2026-11-17: smoother switching) starts from where the camera is, not from the planet it left:
   // `snap` holds that pose, and the new flight leaves it already moving.
   const snap = { on: false, pos: new THREE.Vector3(), look: new THREE.Vector3(), up: new THREE.Vector3(), fov: FOV };
@@ -739,16 +739,16 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
 
   const horizonQuat = new THREE.Quaternion(), poseQuat = new THREE.Quaternion(), lookAtMatrix = new THREE.Matrix4();
   const upFrom = new THREE.Vector3(), upTo = new THREE.Vector3(), upNow = new THREE.Vector3();
-  const camFrom = new THREE.Vector3(), camTo = new THREE.Vector3(), lookFrom = new THREE.Vector3(), lookTo = new THREE.Vector3(), spacePos = new THREE.Vector3(), spaceLook = new THREE.Vector3(), tmpA = new THREE.Vector3();
+  const camFrom = new THREE.Vector3(), camTo = new THREE.Vector3(), lookFrom = new THREE.Vector3(), lookTo = new THREE.Vector3(), spacePos = new THREE.Vector3(), tmpA = new THREE.Vector3();
   const toGaia = new THREE.Vector3(), toSun = new THREE.Vector3(), across = new THREE.Vector3(), mid = new THREE.Vector3(), lift = new THREE.Vector3();
   /**
    * Where the camera stands to show planet `id` in space, the point it looks at and the camera's up. At Ares it looks past the planet
    * toward the sun: Gaia on one side and the sun on the other, both a little above Ares, so they still show when the planet sits low.
    */
-  function spaceCamera(id, pos, look, up) {
+  function spaceCamera(id, pos, look, up, closeness = space.near) {
     bodyCentre(id, look);
     up.copy(yAxis);
-    const near = id === 'gaia' ? 0 : ease(space.near);
+    const near = id === 'gaia' ? 0 : ease(closeness);
     if (near > 0) {
       far(id, tmpPos, tmpLook, tmpUp);
       nearCamera(id, look, pos, nearLook, up);
@@ -794,7 +794,16 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
     }
     pos.copy(look).addScaledVector(SPACE_VIEW_DIR, SPACE_FRAME[id] * spaceSettings().distance); // the planet sits centred, like Luna and Ares
   }
-  const aimAt = new THREE.Vector3(), lapCentre = new THREE.Vector3(), lapAxis = new THREE.Vector3(), lapArm = new THREE.Vector3(), lapView = new THREE.Vector3(), clamp01 = v => Math.max(0, Math.min(1, v));
+  const aimAt = new THREE.Vector3(), armFrom = new THREE.Vector3(), armTo = new THREE.Vector3(), swingQ = new THREE.Quaternion(), noSwing = new THREE.Quaternion();
+  const fromQ = new THREE.Quaternion(), trackQ = new THREE.Quaternion(), toQ = new THREE.Quaternion(), clamp01 = v => Math.max(0, Math.min(1, v));
+  const smoother = v => v * v * v * (v * (v * 6 - 15) + 10); // starts and ends at rest, with no kick in its speed either
+  const easeOutCubic = v => 1 - Math.pow(1 - v, 3);
+  /** The journey's phases at progress `x` (0..1): how far in (`go`), how far round (`swing`), facing the planet (`turn`), into the view (`land`). */
+  function journey(x, moving = false) {
+    const curve = moving ? easeOutCubic : smoother; // a redirected flight is already moving
+    return { go: curve(clamp01(x)), swing: smoother(clamp01((x - 0.2) / 0.8)), turn: curve(clamp01(x / 0.35)), land: smoother(clamp01((x - 0.45) / 0.55)) };
+  }
+  const poseOf = (pos, look, up, out) => out.setFromRotationMatrix(lookAtMatrix.lookAt(pos, look, up));
   /** Blends the horizon view into the space view (`space.t`) and flies between planets (`space.travel`). */
   function applySpace() {
     if (focus) return;
@@ -834,33 +843,32 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
       return;
     }
     if (snap.on && space.travel >= 1) snap.on = false;
-    if (snap.on) { camFrom.copy(snap.pos); lookFrom.copy(snap.look); upFrom.copy(snap.up); } else spaceCamera(space.from, camFrom, lookFrom, upFrom);
+    if (snap.on) { camFrom.copy(snap.pos); lookFrom.copy(snap.look); upFrom.copy(snap.up); } else spaceCamera(space.from, camFrom, lookFrom, upFrom, space.travel < 1 ? space.nearFrom : space.near);
     spaceCamera(space.to, camTo, lookTo, upTo);
-    // The journey (owner, 2026-11-18: the vehicle really travels there, the camera following it, and the planets stay put): the camera
-    // first turns to face the planet it is bound for, then rides straight across to it, and only at the end eases into that planet's
-    // own framing. No pull back and no zoom: only the camera moves, so the planet left behind shrinks and the one ahead grows.
+    // The journey (owner, 2026-11-18: the vehicle really travels there, the camera following it, the planets staying put, and the
+    // arrival one smooth, continuous move with no loop and no jolt): one curve, measured from the planet ahead so it follows Luna round
+    // its orbit. The camera turns to face that planet, closes in (the distance shrinking steadily, so the planet grows at an even pace),
+    // swings round it to the side the view is seen from as it descends, and turns from the planet to that view as it slows to rest.
+    // Every part starts and finishes together at rest, so nothing jumps when the trip ends.
     if (space.travel < 1) {
-      const turn = snap.on ? 1 - Math.pow(1 - clamp01(x / 0.25), 3) : ease(clamp01(x / 0.3)), go = ease(clamp01((x - 0.12) / 0.88)), land = ease(clamp01((x - 0.72) / 0.28));
+      const { go, swing, turn, land } = journey(x, snap.on);
       bodyCentre(space.to, aimAt);
-      spacePos.lerpVectors(camFrom, camTo, go);
-      spaceLook.lerpVectors(lookFrom, aimAt, turn).lerp(lookTo, land);
-      upNow.lerpVectors(upFrom, upTo, go).normalize();
-    } else if (space.lap < 1) {
-      // The lap (owner, 2026-11-18): having reached the planet, the camera follows the vehicle once around it, the arrival view carried
-      // round the planet's centre, gathering speed from the ride in and slowing to rest on that view.
-      bodyCentre(space.to, lapCentre);
-      lapArm.subVectors(camTo, lapCentre); lapView.subVectors(lookTo, camTo).normalize();
-      lapAxis.crossVectors(lapArm, lapView);
-      if (lapAxis.lengthSq() < 1e-6 * lapArm.lengthSq()) lapAxis.copy(upTo);
-      lapAxis.normalize();
-      const l = space.lap, v0 = 0.6, turn = Math.PI * 2 * (v0 * (l * l * l - 2 * l * l + l) + 3 * l * l - 2 * l * l * l); // leaves moving, ends at rest
-      const angle = turn - Math.PI * 2;
-      spacePos.copy(lapArm).applyAxisAngle(lapAxis, angle).add(lapCentre);
-      spaceLook.subVectors(lookTo, lapCentre).applyAxisAngle(lapAxis, angle).add(lapCentre);
-      upNow.copy(upTo).applyAxisAngle(lapAxis, angle);
-    } else { spacePos.copy(camTo); spaceLook.copy(lookTo); upNow.copy(upTo); }
-    lookAtMatrix.lookAt(spacePos, spaceLook, upNow);
-    poseQuat.setFromRotationMatrix(lookAtMatrix);
+      armFrom.subVectors(camFrom, aimAt); armTo.subVectors(camTo, aimAt);
+      const dFrom = Math.max(1e-3, armFrom.length()), dTo = Math.max(1e-3, armTo.length());
+      swingQ.setFromUnitVectors(armFrom.divideScalar(dFrom), armTo.divideScalar(dTo));
+      noSwing.identity().slerp(swingQ, swing);
+      spacePos.copy(armFrom).applyQuaternion(noSwing).multiplyScalar(dFrom * Math.pow(dTo / dFrom, go)).add(aimAt);
+      upNow.lerpVectors(upFrom, upTo, swing);
+      if (upNow.lengthSq() < 1e-6) upNow.copy(upTo);
+      upNow.normalize();
+      poseOf(camFrom, lookFrom, upFrom, fromQ);
+      poseOf(spacePos, aimAt, upNow, trackQ);
+      poseOf(camTo, lookTo, upTo, toQ);
+      poseQuat.slerpQuaternions(fromQ, trackQ, turn).slerp(toQ, land);
+    } else {
+      spacePos.copy(camTo);
+      poseOf(camTo, lookTo, upTo, poseQuat);
+    }
     camera.position.set(0, framing.y, framing.z).lerp(spacePos, k);
     camera.quaternion.slerpQuaternions(horizonQuat, poseQuat, k);
     const lens = snap.on ? snap.fov + (FOV - snap.fov) * e : FOV; // a lens left wide by an older flight eases back
@@ -915,12 +923,11 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
       stepStreak(dt);
     }
     const sp = spaceSettings();
-    if (reducedMotion) { space.t = space.goal; space.travel = 1; space.lap = 1; space.near = space.nearGoal; }
+    if (reducedMotion) { space.t = space.goal; space.travel = 1; space.near = space.nearGoal; }
     else {
-      const homing = space.goal < space.t && (space.travel < 0.55 || space.near > 0.4); // back to the horizon: fly home first, then settle (no lap at Gaia)
+      const homing = space.goal < space.t && (space.travel < 0.55 || space.near > 0.4); // back to the horizon: fly home first, then settle
       if (!homing) space.t = Math.max(0, Math.min(1, space.t + Math.sign(space.goal - space.t) * dt / 1.4));
       if (space.travel < 1) space.travel = Math.min(1, space.travel + dt / (sp.travelSeconds * (longTrip() ? 1.6 : 1)));
-      else if (space.lap < 1) space.lap = sp.lapSeconds > 0 && space.goal === 1 ? Math.min(1, space.lap + dt / sp.lapSeconds) : 1;
       if (space.t > 0) space.orbit = (space.orbit + dt / sp.orbitSeconds) % 1;
       space.near = Math.max(0, Math.min(1, space.near + Math.sign(space.nearGoal - space.near) * dt / (sp.travelSeconds * 1.2)));
     }
@@ -968,15 +975,17 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
       space.goal = inSpace ? 1 : 0;
       space.nearGoal = near ? 1 : 0;
       if (target !== space.to) {
-        if (space.t > 0 && (space.travel < 1 || space.lap < 1)) { // redirected mid-flight or mid-lap: leave from right here
-          snap.on = true; snap.pos.copy(spacePos); snap.look.copy(spaceLook); snap.up.copy(upNow); snap.fov = FOV + (camera.fov - FOV) / Math.max(0.05, ease(space.t));
+        if (space.t > 0 && space.travel < 1) { // redirected mid-flight: leave from right here
+          snap.on = true; snap.pos.copy(spacePos); snap.look.set(0, 0, -1000).applyQuaternion(poseQuat).add(spacePos); snap.up.set(0, 1, 0).applyQuaternion(poseQuat); snap.fov = FOV + (camera.fov - FOV) / Math.max(0.05, ease(space.t));
         } else snap.on = false;
         space.from = space.to;
         space.to = target;
         space.travel = space.t > 0 || inSpace ? 0 : 1;
-        space.lap = space.travel < 1 && inSpace ? 0 : 1; // a lap of the planet on arrival (none on the way home to Gaia's horizon)
+        // The trip carries the camera from the closeness it had to the one asked for, so the view it arrives at holds still once there.
+        space.nearFrom = space.near;
+        if (space.travel < 1) space.near = space.nearGoal;
       }
-      if (reducedMotion) { space.t = space.goal; space.travel = 1; space.lap = 1; space.near = space.nearGoal; snap.on = false; draw(); }
+      if (reducedMotion) { space.t = space.goal; space.travel = 1; space.near = space.nearGoal; snap.on = false; draw(); }
     },
     /**
      * Where a planet ('gaia', 'luna' or 'ares') is from the camera right now: camera-space x (right) and y (up) per unit ahead, or
@@ -990,7 +999,7 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
       return p.z < -1e-3 ? { x: p.x / -p.z, y: p.y / -p.z } : null;
     },
     /** Destination view state, for checks: blend into space (0..1), the planet shown, trip progress, Luna's orbit phase, lens and camera. */
-    get space() { return { t: space.t, goal: space.goal, near: space.near, nearGoal: space.nearGoal, air: aresAir.visible ? aresAir.material.uniforms.fade.value : 0, from: space.from, to: space.to, travel: space.travel, lap: space.lap, orbit: space.orbit, fov: camera.fov, camera: camera.position.toArray(), luna: luna.mesh.position.toArray(), ares: ares.mesh.position.toArray(), aresRadius: ares.mesh.scale.x, sun: sunBody.visible ? sunBody.position.toArray() : null, light: sun.toArray(), nebula: nebulae[0]?.opacity ?? 0 }; },
+    get space() { return { t: space.t, goal: space.goal, near: space.near, nearGoal: space.nearGoal, air: aresAir.visible ? aresAir.material.uniforms.fade.value : 0, from: space.from, to: space.to, travel: space.travel, arrive: space.travel < 1 ? journey(space.travel, snap.on).land : 1, orbit: space.orbit, fov: camera.fov, camera: camera.position.toArray(), luna: luna.mesh.position.toArray(), ares: ares.mesh.position.toArray(), aresRadius: ares.mesh.scale.x, sun: sunBody.visible ? sunBody.position.toArray() : null, light: sun.toArray(), nebula: nebulae[0]?.opacity ?? 0 }; },
     /** How many planes, ships and satellites the current settings show. */
     get traffic() { const s = settings(); return { planes: count(s.planes, MAX_PLANES), boats: Math.min(count(s.boats, MAX_BOATS), ships.length), satellites: count(s.satellites, MAX_SATELLITES) }; },
     /** What the last frame used, for checks. */
