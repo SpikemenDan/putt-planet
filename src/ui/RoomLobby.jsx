@@ -57,7 +57,7 @@ export function RoomLobby({ hidden }) {
   // The sky behind follows the destination (useLobbySky): Gaia's air for the plane, Ares's or Luna's sky for the rocket.
   const shown = !hidden && !!lobby;
   const left = useRef(null), right = useRef(null), dock = useRef(null);
-  const ownSky = useLobbySky(stage, shown, destination, left);
+  useLobbySky(stage, shown, destination, left);
   const insets = () => {
     const view = left.current?.ownerDocument.defaultView;
     if (!view) return null;
@@ -67,7 +67,7 @@ export function RoomLobby({ hidden }) {
   };
   return (
     <div className={styles.lobby} hidden={hidden} data-ui="room-lobby">
-      <LobbyVehicle vehicle={vehicle} destination={destination} air={destination === 'gaia' || (destination === 'ares' && ownSky)} passengers={roster} hidden={hidden || !lobby} insets={insets} sun={!ownSky} />
+      <LobbyVehicle vehicle={vehicle} passengers={roster} hidden={hidden || !lobby} insets={insets} />
       <div ref={left} className={styles.left}>
         {/* No title board (owner, 2026-11-17): the heading and room line stay for screen readers only. */}
         <div className={styles.hiddenText}>

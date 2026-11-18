@@ -8,7 +8,7 @@
  * Units: distances in world units (the ball radius is 5). Opacity is 0..1; scale is a multiplier. The `loading` group
  * (loading screen, src/render/planet-scene.js) uses degrees, seconds, CSS px and a screen-height fraction as listed per field;
  * the `menu` group (main menu, src/ui/Landing.jsx) uses a multiplier, seconds, CSS px and degrees; the `lobby` group (the 3D lobby
- * vehicles, src/render/lobby-scene.js) uses a multiplier, degrees, ball diameters and seconds; the `space` group (the Solo
+ * vehicles, src/render/lobby-flight.js in the planet sky) uses a multiplier, degrees, ball diameters and seconds; the `space` group (the Solo
  * destination view in src/render/planet-scene.js) uses seconds, fractions and a multiplier. The `environment` group (VIS-E
  * world atmosphere, src/render/atmosphere.js) holds multipliers for the Ares and Luna scenery.
  */

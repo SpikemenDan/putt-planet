@@ -18,6 +18,7 @@ import { MAX_BOATS, MAX_PLANES, MAX_SATELLITES, TEX_W, TEX_H, gaiaPlanet, laneRo
 import { MODEL_REACH, PLANE_KINDS, PLANT_KINDS, SHIP_KINDS, makeBalloon, makeBase, makeCity, makeMoonlet, makeObservatory, makeRadioDish, makeSpaceport, makeCumulus, makeFlag, makeLighthouse, makeMill, makePeak, makePlane, makePlant, makePort, makeSatellite, makeShip, makeTown, makeVillage, makeVolcano } from './sky-models.js';
 import { buildAresTexture, buildLunaTexture, WORLD_TEX_H, WORLD_TEX_W } from './worlds.js';
 import { loadPlanetMap } from './planet-maps.js';
+import { createLobbyFlight } from './lobby-flight.js';
 
 export const PLANET_RADIUS = 100;
 /** Real distances and sizes in Earth radii, at this planet's radius: the Moon is 60 away and 0.27 across. */
@@ -64,7 +65,7 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
   const doc = canvas.ownerDocument, settings = () => display.loading;
   let renderer = null;
   try { renderer = createWebGLRenderer(THREE, canvas); } catch { renderer = null; }
-  if (!renderer) return { start() {}, step() {}, dispose() {} }; // no WebGL: nothing to draw or build; the CSS sky stays
+  if (!renderer) return { start() {}, step() {}, setLobby() { return false; }, get lobbyStats() { return { webgl: false }; }, dispose() {} }; // no WebGL: nothing to draw or build; the CSS sky stays
   const planet = prebuilt ?? gaiaPlanet();
   renderer.setClearColor?.(0x000000, 0);
   const library = createMaterialLibrary({ THREE, createCanvas: () => doc.createElement('canvas'), random, maxAnisotropy: renderer?.capabilities?.getMaxAnisotropy?.() ?? 1 });
@@ -879,13 +880,33 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
     sunBody.quaternion.copy(camera.quaternion); // the sun's disc faces the camera
   }
 
+  // ---- The lobby vehicle (lobby-flight.js): a real object in this world, flying along with the camera between planets.
+  const flight = focus ? null : createLobbyFlight({ THREE, display, reducedMotion });
+  let lobbyDt = 0;
+  const flightCentre = new THREE.Vector3();
+  /** True inside a planet's air: Gaia's shell, or Ares's dusty one. Luna has none. */
+  const airAt = p => p.length() < (stats.airTop ?? PLANET_RADIUS * 1.5) || p.distanceTo(aresNow) < SPACE_ARES.radius * ARES_AIR.top;
+  function flyLobby(w, h) {
+    if (!flight) return;
+    const travelling = (space.t > 0 || space.goal === 1) && (space.travel < 1 || Math.abs(space.t - space.goal) > 1e-3);
+    const land = space.travel < 1 ? journey(space.travel, snap.on).land : 1;
+    bodyCentre(space.to, flightCentre);
+    flight.update({
+      camera, sun: sunNow, width: w, height: h, ratio: renderer.getPixelRatio?.() ?? 1, dt: lobbyDt, airAt,
+      trip: { travelling, land, inSpace: travelling && land < 0.9, aim: flightCentre },
+    });
+    lobbyDt = 0;
+  }
+
   function draw() {
     const { w, h } = viewport(), s = settings();
     fit(w, h, s);
     applySettings(s, w);
     followFocus();
     applySpace();
+    flyLobby(w, h);
     renderer?.render?.(scene, camera);
+    if (flight?.active) flight.render(renderer);
   }
 
   /** A rare shooting star: waits a long random while, then crosses part of the upper sky in about a second. */
@@ -912,6 +933,7 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
     if (disposed) return;
     const s = settings();
     clock += dt;
+    lobbyDt += dt;
     if (!reducedMotion) {
       spin = (spin + s.spinSpeed * dt) % 360;
       cloudSpin = (cloudSpin + s.spinSpeed * s.cloudDrift * dt) % 360;
@@ -1022,6 +1044,18 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
         return { position: [e[12], e[13], e[14]], forward: n([e[0], e[1], e[2]]), up: n([e[4], e[5], e[6]]) };
       });
     },
+    /**
+     * Shows the lobby vehicle in this world (`{vehicle, colors, insets(), onAnchors(anchors, {width, height})}`), updates it, or
+     * (null) removes it. Returns true: the scene draws it.
+     */
+    setLobby(next) {
+      if (!flight || disposed) return false;
+      flight.set(next);
+      if (reducedMotion) draw(); // a still frame has no loop to show it
+      return true;
+    },
+    /** The lobby vehicle, for checks: which vehicle, how many aboard, mid-swap or flying, the trip phase and the air around it. */
+    get lobbyStats() { return { webgl: true, ...(flight?.stats ?? {}) }; },
     get cities() { return planet.cities; },
     get spin() { return spin; },
     get land() { return planet.land; },
@@ -1033,6 +1067,7 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
       frameId = null;
       for (const resource of owned) resource.dispose?.();
       owned.clear();
+      flight?.dispose();
       for (const mesh of instanced) mesh.dispose();
       library.dispose();
       renderer?.dispose?.();

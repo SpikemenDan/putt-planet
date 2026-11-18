@@ -47,12 +47,11 @@ function Screens({ onCanvas, initialName, initialRoomCode, initialView }) {
  * @param {typeof DISPLAY} [props.display] Presentation settings (read live by the planet behind the menu and loading screen); defaults to DISPLAY
  * @param {Function} [props.createAtlasScene] Builds the 3D level select on a canvas; without it the plain course list shows
  * @param {Function} [props.createLoadingScene] Builds the 3D planet behind the menu and loading screen; without it only the CSS sky shows
- * @param {Function} [props.createLobbyScene] Builds the 3D lobby vehicle (helicopter, plane or rocket); without it the passengers show as a plain row
  */
-export function PuttPalsUi({ store, dispatch, aim = null, onCanvas, initialName = '', initialRoomCode = '', initialView = 'home', display = DISPLAY, createLoadingScene = null, createAtlasScene = null, createLobbyScene = null }) {
+export function PuttPalsUi({ store, dispatch, aim = null, onCanvas, initialName = '', initialRoomCode = '', initialView = 'home', display = DISPLAY, createLoadingScene = null, createAtlasScene = null }) {
   const [stage] = useState(createStageHandle);
   return (
-    <UiContext.Provider value={{ store, dispatch, aim, display, createLoadingScene, createAtlasScene, createLobbyScene, stage }}>
+    <UiContext.Provider value={{ store, dispatch, aim, display, createLoadingScene, createAtlasScene, stage }}>
       <Screens onCanvas={onCanvas} initialName={initialName} initialRoomCode={initialRoomCode} initialView={initialView} />
     </UiContext.Provider>
   );

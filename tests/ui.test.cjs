@@ -309,17 +309,17 @@ function fakeClock() {
   });
 
   await scenario('solo lobby (owner, 2026-11-16): the 3D helicopter carries one ball in your colour; the ticket on the right has your name, the colour badge with the party picker (nothing crossed out) and Play', async () => {
-    const scenes = [];
-    const createLobbyScene = opts => { const sc = { opts, vehicle: opts.vehicle, colors: null, stats: { webgl: true }, setVehicle(k) { sc.vehicle = k; }, setPassengers(c) { sc.colors = c; }, onAnchors(fn) { sc.emit = fn; }, start() {}, dispose() { sc.disposed = true; } }; scenes.push(sc); return sc; };
-    const t = await setup({ mountProps: { createLobbyScene } });
+    const skies = [];
+    const createLoadingScene = () => { const sky = { lobby: null, sent: [], start() {}, dispose() { sky.disposed = true; }, setView() {}, setLobby(l) { sky.lobby = l; sky.sent.push(l); return true; } }; skies.push(sky); return sky; };
+    const t = await setup({ mountProps: { createLoadingScene } });
     await act(async () => t.store.setLocal({ active: false, connecting: false, colorPref: 4 }));
+    await act(async () => { await new Promise(r => setTimeout(r, 20)); }); // the sky attaches after the first paint
     await click(t.within('[data-ui=landing]').querySelector('[data-menu=solo]'));
     const stage = $('[data-ui=solo-lobby]');
     assert.ok(stage, 'Solo shows its lobby');
-    const live = scenes.filter(sc => !sc.disposed);
-    assert.equal(live.length, 1, 'one live 3D scene');
-    const heli = live[0];
-    assert.equal(heli.opts.vehicle, 'helicopter', 'Solo flies the helicopter');
+    assert.equal(skies.length, 1, 'one sky: the vehicle is drawn in the planet sky, not a scene of its own (owner, 2026-11-18)');
+    const sky = skies[0], heli = sky.lobby;
+    assert.equal(heli.vehicle, 'helicopter', 'Solo flies the helicopter');
     assert.deepEqual(heli.colors, ['#25d1e6'], 'it carries one ball, in the saved colour (Cyan)');
     const vehicle = stage.querySelector('[data-ui=lobby-vehicle]');
     assert.equal(vehicle.dataset.mode, '3d');
@@ -348,7 +348,7 @@ function fakeClock() {
     assert.equal(ticket.querySelector('[data-ui=ticket-name]').value, 'Ana', 'the name is typed on the ticket');
     const tag = vehicle.querySelector('[data-ui=lobby-passengers] [role=listitem]');
     assert.equal(tag.textContent, 'Anayou', 'the ball carries a name tag');
-    await act(async () => heli.emit([{ seat: 0, x: 120, y: 80, r: 12 }], { width: 400, height: 300 }));
+    await act(async () => heli.onAnchors([{ seat: 0, x: 120, y: 80, r: 12 }], { width: 400, height: 300 }));
     assert.match(tag.style.transform, /translate\(120\.0px, 34\.0px\) translate\(-50%, -100%\)/, 'the tag sits in the lane above its ball');
     const badge = ticket.querySelector('[data-ui=my-color-badge]');
     assert.equal(badge.dataset.color, '4');
@@ -368,7 +368,7 @@ function fakeClock() {
     assert.deepEqual(t.commands, [{ type: 'play-solo', name: 'Ana', mode: 'standard', world: 'gaia' }], 'Play starts the chosen mode and world');
     await click($('[data-ui=menu-back]'));
     assert.equal($('[data-ui=solo-lobby]'), null, 'Back leaves the lobby');
-    assert.equal(heli.disposed, true, 'and disposes the 3D scene');
+    assert.equal(sky.lobby, null, 'and takes the vehicle out of the sky');
     await t.teardown();
   });
 
@@ -1112,22 +1112,20 @@ function fakeClock() {
   });
 
   await scenario('lobby vehicle (owner, 2026-11-16): the plane for Gaia, the host switches the ticket to Ares and everyone gets the rocket; tags follow their balls, alternating top and bottom; names cut to 12', async () => {
-    const scenes = [];
-    const createLobbyScene = opts => { const sc = { opts, vehicle: opts.vehicle, colors: null, stats: { webgl: true }, setVehicle(k) { sc.vehicle = k; }, setPassengers(c) { sc.colors = c; }, onAnchors(fn) { sc.emit = fn; }, start() {}, dispose() { sc.disposed = true; } }; scenes.push(sc); return sc; };
-    const { createDisplay } = await import('../src/shared/display.js');
-    const live = structuredClone(createDisplay());
-    const t = await setup({ mountProps: { createLobbyScene, display: live } });
+    const skies = [];
+    const createLoadingScene = () => { const sky = { lobby: null, sent: [], start() {}, dispose() { sky.disposed = true; }, setView() {}, setLobby(l) { sky.lobby = l; sky.sent.push(l); return true; } }; skies.push(sky); return sky; };
+    const t = await setup({ mountProps: { createLoadingScene } });
+    await act(async () => { await new Promise(r => setTimeout(r, 20)); }); // the sky attaches after the first paint
     const lobby = t.within('[data-ui=room-lobby]');
-    assert.equal(scenes.length, 1);
-    assert.equal(scenes[0].opts.display, live, 'the scene reads the live display (display.lobby)');
-    assert.equal(scenes[0].vehicle, 'plane', 'a party bound for Gaia takes the plane');
+    assert.equal(skies.length, 1, 'the vehicle flies in the one planet sky');
+    const sky = skies[0], sc = { get vehicle() { return sky.lobby?.vehicle; }, get colors() { return sky.lobby?.colors; } };
+    assert.equal(sc.vehicle, 'plane', 'a party bound for Gaia takes the plane');
     await t.send({ type: 'JOIN_ROOM', playerId: 'g1', name: 'Bartholomew-the-3rd'.slice(0, 14) });
-    const sc = scenes[0];
     assert.equal(sc.colors.length, 8, 'eight seats');
     assert.equal(sc.colors.filter(Boolean).length, 2, 'two balls aboard');
     const tags = () => [...lobby.querySelectorAll('[data-ui=lobby-passengers] [role=listitem]')];
     assert.equal(tags()[1].querySelector('span + span').textContent, 'Bartholomew-', 'a long name is cut to 12 characters');
-    await act(async () => sc.emit([{ seat: 0, x: 100, y: 120, r: 10 }, { seat: 1, x: 160, y: 120, r: 10 }], { width: 600, height: 300 }));
+    await act(async () => sky.lobby.onAnchors([{ seat: 0, x: 100, y: 120, r: 10 }, { seat: 1, x: 160, y: 120, r: 10 }], { width: 600, height: 300 }));
     assert.match(tags()[0].style.transform, /translate\(100\.0px, 76\.0px\) translate\(-50%, -100%\)/, 'seat 1: the tag sits in the lane above the balls');
     assert.match(tags()[1].style.transform, /translate\(160\.0px, 186\.0px\) translate\(-50%, 0\)/, 'seat 2: the tag hangs in the lane below the vehicle');
     const lines = [...lobby.querySelectorAll('[data-ui=lobby-vehicle] svg path')];
@@ -1163,8 +1161,8 @@ function fakeClock() {
     assert.match(ticket.querySelector('[data-gate]').textContent, /^Canyon [1-9]$/, 'the rocket to Ares launches from a canyon');
     assert.equal(ticket.querySelector('dt:nth-of-type(1)') && [...ticket.querySelectorAll('dt')][1].textContent, 'Launch pad');
     assert.equal(lobby.querySelector('[data-ui=lobby-vehicle]').dataset.vehicle, 'rocket');
-    const sky = t.within('[data-ui=planet-stage]');
-    assert.ok(sky?.hasAttribute('data-low'), 'the rocket flies over the planet: the sky puts it low');
+    const stageEl = t.within('[data-ui=planet-stage]');
+    assert.ok(stageEl?.hasAttribute('data-low'), 'the rocket flies over the planet: the sky puts it low');
     assert.ok(ticket.querySelector('[data-ui=pass-leave]'), 'Leave room is on the pass');
     await t.send({ type: 'LOBBY_VOTE', playerId: 'g1', mode: null, world: 'luna' });
     assert.equal(t.session.getSnapshot().destination, 'ares', 'one vote each: the tie goes to the host');
@@ -1181,7 +1179,7 @@ function fakeClock() {
     assert.equal(t.session.getSnapshot().destination, 'gaia', 'a tie again: the host');
     assert.equal(sc.vehicle, 'plane', 'back to the plane');
     await t.teardown();
-    assert.equal(sc.disposed, true, 'leaving disposes the scene');
+    assert.ok(sky.lobby === null || sky.disposed, 'leaving takes the vehicle out of the sky, or the sky goes with it');
     const guest = await setup({ localId: 'g1', isHost: false });
     assert.ok(guest.within('[data-ui=destination-pick]'), 'guests vote for the destination too');
     await guest.teardown();
@@ -1215,10 +1213,11 @@ function fakeClock() {
     assert.deepEqual(lobbyView({ ...online, joinOrder: ['ben'] }, { id: 'ben', roomCode: 'abcd' }, 0, []).roster.map(r => r.name), ['Ben', 'Zed', 'Ana'], 'anyone missing from the order keeps the room order after it');
   });
 
-  await scenario('lobby scene (owner, 2026-11-16): helicopter, plane and rocket models; balls only in occupied seats; anchors every frame; live display; disposal', async () => {
+  await scenario('lobby vehicle in the sky (owner, 2026-11-16, rebuilt 2026-11-18): helicopter, plane and rocket models; balls only in occupied seats; one sky, one sun; the rocket flies to Luna with the camera; disposal', async () => {
     const THREE = await import('three');
-    const { createLobbyScene } = await import('../src/render/lobby-scene.js');
     const { makeLobbyVehicle, lobbyVehicleFor, LOBBY_VEHICLES } = await import('../src/render/lobby-models.js');
+    const { createPlanetScene } = await import('../src/render/planet-scene.js');
+    const data = await import('../src/render/planet-data.js');
     const { createDisplay } = await import('../src/shared/display.js');
     for (const kind of LOBBY_VEHICLES) {
       const v = makeLobbyVehicle(THREE, kind);
@@ -1234,62 +1233,64 @@ function fakeClock() {
     const sd = new JSDOM('<canvas></canvas>', { pretendToBeVisual: true });
     sd.window.HTMLCanvasElement.prototype.getContext = () => new Proxy({}, { get: (_, k) => (k === 'createRadialGradient' ? () => ({ addColorStop() {} }) : () => {}), set: () => true });
     const canvas = sd.window.document.querySelector('canvas');
-    Object.defineProperty(canvas, 'clientWidth', { value: 600 }); Object.defineProperty(canvas, 'clientHeight', { value: 300 });
-    let frames = 0, disposed = 0;
-    const createWebGLRenderer = () => ({ render() { frames++; }, setPixelRatio() {}, setSize() {}, setClearColor() {}, dispose() { disposed++; }, capabilities: { getMaxAnisotropy: () => 1 } });
+    Object.defineProperty(canvas, 'clientWidth', { value: 1200 }); Object.defineProperty(canvas, 'clientHeight', { value: 700 });
+    const passes = [];
+    const createWebGLRenderer = () => { const r = { autoClear: true, render(sc) { passes.push({ scene: sc, autoClear: r.autoClear }); }, clearDepth() { passes.push('depth'); }, setPixelRatio() {}, getPixelRatio: () => 1, setSize() {}, setClearColor() {}, dispose() {}, capabilities: { getMaxAnisotropy: () => 1 } }; return r; };
     const display = structuredClone(createDisplay());
-    const lobby = createLobbyScene({ THREE, canvas, display, vehicle: 'plane', win: sd.window, createWebGLRenderer });
-    let anchors = null;
-    lobby.onAnchors(a => { anchors = a; });
-    lobby.setPassengers(['#ff4fb8', null, '#3e8ef7', null, null, null, null, null]);
-    assert.equal(lobby.stats.passengers, 2, 'balls only in occupied seats');
-    lobby.start();
-    await new Promise(r => setTimeout(r, 120));
-    assert.ok(frames > 1, 'it animates');
+    const sky = createPlanetScene({ THREE, canvas, display, random: data.mulberry32(3), planet: data.buildPlanet(data.mulberry32(5)), win: sd.window, createWebGLRenderer });
+    let anchors = null, size = null;
+    const lobby = (vehicle, colors) => ({ vehicle, colors, insets: () => ({ left: 0, right: 300, top: 0, bottom: 0 }), onAnchors: (a, s) => { anchors = a; size = s; } });
+    assert.equal(sky.setLobby(lobby('plane', ['#ff4fb8', null, '#3e8ef7', null, null, null, null, null])), true, 'the sky draws the vehicle');
+    const run = (seconds, each) => { for (let k = 0; k < seconds * 20; k++) { sky.step(0.05); each?.(); } };
+    run(2);
+    assert.equal(sky.lobbyStats.vehicle, 'plane');
+    assert.equal(sky.lobbyStats.passengers, 2, 'balls only in occupied seats');
+    passes.length = 0; sky.step(0.05);
+    assert.equal(passes.filter(p => p !== 'depth').length, 2, 'one frame: the sky, then the vehicle in a second pass');
+    assert.ok(passes.includes('depth') && passes.at(-1).autoClear === false, 'the vehicle pass keeps the sky and clears only depth, so planets never cut through it');
+    assert.notEqual(passes[0].scene, passes.at(-1).scene, 'the vehicle has its own scene: no second sun or clouds');
     assert.deepEqual(anchors.map(a => a.seat), [0, 2], 'one anchor per ball, by seat');
-    assert.ok(anchors.every(a => a.x > 0 && a.x < 600 && a.y > 0 && a.y < 300 && a.r > 2), 'each ball lands inside the frame');
+    assert.ok(size.width > 300 && anchors.every(a => a.x > 0 && a.x < size.width - 300 && a.y > 0 && a.y < size.height && a.r > 2), 'each ball lands inside the space the panels leave');
     assert.ok(anchors[0].x < anchors[1].x, 'seats run left to right');
     const near = anchors[0].r;
     display.lobby.zoom = 1.6;
-    await new Promise(r => setTimeout(r, 60));
+    run(0.5);
     assert.ok(anchors[0].r > near * 1.3, 'display.lobby.zoom brings the vehicle closer, live');
-    lobby.setVehicle('rocket');
-    assert.equal(lobby.stats.vehicle, 'rocket');
-    assert.equal(lobby.stats.passengers, 2, 'the balls move to the new vehicle');
-    await new Promise(r => setTimeout(r, 120));
-    assert.ok(lobby.stats.swapping, 'the switch glides: the plane leaves while the rocket arrives (owner, 2026-11-17)');
-    for (let k = 0; k < 40 && lobby.stats.swapping; k++) await new Promise(r => setTimeout(r, 100));
-    assert.equal(lobby.stats.swapping, false, 'and settles within a few seconds');
-    // A journey (owner, 2026-11-18): Gaia to Luna swaps the plane for a rocket in place, which stays in frame chasing Luna
-    // (the camera follows it) with its passengers aboard until the sky has arrived, then turns back side-on.
-    lobby.setVehicle('plane');
-    for (let k = 0; k < 40 && lobby.stats.swapping; k++) await new Promise(r => setTimeout(r, 100));
-    let skyThere = false;
-    const aimed = [];
-    lobby.setSkyProbe(to => skyThere && to === 'luna');
-    lobby.setAimProbe(to => { aimed.push(to); return { x: 0.7, y: 0.5 }; });
-    lobby.setTrip({ vehicle: 'rocket', destination: 'luna', air: false });
-    await new Promise(r => setTimeout(r, 120));
-    assert.equal(lobby.stats.trip, 'travelling', 'the vehicle sets off at once');
-    assert.equal(lobby.stats.vehicle, 'rocket', 'a rocket for space, swapped in place');
-    for (let k = 0; k < 20; k++) await new Promise(r => setTimeout(r, 100));
-    assert.equal(lobby.stats.trip, 'travelling', 'and keeps travelling until the sky has arrived');
-    assert.ok(aimed.includes('luna'), 'steering toward where Luna is on screen');
-    assert.deepEqual(anchors.map(a => a.seat), [0, 2], 'the passengers stay aboard, in frame, the whole way');
-    skyThere = true;
-    for (let k = 0; k < 40 && lobby.stats.swapping; k++) await new Promise(r => setTimeout(r, 100));
-    assert.equal(lobby.stats.trip, null, 'arrived');
-    assert.equal(lobby.stats.vehicle, 'rocket');
-    assert.ok(lobby.stats.air < 0.05, 'no wind in space');
+    display.lobby.zoom = 1;
+    sky.setLobby(lobby('rocket', ['#ff4fb8', null, '#3e8ef7', null, null, null, null, null]));
+    run(0.2);
+    assert.equal(sky.lobbyStats.vehicle, 'rocket');
+    assert.ok(sky.lobbyStats.swapping, 'the switch glides: the plane leaves while the rocket arrives (owner, 2026-11-17)');
+    run(4);
+    assert.equal(sky.lobbyStats.swapping, false, 'and settles within a few seconds');
+    assert.ok(sky.lobbyStats.air > 0.9, "wind while in Gaia's air");
+    // A journey (owner, 2026-11-18): the camera flies to Luna and the rocket flies along with it, chasing Luna, then settles side-on.
+    sky.setView({ space: true, target: 'luna' });
+    const seen = new Set(); let chase = 0;
+    run(12, () => { seen.add(sky.lobbyStats.trip); chase = Math.max(chase, sky.lobbyStats.chase); });
+    assert.ok(seen.has('travelling') && seen.has('arriving'), 'it travels, then arrives');
+    assert.ok(chase > 0.9, 'on the way the rocket turns to chase Luna');
+    assert.equal(sky.lobbyStats.trip, null, 'arrived');
+    assert.equal(sky.lobbyStats.chase, 0, 'and back side-on');
+    assert.equal(sky.lobbyStats.vehicle, 'rocket');
+    assert.ok(sky.lobbyStats.air < 0.05, 'no wind in space');
     assert.deepEqual(anchors.map(a => a.seat), [0, 2], 'the passengers arrive aboard');
-    lobby.dispose();
-    const after = frames;
-    await new Promise(r => setTimeout(r, 60));
-    assert.equal(frames, after, 'no frames after dispose');
-    assert.equal(disposed, 1);
-    const none = createLobbyScene({ THREE, canvas, display, win: sd.window, createWebGLRenderer: () => { throw new Error('no WebGL'); } });
-    assert.equal(none.stats.webgl, false, 'without WebGL it stays inert');
-    none.setPassengers(['#fff']); none.start(); none.dispose();
+    // A plane bound for space becomes a rocket for the trip; spamming planets never builds a second vehicle.
+    sky.setView({ space: false, target: 'gaia' });
+    sky.setLobby(lobby('plane', ['#ff4fb8']));
+    for (const target of ['luna', 'ares', 'luna', 'ares']) { sky.setView({ space: true, target }); run(0.3); }
+    assert.equal(sky.lobbyStats.vehicle, 'rocket', 'in space the plane rides as a rocket');
+    passes.length = 0; sky.step(0.05);
+    assert.equal(passes.filter(p => p !== 'depth').length, 2, 'still one sky and one vehicle pass');
+    sky.setLobby(null);
+    passes.length = 0; sky.step(0.05);
+    assert.equal(passes.length, 1, 'without a lobby only the sky draws');
+    sky.dispose();
+    assert.equal(sky.setLobby(lobby('plane', ['#fff'])), false, 'a disposed sky draws nothing');
+    const none = createPlanetScene({ THREE, canvas, display, random: data.mulberry32(3), planet: data.buildPlanet(data.mulberry32(5)), win: sd.window, createWebGLRenderer: () => { throw new Error('no WebGL'); } });
+    assert.equal(none.setLobby(lobby('plane', ['#fff'])), false, 'without WebGL the lobby falls back to plain tags');
+    assert.equal(none.lobbyStats.webgl, false);
+    none.dispose();
     sd.window.close();
   });
 
