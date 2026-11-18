@@ -1272,7 +1272,7 @@ function fakeClock() {
     assert.ok(chase > 0.9, 'on the way the rocket turns to chase Luna');
     assert.equal(sky.lobbyStats.trip, null, 'arrived');
     assert.equal(sky.lobbyStats.chase, 0, 'and back side-on');
-    assert.ok(Math.abs(sky.lobbyStats.side) === 1 && Math.sign(sky.lobbyStats.nose[0]) === -sky.lobbyStats.side, 'parked facing along its orbit (owner, 2026-11-18)');
+    assert.ok(sky.lobbyStats.nose[0] < 0, 'parked nose-left, flying on along its orbit (owner, 2026-11-18)');
     assert.equal(sky.lobbyStats.vehicle, 'rocket');
     assert.ok(sky.lobbyStats.air < 0.05, 'no wind in space');
     assert.deepEqual(anchors.map(a => a.seat), [0, 2], 'the passengers arrive aboard');

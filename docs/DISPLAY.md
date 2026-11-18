@@ -36,9 +36,10 @@ Units: world units (ball radius 5) and multipliers. Opacity is 0..1. The shaft h
 | `loading.ballPulse` | 1.6 | 0.6 to 4 | Loading screen: seconds for the glow to run once across the three progress balls. Off under reduced motion. |
 | `loading.ballBounce` | 3 | 0 to 10 | Loading screen: CSS px each progress ball lifts while it glows (0 keeps them still). |
 | `space.orbitSeconds` | 120 | 20 to 600 | Destination view (Solo → Where to?): seconds Luna takes to orbit Gaia once. |
-| `space.travelSeconds` | 4.5 | 0.4 to 8 | Destination view: seconds the journey between Gaia and Luna takes, the camera riding behind the lobby vehicle and swinging round into the view of the planet as it arrives, in one continuous move; the long trips to and from Ares take 1.6 times as long. |
+| `space.travelSeconds` | 4.5 | 0.4 to 8 | Destination view: seconds the journey between Gaia and Luna takes: the camera pulls back to a wide view, holds while the lobby rocket flies across and curves into orbit, then follows it in; the long trips to and from Ares take 1.6 times as long. |
 | `space.nebula` | 0.6 | 0 to 1 | Destination view: brightness of the nebula clouds behind the planets (0 hides them). |
 | `space.distance` | 1 | 0.6 to 2 | Destination view: camera distance from the planet it shows, multiplier. |
+| `space.orbitSpin` | 4 | 0 to 20 | Destination view: how fast Luna or Ares turns under the parked lobby rocket, so it keeps circling in orbit, in degrees per second (0 holds it still). Off under reduced motion. |
 | `space.revolveSeconds` | 180 | 30 to 600 | Destination view: seconds for one slow swing of Gaia and Ares a few degrees around the sun and back. |
 | `menu.buttonScale` | 1 | 0.7 to 1.5 | Main menu: size of the Solo, Party, Custom and Settings buttons, multiplier. |
 | `menu.stagger` | 0.07 | 0 to 0.3 | Main menu: seconds between each button dropping in (0 brings them in together). |

@@ -2,12 +2,12 @@
  * The lobby vehicle flying in the planet scene (owner, 2026-11-18: "make the rocket's movements actually natural"): one helicopter,
  * plane or rocket that is a real object in the planet scene's world, lit by its one sun, carried along with the camera as the camera
  * flies between planets (src/render/planet-scene.js, `setView`). Parked, it sits in the lobby's free area in its calm side-on pose.
- * A trip out into space waits for the helicopter or plane to hand over to a rocket (a quick cartoon dash); then the rocket flies
- * straight on the way it was facing, banks into one smooth turn toward the planet ahead and flies at it (owner, 2026-11-18). Closing
- * in, it turns again, side-on, onto the orbit the camera sweeps round the planet, so it is flying along its orbit as the view settles:
- * parked, it faces the way it was going round, left or right. Its heading is kept in the world and turns at a limited rate, so a
- * turning camera never swings it about. The plane or helicopter takes over again once it is home. Wind lines and wakes show only while
- * it is inside a planet's air.
+ * A trip out into space waits for the helicopter or plane to hand over to a rocket (a quick cartoon dash). Then the rocket flies a real
+ * route through the world (src/render/lobby-route.js, planned by the planet scene): straight on the way its nose points, one smooth
+ * curve toward the planet ahead, then sideways onto that planet's orbit, round it to where it parks (owner, 2026-11-18: "the rocket
+ * flies across", "curve into orbit"). The camera holds a wide view while it crosses, so it is drawn where it really is, shrunk when far
+ * away and hidden behind a planet it passes; parked, it keeps circling as the planet turns under it. The plane or helicopter takes over
+ * again once it is home. Wind lines and wakes show only while it is inside a planet's air.
  *
  * Drawn in its own pass after the planets (depth cleared), so a planet never cuts through it; it uses the main camera's pose.
  */
@@ -18,15 +18,15 @@ import { sizeInk } from './outline.js';
  * The vehicle's heading in its parked pose, before the sway: nose to the left, turned 0.24 toward the viewer. Gaia's horizon turns
  * left to right behind the lobby, so a nose pointing left flies forward over it (owner, 2026-11-17).
  */
-const TURN = Math.PI + 0.24, TURN_RIGHT = -0.24; // nose left, or (parked after orbiting the other way) nose right
+const TURN = Math.PI + 0.24;
 const CENTRE_PULL = 0.55; // 1 centres the vehicle in the free area between the panels, 0 on the screen
 const LOBBY_EYE = [0.1, 0.32, 1]; // where the parked pose is seen from, per unit of distance: a little right and above
-const CHASE = { depth: 0.95, drop: 0.16, side: 0.35, bank: 0.55, maxBank: 0.7, spring: 7, rise: 0.9, lead: 0.22 };
 /**
- * How the nose turns: it flies straight on for `straight` seconds after setting off, then turns toward where it is going at up to
- * `rate` radians a second, winding up and easing off at `accel` (a turn takes time to start and to finish), `gain` per radian left.
+ * Flying the route: the rocket is drawn along the line of sight to where it really is, no nearer than `near` and no farther than
+ * `cruise` times its parked distance, so far away it reads as a small rocket rather than a speck. It banks `bank` per radian a second of
+ * turn, up to `maxBank`.
  */
-const STEER = { straight: 0.55, rate: 1.7, accel: 2.6, gain: 2.2 };
+const ROUTE = { near: 0.6, cruise: 3, bank: 0.55, maxBank: 0.6 };
 
 const clamp01 = v => Math.max(0, Math.min(1, v));
 const smoother = v => v * v * v * (v * (v * 6 - 15) + 10);
@@ -56,15 +56,18 @@ export function createLobbyFlight({ THREE, display, reducedMotion = false }) {
   const lobbyViewInverse = lobbyView.clone().invert();
 
   let lobby = null, colors = [], craft = null, leaving = null, swap = SWAP, arriveAt = -1, frameHalf = null, frames = 0;
-  let w = 0, wv = 0, chaseIn = 0, bank = 0, airLevel = 1, lastInsets = -1, clock = 0, flown = 0, turnRate = 0, side = 1, yaw = TURN;
+  let w = 0, bank = 0, airLevel = 1, lastInsets = -1, clock = 0;
   const insets = { left: 0, right: 0, top: 0, bottom: 0 };
-  const stats = { vehicle: null, passengers: 0, swapping: false, trip: null, air: 0, chase: 0, frames: 0, nose: [-1, 0, 0], side: 1 };
-  const noseC = new THREE.Vector3(-1, 0, 0), noseW = new THREE.Vector3(-1, 0, 0), lastNoseW = new THREE.Vector3(), wantW = new THREE.Vector3(), parkedNoseW = new THREE.Vector3();
+  const stats = { vehicle: null, passengers: 0, swapping: false, trip: null, air: 0, chase: 0, frames: 0, nose: [-1, 0, 0], hidden: false };
+  const noseC = new THREE.Vector3(-1, 0, 0), lastHeading = new THREE.Vector3(), atW = new THREE.Vector3(), ray = new THREE.Vector3(), m = new THREE.Vector3();
+  /** The parked pose, camera space, before the bob: where a trip sets off from and which way the nose points. */
+  const parked = { p: new THREE.Vector3(0, 0, -12), nose: new THREE.Vector3(-1, 0, 0.24).normalize() };
+  const parkedTurn = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, TURN, 0));
   const camQInv = new THREE.Quaternion();
   const v1 = new THREE.Vector3(), v2 = new THREE.Vector3(), v3 = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
   const parkedQ = new THREE.Quaternion(), chaseQ = new THREE.Quaternion(), offAxis = new THREE.Quaternion(), rigQ = new THREE.Quaternion(), q1 = new THREE.Quaternion();
   const euler = new THREE.Euler(), basis = new THREE.Matrix4(), forward = new THREE.Vector3(0, 0, -1);
-  const parkedP = new THREE.Vector3(), chaseP = new THREE.Vector3(), aimC = new THREE.Vector3(), worldInv = new THREE.Matrix4();
+  const parkedP = new THREE.Vector3(), chaseP = new THREE.Vector3(), worldInv = new THREE.Matrix4();
 
   const setCraft = (kind, glide, timing = SWAP) => {
     swap = timing;
@@ -98,7 +101,8 @@ export function createLobbyFlight({ THREE, display, reducedMotion = false }) {
   };
 
   /**
-   * One frame. `view` = { camera, sun (the sun's world position), width, height, ratio, dt, trip: { travelling, land, inSpace, aim (world) },
+   * One frame. `view` = { camera, sun (the sun's world position), width, height, ratio, dt, trip: { travelling, land, inSpace, weight,
+   * position, heading (world, along the route), blockers: [{ centre, radius }] },
    * airAt(position) -> boolean }.
    */
   function update(view) {
@@ -152,78 +156,64 @@ export function createLobbyFlight({ THREE, display, reducedMotion = false }) {
     // and in air a faint unhurried roll.
     const swell = Math.sin(t * 0.6), drift = Math.sin(t * 0.23 + 0.7);
     euler.set((Math.sin(t * 0.31 + 0.4) * 0.008 + Math.sin(t * 0.53 + 2.0) * 0.004) * (0.35 + 0.65 * airLevel),
-      yaw + (Math.sin(t * 0.27) * 0.8 + Math.sin(t * 0.11 + 1.1) * 0.2) * l.sway * Math.PI / 180, Math.cos(t * 0.6) * l.bob * 0.22);
+      TURN + (Math.sin(t * 0.27) * 0.8 + Math.sin(t * 0.11 + 1.1) * 0.2) * l.sway * Math.PI / 180, Math.cos(t * 0.6) * l.bob * 0.22);
     rigQ.setFromEuler(euler);
     frameOf.quaternion.copy(offAxis).multiply(lobbyViewInverse);
     frameOf.position.copy(parkedP);
     parkedQ.copy(frameOf.quaternion).multiply(rigQ);
+    parked.p.copy(parkedP);
+    parked.nose.set(1, 0, 0).applyQuaternion(parkedTurn).applyQuaternion(frameOf.quaternion);
     parkedP.add(v1.set(0, (swell * 0.85 + drift * 0.15) * l.bob, 0).applyQuaternion(frameOf.quaternion));
 
-    // Parked facing: the way it last flew round a planet. It changes only out of sight of the parked pose, while chasing.
-    if (trip.travelling && trip.land > 0 && trip.sweep) side = trip.sweep;
-    const yawGoal = side > 0 ? TURN : TURN_RIGHT;
-    if (still || w === 0) yaw = yawGoal;
-    else if (w > 0.6) { let d = yawGoal - yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); yaw += d * Math.min(1, dt * 5); }
-    kit.wind.scale.x = side; // the air streams past from the nose, whichever way it faces
-
-    // Flying: how far into the chase pose (0 parked, 1 chasing). It eases in once any vehicle change is done, and back out in step with
-    // the camera settling into the destination view (`land`), so both come to rest together. A spring keeps every change soft.
-    if (trip.travelling && !swapping) chaseIn = Math.min(1, chaseIn + dt / CHASE.rise);
-    if (!trip.travelling) chaseIn = 0;
-    const target = smoother(chaseIn) * (1 - trip.land);
-    if (reducedMotion) { w = target; wv = 0; } else {
-      const k = CHASE.spring;
-      wv += (k * k * (target - w) - 2 * k * wv) * dt;
-      w = clamp01(w + wv * dt);
-    }
-    if (w < 1e-4 && target === 0) { w = 0; wv = 0; }
-    // Chasing: ahead of the camera and a little below. The nose is held in the world: straight on at first, then one smooth turn toward
-    // the planet ahead, then, closing in, a turn onto the orbit (`trip.heading`, eased in by `trip.orbit`), banking into each turn.
+    // Flying: how far from the parked pose onto the route (0 parked, 1 on it), as the planet scene eases it.
+    w = trip.weight > 0 && trip.position ? clamp01(trip.weight) : 0;
     camera.updateMatrixWorld();
     worldInv.copy(camera.matrixWorld).invert();
     camQInv.copy(camera.quaternion).invert();
-    chaseP.set(parkedP.x * CHASE.side, -CHASE.drop * depth, -depth * CHASE.depth);
-    parkedNoseW.set(1, 0, 0).applyQuaternion(parkedQ).applyQuaternion(camera.quaternion);
-    if (w === 0 || reducedMotion) { noseW.copy(parkedNoseW); flown = 0; turnRate = 0; }
-    else {
-      flown += dt;
-      if (flown < STEER.straight && !(trip.land > 0)) wantW.copy(noseW); // setting off: straight on
-      else {
-        aimC.copy(trip.aim).applyMatrix4(worldInv);
-        wantW.copy(aimC).sub(chaseP).normalize().applyQuaternion(camera.quaternion); // at the planet ahead
-        if (trip.orbit > 0 && trip.heading) wantW.lerp(trip.heading, trip.orbit).normalize(); // onto the orbit
-        if (trip.land > 0) wantW.lerp(parkedNoseW, trip.land * trip.land).normalize(); // and as the view settles, the parked facing
+    let hidden = false;
+    if (w > 0) {
+      // Where it really is, seen along the line of sight at a drawable distance.
+      chaseP.copy(trip.position).applyMatrix4(worldInv);
+      const real = chaseP.length(), shown = Math.max(depth * ROUTE.near, Math.min(real, depth * ROUTE.cruise));
+      chaseP.multiplyScalar(shown / Math.max(1e-6, real));
+      chaseP.y += Math.sin(t * 1.1 + 0.5) * 0.015 * shown;
+      // Nose along the route; banking into the turn from how fast the heading swings round.
+      noseC.copy(trip.heading).applyQuaternion(camQInv).normalize();
+      const upW = v1.set(0, 1, 0).applyQuaternion(camera.quaternion);
+      const yawRate = dt > 0 && lastHeading.lengthSq() > 0 ? v3.crossVectors(lastHeading, trip.heading).dot(upW) / dt : 0;
+      lastHeading.copy(trip.heading);
+      const bankTo = reducedMotion ? 0 : Math.max(-ROUTE.maxBank, Math.min(ROUTE.maxBank, -yawRate * ROUTE.bank));
+      bank += (bankTo - bank) * Math.min(1, dt * 3);
+      facing(noseC, chaseQ);
+      chaseQ.multiply(q1.setFromAxisAngle(v1.set(1, 0, 0), bank + Math.sin(t * 0.9) * 0.04));
+      chaseQ.multiply(q1.setFromAxisAngle(v1.set(0, 0, 1), Math.sin(t * 0.7 + 1) * 0.03));
+      // Behind a planet it passes, it is out of sight.
+      if (w > 0.5 && trip.blockers) {
+        ray.subVectors(trip.position, camera.position);
+        const len = ray.length();
+        ray.divideScalar(Math.max(1e-6, len));
+        for (const { centre, radius } of trip.blockers) {
+          m.subVectors(camera.position, centre);
+          const b = m.dot(ray), c = m.lengthSq() - radius * radius * 0.96;
+          if (c < 0) continue;
+          const disc = b * b - c;
+          if (disc < 0) continue;
+          const hit = -b - Math.sqrt(disc);
+          if (hit > 0 && hit < len) { hidden = true; break; }
+        }
       }
-      const angle = noseW.angleTo(wantW);
-      const rateGoal = Math.min(STEER.rate, angle * STEER.gain);
-      turnRate += Math.max(-STEER.accel * dt, Math.min(STEER.accel * dt, rateGoal - turnRate));
-      const turnBy = Math.min(angle, Math.max(0, turnRate) * dt);
-      const axis = v1.crossVectors(noseW, wantW);
-      if (turnBy > 1e-6 && axis.lengthSq() > 1e-10) noseW.applyAxisAngle(axis.normalize(), turnBy);
-      else if (turnBy > 1e-6) noseW.copy(wantW);
-    }
-    noseC.copy(noseW).applyQuaternion(camQInv);
-    // Bank from how fast the nose swings round in the world: turning left, the left wing dips.
-    const upW = v1.set(0, 1, 0).applyQuaternion(camera.quaternion);
-    const yawRate = dt > 0 && lastNoseW.lengthSq() > 0 ? v3.crossVectors(lastNoseW, noseW).dot(upW) / dt : 0;
-    lastNoseW.copy(noseW);
-    const bankTo = Math.max(-CHASE.maxBank, Math.min(CHASE.maxBank, -yawRate * CHASE.bank)) * (reducedMotion ? 0 : 1);
-    bank += (bankTo - bank) * Math.min(1, dt * 2.5);
-    facing(noseC, chaseQ);
-    chaseQ.multiply(q1.setFromAxisAngle(v1.set(1, 0, 0), bank + Math.sin(t * 0.9) * 0.05));
-    chaseQ.multiply(q1.setFromAxisAngle(v1.set(0, 0, 1), Math.sin(t * 0.7 + 1) * 0.04)); // the nose bobs gently as it flies
-    chaseP.x += Math.sin(t * 0.8) * 0.03 * depth + noseC.x * CHASE.lead * depth; // flying across the view, it leads the camera
-    chaseP.y += noseC.y * CHASE.lead * 0.5 * depth;
-    chaseP.y += Math.sin(t * 1.1 + 0.5) * 0.02 * depth;
+    } else { lastHeading.set(0, 0, 0); bank = 0; }
     body.position.lerpVectors(parkedP, chaseP, w);
-    body.quaternion.slerpQuaternions(parkedQ, chaseQ, w);
+    if (w > 0) body.quaternion.slerpQuaternions(parkedQ, chaseQ, w); else body.quaternion.copy(parkedQ);
+    body.visible = !hidden;
     follow.position.copy(camera.position);
     follow.quaternion.copy(camera.quaternion);
     frameOf.visible = w < 0.5;
     vScene.updateMatrixWorld(true);
 
     // Air: only inside a planet's air shell, from where the vehicle really is.
-    const at = body.getWorldPosition(new THREE.Vector3());
+    const at = atW.copy(parkedP).applyMatrix4(camera.matrixWorld);
+    if (w > 0) at.lerp(trip.position, w);
     const inAir = view.airAt(at);
     airLevel += ((inAir ? 1 : 0) - airLevel) * (reducedMotion ? 1 : Math.min(1, dt * 1.2));
     kit.animateWind(t, airLevel * (1 - w), craft.kind);
@@ -244,7 +234,7 @@ export function createLobbyFlight({ THREE, display, reducedMotion = false }) {
 
     stats.swapping = swapping || w > 0.01;
     stats.trip = trip.travelling ? (trip.land > 0 ? 'arriving' : 'travelling') : null;
-    stats.air = airLevel; stats.chase = w; stats.side = side;
+    stats.air = airLevel; stats.chase = w; stats.hidden = hidden;
     const seen = v2.set(1, 0, 0).applyQuaternion(body.quaternion);
     stats.nose = [seen.x, seen.y, seen.z];
     stats.frames = ++frames;
@@ -272,12 +262,14 @@ export function createLobbyFlight({ THREE, display, reducedMotion = false }) {
   return {
     stats,
     get active() { return !!lobby && !!craft; },
+    /** The parked pose (camera space, `p` and `nose`), once it has been drawn, for a trip to set off from. */
+    get parked() { return lobby && frames > 0 ? parked : null; },
     /**
      * Shows the lobby vehicle (`{vehicle, colors, insets(), onAnchors(anchors, {width, height})}`), updates it, or (null) removes it.
      * `colors` is one CSS colour per seat, null for an empty seat.
      */
     set(next) {
-      if (!next) { if (lobby?.onAnchors) lobby.onAnchors([], { width: 0, height: 0 }); lobby = null; clear(); frames = 0; w = 0; wv = 0; chaseIn = 0; frameHalf = null; lastInsets = -1; return; }
+      if (!next) { if (lobby?.onAnchors) lobby.onAnchors([], { width: 0, height: 0 }); lobby = null; clear(); frames = 0; w = 0; bank = 0; frameHalf = null; lastInsets = -1; return; }
       const fresh = !lobby;
       lobby = { ...lobby, ...next };
       if (fresh) lastInsets = -1;
