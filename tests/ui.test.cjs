@@ -1260,21 +1260,25 @@ function fakeClock() {
     assert.ok(lobby.stats.swapping, 'the switch glides: the plane leaves while the rocket arrives (owner, 2026-11-17)');
     for (let k = 0; k < 40 && lobby.stats.swapping; k++) await new Promise(r => setTimeout(r, 100));
     assert.equal(lobby.stats.swapping, false, 'and settles within a few seconds');
-    // A trip (owner, 2026-11-18): Gaia to Luna flies the plane off, launches a rocket, waits for the sky, then the next craft arrives.
+    // A journey (owner, 2026-11-18): Gaia to Luna swaps the plane for a rocket in place, which stays in frame chasing Luna
+    // (the camera follows it) with its passengers aboard until the sky has arrived, then turns back side-on.
     lobby.setVehicle('plane');
     for (let k = 0; k < 40 && lobby.stats.swapping; k++) await new Promise(r => setTimeout(r, 100));
     let skyThere = false;
+    const aimed = [];
     lobby.setSkyProbe(to => skyThere && to === 'luna');
-    lobby.setTrip({ vehicle: 'rocket', destination: 'luna', air: false, toward: { x: 0.7, y: 0.5 } });
+    lobby.setAimProbe(to => { aimed.push(to); return { x: 0.7, y: 0.5 }; });
+    lobby.setTrip({ vehicle: 'rocket', destination: 'luna', air: false });
     await new Promise(r => setTimeout(r, 120));
-    assert.equal(lobby.stats.trip, 'leaving', 'the plane flies off screen first');
-    const tripSeen = new Set();
-    for (let k = 0; k < 40; k++) { tripSeen.add(lobby.stats.trip); await new Promise(r => setTimeout(r, 100)); }
-    assert.ok(tripSeen.has('launching'), 'a rocket launches toward Luna');
-    assert.equal(lobby.stats.trip, 'between', 'and the next craft waits for the sky');
-    assert.equal(anchors.length, 0, 'no tags while nobody is aboard');
+    assert.equal(lobby.stats.trip, 'travelling', 'the vehicle sets off at once');
+    assert.equal(lobby.stats.vehicle, 'rocket', 'a rocket for space, swapped in place');
+    for (let k = 0; k < 20; k++) await new Promise(r => setTimeout(r, 100));
+    assert.equal(lobby.stats.trip, 'travelling', 'and keeps travelling until the sky has arrived');
+    assert.ok(aimed.includes('luna'), 'steering toward where Luna is on screen');
+    assert.deepEqual(anchors.map(a => a.seat), [0, 2], 'the passengers stay aboard, in frame, the whole way');
     skyThere = true;
     for (let k = 0; k < 40 && lobby.stats.swapping; k++) await new Promise(r => setTimeout(r, 100));
+    assert.equal(lobby.stats.trip, null, 'arrived');
     assert.equal(lobby.stats.vehicle, 'rocket');
     assert.ok(lobby.stats.air < 0.05, 'no wind in space');
     assert.deepEqual(anchors.map(a => a.seat), [0, 2], 'the passengers arrive aboard');

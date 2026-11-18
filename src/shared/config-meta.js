@@ -86,7 +86,6 @@ export const DISPLAY_UNITS = Object.freeze({
   'loading.ballBounce': 'CSS px',
   'space.orbitSeconds': 'seconds',
   'space.travelSeconds': 'seconds',
-  'space.aresZoom': 'fraction, 0 to 1',
   'space.nebula': 'fraction, 0 to 1',
   'space.distance': 'multiplier',
   'space.revolveSeconds': 'seconds',

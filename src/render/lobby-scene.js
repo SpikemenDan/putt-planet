@@ -35,7 +35,7 @@ const CENTRE_PULL = 0.55; // 1 centres the vehicle in the free area between the 
 export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', destination = 'gaia', air = destination !== 'luna', reducedMotion = false, win = canvas.ownerDocument.defaultView, createWebGLRenderer = defaultRenderer }) {
   let renderer = null;
   try { renderer = createWebGLRenderer(THREE, canvas); } catch { renderer = null; }
-  if (!renderer) return { setVehicle() {}, setTrip() {}, setSkyProbe() {}, setAir() {}, setSun() {}, setPassengers() {}, setInsets() {}, onAnchors() {}, start() {}, dispose() {}, stats: { webgl: false } };
+  if (!renderer) return { setVehicle() {}, setTrip() {}, setSkyProbe() {}, setAimProbe() {}, setAir() {}, setSun() {}, setPassengers() {}, setInsets() {}, onAnchors() {}, start() {}, dispose() {}, stats: { webgl: false } };
   renderer.setClearColor?.(0x000000, 0);
   const owned = new Set(), own = r => { owned.add(r); return r; };
   const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(FOV, 2, 0.1, 400);
@@ -209,12 +209,14 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', de
   // Switching vehicles without a trip (owner, 2026-11-17: a smoother switch): the old one speeds away ahead while the new one glides in
   // from behind and settles, and the framing eases between their sizes. `leaving` is the old craft on its way out, disposed once gone.
   const SWAP = { out: 0.9, in: 1.3, gap: 0.25, reach: 46 };
-  // A trip to another planet (owner, 2026-11-18): the vehicle flies off screen (a plane or helicopter straight ahead, a rocket first
-  // turning to point at its destination), a rocket launches from Gaia when the party leaves its air, and once the sky behind has flown
-  // there the next vehicle glides in. Seconds.
-  const TRIP = { exit: 1.15, rocketExit: 1.8, turn: 0.6, launch: 2.2, launchAt: 0.55, settle: 0.3, maxWait: 6.5 };
-  const FALLBACK = { luna: { x: 0.8, y: 0.6 }, ares: { x: -0.8, y: 0.6 }, gaia: { x: 0.25, y: -1 } };
-  let craft = null, leaving = null, trip = null, arriveAt = -1, frameHalf = null, lastNow = null;
+  // A trip to another planet (owner, 2026-11-18: it should really travel there, the camera following it, never just fly off screen):
+  // the vehicle stays in frame and swings round from its side-on pose to a three-quarter view from behind, nose toward the planet it
+  // is bound for, while the planet sky behind rides along with it. A plane or helicopter bound for space is swapped for the rocket as
+  // it sets off (a quick pop, not a fly-off); a rocket bound for Gaia stays a rocket until it is home. Seconds.
+  const TRIP = { pop: 0.28, grow: 0.5, chase: 1.4, settle: 0.4, maxWait: 14 };
+  const FALLBACK = { luna: { x: 0.3, y: 0.2 }, ares: { x: -0.3, y: 0.2 }, gaia: { x: 0.1, y: -0.4 } };
+  let craft = null, leaving = null, pop = null, trip = null, chase = 0, arriveAt = -1, frameHalf = null, lastNow = null;
+  const easeOutBack = x => 1 + 2.2 * Math.pow(x - 1, 3) + 1.2 * Math.pow(x - 1, 2);
   const easeIn = x => x * x * x, easeOut = x => 1 - Math.pow(1 - x, 3), easeInOut = x => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
   const clamp01 = x => Math.max(0, Math.min(1, x));
   const stats = { webgl: true, vehicle: null, passengers: 0, frames: 0, swapping: false, trip: null, air: 0 };
@@ -239,6 +241,7 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', de
     for (const r of c.owned) r.dispose();
   };
   const disposeLeaving = () => { disposeCraft(leaving?.craft); leaving = null; };
+  const disposePop = () => { disposeCraft(pop?.old); pop = null; if (craft) craft.holder.scale.setScalar(1); };
   /** One vehicle with its passengers, trails and flame, in a `holder` group that carries its slide or flight. */
   const makeCraft = kind => {
     const owned = new Set(), mine = r => { owned.add(r); return r; };
@@ -312,45 +315,46 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', de
 
   // Air: wanted now, and the eased level everything uses. Clouds only over Gaia.
   let place = destination, airWanted = !!air, airLevel = airWanted ? 1 : 0, cloudLevel = airWanted && place === 'gaia' ? 1 : 0;
-  let skyProbe = null;
+  let skyProbe = null, aimProbe = null;
   setCraft(vehicle, false);
 
   const basis = new THREE.Matrix4(), right = new THREE.Vector3(), up = new THREE.Vector3(), back = new THREE.Vector3();
-  /** The rotation that points a craft's nose (+x) along `dir`, its top kept toward the camera's side of it. */
+  const chaseDir = new THREE.Vector3(-1, 0, 0), wantDir = new THREE.Vector3(), chaseQ = new THREE.Quaternion(), rigQ = new THREE.Quaternion(), noTurn = new THREE.Quaternion();
+  /** The rotation that points a craft's nose (+x) along `dir`, its top kept toward the camera's up. */
   const facing = (dir, out = new THREE.Quaternion()) => {
-    const x = dir.clone().normalize(), y = new THREE.Vector3().crossVectors(back, x);
-    if (y.lengthSq() < 1e-6) y.copy(up);
-    y.normalize();
-    return out.setFromRotationMatrix(basis.makeBasis(x, y, new THREE.Vector3().crossVectors(x, y)));
+    const x = dir.clone().normalize(), z = new THREE.Vector3().crossVectors(x, up);
+    if (z.lengthSq() < 1e-6) z.copy(back);
+    z.normalize();
+    return out.setFromRotationMatrix(basis.makeBasis(x, new THREE.Vector3().crossVectors(z, x), z));
   };
-  const pitch = (angle, out = new THREE.Quaternion()) => out.setFromAxisAngle(new THREE.Vector3(0, 0, 1), angle);
-  /** Fixes a trip's directions from the camera as it is now: on screen toward the destination, and a little into the distance. */
-  const aim = (to, toward, reach) => {
-    right.set(1, 0, 0).applyQuaternion(camera.quaternion); up.set(0, 1, 0).applyQuaternion(camera.quaternion); back.set(0, 0, 1).applyQuaternion(camera.quaternion);
-    let { x, y } = (toward && Number.isFinite(toward.x) && Number.isFinite(toward.y) && Math.hypot(toward.x, toward.y) > 1e-3) ? toward : FALLBACK[to] ?? FALLBACK.luna;
-    let n = Math.hypot(x, y); x /= n; y /= n;
-    y = to === 'gaia' ? Math.min(y, -0.5) : Math.max(y, 0.45); // home is below, the others above: never skim along the horizon
-    n = Math.hypot(x, y); x /= n; y /= n;
-    const screen = right.clone().multiplyScalar(x).addScaledVector(up, y);
-    return { screen, dir: screen.clone().addScaledVector(back, -0.35).normalize(), reach };
-  };
-  /** Starts a trip to `to` on the next frame: the craft aboard leaves the rig for the open scene, where it flies off. */
-  const depart = ({ kind, to, air: nextAir, toward }) => {
-    disposeLeaving();
-    const out = craft;
-    craft = null; arriveAt = -1;
-    out.holder.visible = true;
-    rig.updateMatrixWorld(true);
-    scene.attach(out.holder); // keeps where it is on screen
-    trip = { kind, to, air: nextAir, toward, out, from: out.holder.position.clone(), q0: out.holder.quaternion.clone(), qDir: null, t0: null, launch: isRocket(kind) && !isRocket(out.kind) && to !== 'gaia', launcher: null, waitAt: null, path: null };
+  /** Swaps the craft aboard for `kind` in place: the old one shrinks away and the new one pops up where it was, passengers aboard. */
+  const popTo = kind => {
+    if (!craft || craft.kind === kind) return;
+    disposeLeaving(); disposePop();
+    const old = craft;
+    craft = makeCraft(kind);
+    craft.holder.quaternion.copy(old.holder.quaternion);
+    craft.holder.scale.setScalar(0.001);
+    rig.add(craft.holder);
+    pop = { old, t0: null };
     stats.vehicle = kind;
+    stats.passengers = craft.balls.length;
   };
-  const arrive = () => {
+  /** The vehicle that makes a journey: a rocket whenever either end is out in space. */
+  const rideFor = (kind, from, to) => (from === 'gaia' && to === 'gaia') || isRocket(kind) ? kind : isRocket(craft?.kind) ? craft.kind : 'rocket';
+  const startTrip = ({ kind, to, air: nextAir }) => {
+    trip = { kind, to, air: !!nextAir, t0: null };
+    airWanted = false; // out of the air and into space for the journey
+    const ride = rideFor(kind, place, to);
+    if (ride === 'rocket' && !isRocket(craft.kind)) popTo(kind === 'minirocket' || craft.kind === 'helicopter' ? 'minirocket' : 'rocket');
+    else popTo(isRocket(craft.kind) ? craft.kind : ride);
+    stats.vehicle = craft.kind;
+  };
+  const land = () => {
     const { kind, to, air: nextAir } = trip;
-    disposeCraft(trip.out); disposeCraft(trip.launcher?.craft);
     trip = null;
-    airWanted = !!nextAir; place = to;
-    setCraft(kind, true);
+    airWanted = nextAir; place = to;
+    popTo(kind);
   };
 
   let anchorListener = null;
@@ -370,55 +374,18 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', de
     camera.aspect = w / h;
   };
   const toScreen = p => { p.project(camera); return { x: (p.x + 1) / 2 * width, y: (1 - p.y) / 2 * height }; };
-  /** A trip, frame by frame: the old craft flies off, a rocket may launch, then the next craft arrives once the sky is there. */
-  const fly = (now, t, l, reach) => {
-    if (trip.t0 === null) {
-      trip.t0 = now;
-      trip.path = aim(trip.to, trip.toward, reach);
-      trip.qDir = facing(trip.path.dir);
-    }
-    const e = now - trip.t0, { out, path } = trip;
-    if (out) {
-      const h = out.holder;
-      if (isRocket(out.kind)) {
-        // A rocket swings round to point at the planet it is off to, then fires away toward it, speeding up all the while.
-        h.quaternion.slerpQuaternions(trip.q0, trip.qDir, easeInOut(clamp01(e / TRIP.turn)));
-        const s = easeIn(clamp01((e - TRIP.turn * 0.4) / (TRIP.rocketExit - TRIP.turn * 0.4)));
-        h.position.copy(trip.from).addScaledVector(path.dir, s * path.reach * 1.6);
-      } else {
-        // A plane lifts its nose and climbs away ahead; a helicopter dips its nose to speed off, as real ones do.
-        const p = clamp01(e / TRIP.exit), s = easeIn(p);
-        const nose = new THREE.Vector3(1, 0, 0).applyQuaternion(trip.q0);
-        h.quaternion.copy(trip.q0).multiply(pitch(easeInOut(clamp01(e / 0.7)) * (out.kind === 'helicopter' ? -0.2 : 0.16)));
-        h.position.copy(trip.from).addScaledVector(nose, s * path.reach * 1.5).addScaledVector(up, s * path.reach * (out.kind === 'helicopter' ? 0.08 : 0.16));
-      }
-      animateCraft(out, t, l, airLevel);
-      if (e >= (isRocket(out.kind) ? TRIP.rocketExit : TRIP.exit)) { disposeCraft(out); trip.out = null; }
-    }
-    // Leaving Gaia's air for space: once the plane or helicopter is on its way, a rocket rises from below and streaks off toward the planet.
-    if (trip.launch && !trip.launcher && e >= TRIP.exit * TRIP.launchAt) {
-      const c = makeCraft(trip.kind);
-      const start = path.screen.clone().multiplyScalar(-path.reach * 1.05).addScaledVector(up, -path.reach * 0.25);
-      const end = path.dir.clone().multiplyScalar(path.reach * 1.5);
-      c.holder.quaternion.copy(facing(end.clone().sub(start)));
-      c.holder.position.copy(start);
-      scene.add(c.holder);
-      trip.launcher = { craft: c, start, end, t0: now };
-    }
-    const launcher = trip.launcher;
-    if (launcher?.craft) {
-      const p = clamp01((now - launcher.t0) / TRIP.launch);
-      launcher.craft.holder.position.lerpVectors(launcher.start, launcher.end, 0.3 * p + 0.7 * p * p);
-      animateCraft(launcher.craft, t, l, airLevel);
-      if (p >= 1) { disposeCraft(launcher.craft); launcher.craft = null; }
-    }
-    // Both gone: out in space between the planets, no wind, until the sky has arrived.
-    if (!trip.out && (!trip.launch || (launcher && !launcher.craft))) {
-      if (trip.waitAt === null) trip.waitAt = now;
-      airWanted = false;
-      const there = skyProbe ? !!skyProbe(trip.to) : true;
-      if ((there && now - trip.waitAt >= TRIP.settle) || e >= TRIP.maxWait) arrive();
-    }
+  /** A journey, frame by frame: the vehicle turns to chase the planet ahead (from `aimProbe`) until the sky has arrived, then lands. */
+  const travel = (now, dt) => {
+    if (trip.t0 === null) trip.t0 = now;
+    const e = now - trip.t0;
+    const there = skyProbe ? !!skyProbe(trip.to) : true;
+    if ((there && e >= TRIP.settle + TRIP.pop + TRIP.grow) || e >= TRIP.maxWait) { land(); return; }
+    // Where the planet is on the sky's screen, steered toward smoothly: the nose points left, into the scene and toward it.
+    const seen = aimProbe?.(trip.to);
+    const { x, y } = seen && Number.isFinite(seen.x) && Number.isFinite(seen.y) ? seen : FALLBACK[trip.to] ?? FALLBACK.luna;
+    const sx = Math.max(-1, Math.min(1, x)), sy = Math.max(-1, Math.min(1, y));
+    wantDir.copy(right).multiplyScalar(-0.75 + 0.35 * sx).addScaledVector(up, 0.06 + 0.3 * sy).addScaledVector(back, -0.9).normalize();
+    chaseDir.lerp(wantDir, Math.min(1, dt * 2)).normalize();
   };
   const frame = time => {
     resize();
@@ -456,9 +423,22 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', de
     camera.lookAt(0, 0, 0);
     camera.updateProjectionMatrix();
     camera.updateMatrixWorld();
-    if (trip) fly(now, t, l, Math.hypot(1, camera.aspect) * dist * tan * 1.25);
-    stats.swapping = !!leaving || arriveAt !== -1 || !!trip;
-    stats.trip = trip ? (trip.out ? 'leaving' : trip.launcher?.craft ? 'launching' : 'between') : arriveAt !== -1 ? 'arriving' : null;
+    right.set(1, 0, 0).applyQuaternion(camera.quaternion); up.set(0, 1, 0).applyQuaternion(camera.quaternion); back.set(0, 0, 1).applyQuaternion(camera.quaternion);
+    if (trip) travel(now, dt);
+    // The pop: the old craft shrinks away, then the new one springs up in its place.
+    if (pop) {
+      if (pop.t0 === null) pop.t0 = now;
+      const a = clamp01((now - pop.t0) / TRIP.pop), b = clamp01((now - pop.t0 - TRIP.pop * 0.6) / TRIP.grow);
+      pop.old.holder.scale.setScalar(Math.max(0.001, 1 - easeIn(a)));
+      craft.holder.scale.setScalar(Math.max(0.001, easeOutBack(b)));
+      if (a >= 1 && pop.old.holder.parent) pop.old.holder.parent.remove(pop.old.holder);
+      if (b >= 1) disposePop();
+    }
+    // Chasing: ease into the three-quarter view from behind while travelling, and back to side-on once there.
+    chase += ((trip ? 1 : 0) - chase) * (reducedMotion ? 1 : Math.min(1, dt / TRIP.chase * 2.5));
+    if (chase < 0.001) chase = 0;
+    stats.swapping = !!leaving || arriveAt !== -1 || !!trip || !!pop || chase > 0.01;
+    stats.trip = trip ? 'travelling' : chase > 0.01 ? 'arriving' : null;
     // The air fades in and out over about a second.
     const airEase = reducedMotion ? 1 : Math.min(1, dt * 1.2);
     airLevel += ((airWanted ? 1 : 0) - airLevel) * airEase;
@@ -493,11 +473,18 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', de
     rig.position.y = (swell * 0.85 + drift * 0.15) * l.bob;
     rig.rotation.z = Math.cos(t * 0.6) * l.bob * 0.22; // the nose follows the climb
     rig.rotation.x = (Math.sin(t * 0.31 + 0.4) * 0.008 + Math.sin(t * 0.53 + 2.0) * 0.004) * (0.35 + 0.65 * airLevel);
+    if (chase > 0) {
+      rig.updateMatrix();
+      rigQ.copy(rig.quaternion).invert().multiply(facing(chaseDir, chaseQ));
+      const w = easeInOut(chase);
+      for (const c of [craft, pop?.old]) if (c) c.holder.quaternion.slerpQuaternions(noTurn, rigQ, w);
+    } else if (craft) craft.holder.quaternion.identity();
     if (craft) {
       animateCraft(craft, t, l, airLevel);
       craft.balls.forEach((b, k) => { b.position.y = craft.model.seats[b.userData.seat].y + (reducedMotion ? 0 : (0.5 - 0.5 * Math.cos(t * 1.2 + k * 0.9)) * 0.025); });
     }
     if (leaving) animateCraft(leaving.craft, t, l, airLevel);
+    if (pop?.old.holder.parent) animateCraft(pop.old, t, l, airLevel);
     scene.updateMatrixWorld(true);
     renderer.render(scene, camera);
     stats.frames++;
@@ -527,15 +514,15 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', de
     /** A new vehicle on the same planet: it glides in as the old one speeds off. */
     setVehicle(kind) { if (kind !== stats.vehicle) { if (trip) trip.kind = kind; else setCraft(kind, !still()); } },
     /**
-     * A trip (owner, 2026-11-18): `vehicle` to `destination`, whose air (`air`) shows on arrival, flying off toward `toward` (where the
-     * destination is on screen, x right and y up; a default per planet otherwise). The same planet only changes the vehicle or the air.
-     * Reduced motion, or before the first frame, switches at once.
+     * A journey (owner, 2026-11-18): `vehicle` to `destination`, whose air (`air`) shows on arrival. The vehicle stays in frame and
+     * turns to chase the planet while the sky behind travels; the same planet only changes the vehicle or the air. Reduced motion, or
+     * before the first frame, switches at once.
      */
-    setTrip({ vehicle: kind = stats.vehicle, destination: to = place, air: nextAir = airWanted, toward = null } = {}) {
-      if (trip) { // already flying: the next craft and planet change, the flight goes on
-        Object.assign(trip, { kind, to, air: nextAir, toward });
-        if (!trip.launcher) trip.launch = isRocket(kind) && !isRocket(trip.out?.kind ?? kind) && to !== 'gaia';
-        stats.vehicle = kind;
+    setTrip({ vehicle: kind = stats.vehicle, destination: to = place, air: nextAir = airWanted } = {}) {
+      if (trip) { // already travelling: the journey turns for the new planet
+        Object.assign(trip, { kind, to, air: !!nextAir });
+        if (isRocket(craft.kind) || to === 'gaia') return;
+        popTo(rideFor(kind, place, to));
         return;
       }
       if (to === place) { api.setVehicle(kind); airWanted = !!nextAir; return; }
@@ -545,11 +532,13 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', de
         if (kind !== stats.vehicle || !craft) setCraft(kind, false);
         return;
       }
-      depart({ kind, to, air: nextAir, toward });
+      startTrip({ kind, to, air: nextAir });
     },
-    /** `fn(destination)` is true once the planet sky behind has arrived there; the next craft waits for it (6.5 s at most). */
+    /** `fn(destination)` is true once the planet sky behind has arrived there; the journey lasts until then (14 s at most). */
     setSkyProbe(fn) { skyProbe = typeof fn === 'function' ? fn : null; },
-    /** Wind and wakes on (an atmosphere: Gaia, or low over Ares) or off (space). During a trip it applies on arrival. */
+    /** `fn(destination)` gives where that planet is on the sky's screen ({x, y} per unit ahead, or null); the vehicle steers toward it. */
+    setAimProbe(fn) { aimProbe = typeof fn === 'function' ? fn : null; },
+    /** Wind and wakes on (an atmosphere: Gaia, or low over Ares) or off (space). During a journey it applies on arrival. */
     setAir(on) { if (trip) trip.air = !!on; else airWanted = !!on; },
     /** Shows or hides the corner sun (it shrinks away): off when the planet sky behind draws its own sun, as in Ares's air. */
     setSun(on) { sunWanted = !!on; },
@@ -563,7 +552,7 @@ export function createLobbyScene({ THREE, canvas, display, vehicle = 'plane', de
       disposed = true;
       if (raf) win.cancelAnimationFrame(raf);
       disposeLeaving();
-      if (trip) { disposeCraft(trip.out); disposeCraft(trip.launcher?.craft); trip = null; }
+      disposePop(); trip = null;
       disposeCraft(craft); craft = null;
       for (const r of owned) r.dispose?.();
       renderer.dispose?.();

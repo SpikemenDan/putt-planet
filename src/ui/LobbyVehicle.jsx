@@ -123,6 +123,7 @@ export function LobbyVehicle({ vehicle = 'plane', destination = 'gaia', air = tr
         }
       });
       made.setSkyProbe?.(to => skyArrived(now.current.stage?.scene, to));
+      made.setAimProbe?.(to => now.current.stage?.scene?.screenOf?.(to) ?? null);
       made.setSun?.(now.current.sun); // a restored canvas starts a moment later: catch up with what changed meanwhile
       made.setTrip?.({ vehicle: now.current.vehicle, destination: now.current.destination, air: now.current.air });
       made.setPassengers(latest.current);

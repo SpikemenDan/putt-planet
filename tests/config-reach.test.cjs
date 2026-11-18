@@ -198,11 +198,8 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
       const half = fly('luna', 0.6);
       assert.ok(half.travel < 1, 'space.travelSeconds sets the flight time');
       assert.equal(half.fov, 32, 'the short Gaia-Luna trip keeps the lens');
-      fly('gaia', 4);
-      assert.ok(fly('ares', 1).fov > 36, 'space.aresZoom widens the lens on the long trip to Ares');
       fly('gaia', 6);
-      live.space.aresZoom = 0;
-      assert.equal(fly('ares', 1).fov, 32, 'with space.aresZoom 0 the long trip is a plain glide');
+      assert.equal(fly('ares', 1).fov, 32, 'the long trip to Ares keeps the lens too: the planets never zoom (owner, 2026-11-18)');
       reset();
       assert.ok(run(0.1).nebula > 0, 'the nebula shows in space');
       live.space.nebula = 0;
@@ -230,7 +227,7 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
     // and the progress balls carry the other two as CSS variables, and so is the menu group
     // (VIS-M2), where each value lands on its own CSS variable on the real main menu, and the lobby group, on the lobby vehicle scene.
     // The table covers every DISPLAY setting, so a new setting cannot be added without a reach check.
-    assert.deepEqual([...Object.keys(expectations), 'ball.visualScale', ...['spinSpeed', 'axisTilt', 'horizonHeight', 'cameraAltitude', 'cloudCover', 'cloudDrift', 'finishTime', 'atmosphere', 'atmosphereHeight', 'citySize', 'lunaSize', 'backgroundDim', 'outlineWidth', 'planes', 'boats', 'satellites', 'paintedMaps', 'ballPulse', 'ballBounce'].map(k => 'loading.' + k), ...['orbitSeconds', 'travelSeconds', 'aresZoom', 'nebula', 'distance', 'revolveSeconds'].map(k => 'space.' + k), ...['buttonScale', 'stagger', 'bob', 'tilt', 'shineSeconds', 'cardTint'].map(k => 'menu.' + k), ...['zoom', 'sway', 'bob', 'spinSeconds'].map(k => 'lobby.' + k), ...['aresWind', 'aresWindDensity', 'lunaDust', 'lunaDustDensity', 'lunaSolar'].map(k => 'environment.' + k)].sort(), DISPLAY_FIELDS.map(f => f[0]).sort());
+    assert.deepEqual([...Object.keys(expectations), 'ball.visualScale', ...['spinSpeed', 'axisTilt', 'horizonHeight', 'cameraAltitude', 'cloudCover', 'cloudDrift', 'finishTime', 'atmosphere', 'atmosphereHeight', 'citySize', 'lunaSize', 'backgroundDim', 'outlineWidth', 'planes', 'boats', 'satellites', 'paintedMaps', 'ballPulse', 'ballBounce'].map(k => 'loading.' + k), ...['orbitSeconds', 'travelSeconds', 'nebula', 'distance', 'revolveSeconds'].map(k => 'space.' + k), ...['buttonScale', 'stagger', 'bob', 'tilt', 'shineSeconds', 'cardTint'].map(k => 'menu.' + k), ...['zoom', 'sway', 'bob', 'spinSeconds'].map(k => 'lobby.' + k), ...['aresWind', 'aresWindDensity', 'lunaDust', 'lunaDustDensity', 'lunaSolar'].map(k => 'environment.' + k)].sort(), DISPLAY_FIELDS.map(f => f[0]).sort());
   });
 
   // ---- TUNING probes: [name, setting, value, code printing one number, expected default, expected with the override]

@@ -452,7 +452,7 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
   // ---- The destination view (VIS-M4): the camera pulls back from the horizon into space, where Gaia hangs with Luna slowly orbiting it (framed on Gaia alone: Luna shows only when its orbit brings it into view)
   // and Ares stands far off. Sizes and distances are staged for the view, not real. `setView` picks the planet; the camera flies between
   // them, and the long trips to and from Ares widen the lens and then zoom in. Reads the live `display.space` settings.
-  const spaceSettings = () => display.space ?? { orbitSeconds: 120, travelSeconds: 1.8, aresZoom: 0.5, nebula: 0.6, distance: 1, revolveSeconds: 180 };
+  const spaceSettings = () => display.space ?? { orbitSeconds: 120, travelSeconds: 3.2, nebula: 0.6, distance: 1, revolveSeconds: 180 };
   // The little solar system (owner, 2026-11-17): the sun shines from where the light comes from, Gaia orbits it, and Ares orbits further
   // out, behind Gaia as seen from the sun and a little to the side, so from Ares the sun and Gaia both show in the sky beyond it. In
   // space everything revolves slightly and softly: a few degrees back and forth around the sun (`space.revolveSeconds`). Gaia stays the
@@ -788,11 +788,7 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
     }
     pos.copy(look).addScaledVector(SPACE_VIEW_DIR, SPACE_FRAME[id] * spaceSettings().distance); // the planet sits centred, like Luna and Ares
   }
-  /** The lens on a long trip: gently wider through the middle of the flight. */
-  function tripFov(e) {
-    if (!longTrip() || space.travel >= 1) return FOV;
-    return FOV + Math.sin(Math.PI * e) * 16 * spaceSettings().aresZoom; // widens through the middle and eases back: no snap zoom on arrival
-  }
+  const aimAt = new THREE.Vector3(), clamp01 = v => Math.max(0, Math.min(1, v));
   /** Blends the horizon view into the space view (`space.t`) and flies between planets (`space.travel`). */
   function applySpace() {
     if (focus) return;
@@ -834,13 +830,21 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
     if (snap.on && space.travel >= 1) snap.on = false;
     if (snap.on) { camFrom.copy(snap.pos); lookFrom.copy(snap.look); upFrom.copy(snap.up); } else spaceCamera(space.from, camFrom, lookFrom, upFrom);
     spaceCamera(space.to, camTo, lookTo, upTo);
-    spacePos.lerpVectors(camFrom, camTo, e); spaceLook.lerpVectors(lookFrom, lookTo, e); upNow.lerpVectors(upFrom, upTo, e).normalize();
-    if (longTrip() && space.travel < 1) spacePos.addScaledVector(SPACE_VIEW_DIR, Math.sin(Math.PI * e) * (snap.on ? 1 - e : 1) * 900 * spaceSettings().aresZoom); // pull back mid-flight
+    // The journey (owner, 2026-11-18: the vehicle really travels there, the camera following it, and the planets stay put): the camera
+    // first turns to face the planet it is bound for, then rides straight across to it, and only at the end eases into that planet's
+    // own framing. No pull back and no zoom: only the camera moves, so the planet left behind shrinks and the one ahead grows.
+    if (space.travel < 1) {
+      const turn = snap.on ? 1 - Math.pow(1 - clamp01(x / 0.25), 3) : ease(clamp01(x / 0.3)), go = ease(clamp01((x - 0.12) / 0.88)), land = ease(clamp01((x - 0.72) / 0.28));
+      bodyCentre(space.to, aimAt);
+      spacePos.lerpVectors(camFrom, camTo, go);
+      spaceLook.lerpVectors(lookFrom, aimAt, turn).lerp(lookTo, land);
+      upNow.lerpVectors(upFrom, upTo, go).normalize();
+    } else { spacePos.copy(camTo); spaceLook.copy(lookTo); upNow.copy(upTo); }
     lookAtMatrix.lookAt(spacePos, spaceLook, upNow);
     poseQuat.setFromRotationMatrix(lookAtMatrix);
     camera.position.set(0, framing.y, framing.z).lerp(spacePos, k);
     camera.quaternion.slerpQuaternions(horizonQuat, poseQuat, k);
-    const lens = snap.on ? snap.fov + (FOV - snap.fov) * e : tripFov(x); // the lens follows the flight's own clock, so it is wide while the camera travels
+    const lens = snap.on ? snap.fov + (FOV - snap.fov) * e : FOV; // a lens left wide by an older flight eases back
     camera.fov = FOV + (lens - FOV) * k;
     camera.updateProjectionMatrix();
     // The stars follow part of the camera's turn, so the sky drifts as it flies but its painted field never runs out.
