@@ -1156,7 +1156,9 @@ function fakeClock() {
     const ticket = lobby.querySelector('[data-ui=lobby-ticket]');
     const manifest = [...ticket.querySelectorAll('[data-ui=lobby-manifest] li')];
     assert.deepEqual(manifest.map(li => li.textContent), ['AnaHostYou', 'Bartholomew-'], 'the pass lists who is aboard, the host and me (owner, 2026-11-19)');
-    assert.equal(ticket.querySelector('[data-ui=open-seats]').textContent, '6 seats open', 'and how many seats are open');
+    const seats = ticket.querySelector('[data-ui=open-seats]');
+    assert.equal(seats.getAttribute('aria-label'), '2 of 8 seats taken, 6 open', 'the seat pips say how many seats are open');
+    assert.equal(seats.querySelectorAll('[data-taken]').length, 2, 'one filled pip per passenger');
     assert.equal(ticket.querySelector('[data-ui=destination-pick]'), null, 'the pass only shows the destination (owner, 2026-11-18)');
     const planets = lobby.querySelector('[data-ui=planet-picker]');
     assert.ok(planets?.hasAttribute('data-voting'), 'the shared planet picker, voting');

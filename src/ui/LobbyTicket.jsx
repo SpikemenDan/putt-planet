@@ -4,6 +4,12 @@ import { ColorBadge } from './BadgePicker.jsx';
 import { colorHex } from '../shared/colors.js';
 import styles from './LobbyTicket.module.css';
 
+/** True for a pale ball colour (Yellow, Lime, White), which takes dark words on the pass header instead of white. */
+const isLight = hex => {
+  const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255).map(c => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.5;
+};
+
 const CODES = Object.freeze({ gaia: 'GAI', luna: 'LUN', ares: 'ARS' });
 
 /**
@@ -58,14 +64,22 @@ function PassengerName({ name, onName, onNameDone }) {
 
 /**
  * The passenger list on the pass (owner, 2026-11-19: "put the passenger list on the ticket", replacing the separate manifest card):
- * everyone aboard with their ball and name (the host wears a star, your own name is pink), two to a row, and how many seats are still open. Names render as React
+ * everyone aboard with their ball and name (the host wears a star, your own name is pink), two to a row. The seats show as a row of pips
+ * by the heading (owner, 2026-11-19: instead of "7 seats open"): one per seat, filled with its passenger's ball or left open. Names render as React
  * text only, cut to NAME_LIMIT.
  */
 function Passengers({ list, seats }) {
   const open = Math.max(0, seats - list.length);
   return (
     <section className={styles.manifest} aria-label="Passenger manifest" data-ui="lobby-manifest">
-      <small>Passengers · {list.length}/{seats}</small>
+      <div className={styles.manifestHead}>
+        <small>Passengers</small>
+        <span className={styles.seats} role="img" data-ui="open-seats" data-open={open} aria-label={list.length + ' of ' + seats + ' seats taken, ' + open + ' open'}>
+          {Array.from({ length: Math.max(seats, list.length) }, (_, i) => list[i]
+            ? <span key={i} className={styles.seat} data-taken="" style={{ '--ball': colorHex(list[i].color) }} />
+            : <span key={i} className={styles.seat} />)}
+        </span>
+      </div>
       <ol className={styles.aboard}>
         {list.map(p => (
           <li key={p.id} data-you={p.you || undefined} style={{ '--ball': colorHex(p.color) }}>
@@ -76,7 +90,6 @@ function Passengers({ list, seats }) {
           </li>
         ))}
       </ol>
-      {open > 0 && <p className={styles.openSeats} data-ui="open-seats">{open === 1 ? '1 seat open' : open + ' seats open'}</p>}
     </section>
   );
 }
@@ -92,8 +105,9 @@ function Passengers({ list, seats }) {
 export function LobbyTicket({ vehicle = 'plane', name = '', onName = null, onNameDone = null, color = null, taken = {}, onPick, solo = false, destination = 'gaia', code = '', onCopy = null, onBack = null, backLabel = 'Back', hidden = false, passengers = null, seats = 8, children }) {
   const planet = WORLDS.find(w => w.id === destination)?.name ?? 'Gaia';
   const pass = PASS[vehicle] ?? PASS.plane;
+  const ball = colorHex(color ?? 0);
   return (
-    <aside className={styles.ticket} data-ui="lobby-ticket" data-world={destination} data-vehicle={vehicle} aria-label={pass.title}>
+    <aside className={styles.ticket} data-ui="lobby-ticket" data-world={destination} data-vehicle={vehicle} data-light={isLight(ball) || undefined} style={{ '--ball': ball }} aria-label={pass.title}>
       <header className={styles.head}>
         <span className={styles.brand}>Putt Planet Air</span>
         <span className={styles.title} data-ui="ticket-title">{pass.title}</span>
