@@ -40,7 +40,8 @@ Units: world units (ball radius 5) and multipliers. Opacity is 0..1. The shaft h
 | `space.nebula` | 0.6 | 0 to 1 | Destination view: brightness of the nebula clouds behind the planets (0 hides them). |
 | `space.distance` | 1 | 0.6 to 2 | Destination view: camera distance from the planet it shows, multiplier. |
 | `space.hopZoom` | 0.35 | 0 to 1.5 | Destination view: on a hop (owner, 2026-11-19: Gaia to Ares for now), how far the camera pulls back on the way, as a fraction of its distance (0 flies straight in; much less than a view of all three planets). |
-| `space.hopArrive` | 0.35 | 0.1 to 0.6 | Destination view: on a hop (owner, 2026-11-19: Gaia to Ares for now), the part of the trip the lobby rocket takes to slide in from the right edge of the screen to its parked spot, nose left. It zips off the left edge as the trip starts. |
+| `space.hopDelay` | 0.5 | 0 to 3 | Destination view: on a hop (owner, 2026-11-19: Gaia to Ares for now), how long the lobby rocket stays out of sight after the camera has zoomed in to the planet ahead, before it slides back in from the right edge. |
+| `space.hopSlide` | 0.8 | 0.3 to 2 | Destination view: on a hop, how long the lobby rocket takes to slide in from the right edge of the screen to its parked spot, nose left. The hop runs in order: the rocket zips off the left edge, then the camera flies to the planet ahead, then (after space.hopDelay) the rocket comes in. |
 | `space.revolveSeconds` | 180 | 30 to 600 | Destination view: seconds for one slow swing of Gaia and Ares a few degrees around the sun and back. |
 | `menu.buttonScale` | 1 | 0.7 to 1.5 | Main menu: size of the Solo, Party, Custom and Settings buttons, multiplier. |
 | `menu.stagger` | 0.07 | 0 to 0.3 | Main menu: seconds between each button dropping in (0 brings them in together). |

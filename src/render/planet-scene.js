@@ -806,12 +806,17 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
   }
   /**
    * Trips flown as a hop (owner, 2026-11-19: "it just zooms out and zooms into the other planet and the vehicle comes in from the
-   * right"; Gaia to Ares first, for the owner's approval before the rest): the camera flies the usual journey but pulls back a little
-   * on the way (`space.hopZoom`), and the lobby rocket zips off the left of the screen and slides back in from the right as the camera
-   * settles (`space.hopArrive`), nose left all the way. A redirected flight is never a hop.
+   * right"; Gaia to Ares first, for the owner's approval before the rest), one thing after another (owner, 2026-11-19: "move the
+   * vehicle off frame first then go to the next planet and once u zoom in then after a delay bring the rocket in"): the camera holds
+   * while the lobby rocket zips off the left of the screen (`hop.hold`), then flies the usual journey, pulling back a little on the
+   * way (`space.hopZoom`); once it has zoomed in it waits `space.hopDelay` seconds and the rocket slides in from the right over
+   * `space.hopSlide` seconds (`hop.tail` counts from the zoom-in), nose left all the way. A redirected flight is never a hop.
    */
   const HOPS = Object.freeze(['gaia>ares']);
   const hopping = () => !snap.on && HOPS.includes(space.from + '>' + space.to);
+  const HOP_HOLD_MAX = 3; // seconds: the camera never waits longer than this for the rocket to leave (a stalled or missing vehicle)
+  const hop = { hold: -1, tail: Infinity }; // hold: seconds waited for the rocket to leave (-1: not holding); tail: seconds since the zoom-in
+  const hopLength = () => Math.max(0, spaceSettings().hopDelay ?? 0.5) + Math.max(0.05, spaceSettings().hopSlide ?? 0.8);
   const poseOf = (pos, look, up, out) => out.setFromRotationMatrix(lookAtMatrix.lookAt(pos, look, up));
   /** Blends the horizon view into the space view (`space.t`) and flies between planets (`space.travel`). */
   function applySpace() {
@@ -900,12 +905,13 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
     const travelling = (space.t > 0 || space.goal === 1) && (space.travel < 1 || Math.abs(space.t - space.goal) > 1e-3);
     const land = space.travel < 1 ? journey(space.travel, snap.on).land : 1;
     bodyCentre(space.to, flightCentre);
-    // A hop: how far the rocket is through sliding in from the right (0 until the last `space.hopArrive` of the trip, 1 parked).
-    const arriveFor = Math.min(0.9, Math.max(0.05, spaceSettings().hopArrive ?? 0.35));
-    const hop = travelling && space.travel < 1 && hopping() ? { arrive: clamp01((space.travel - (1 - arriveFor)) / arriveFor) } : null;
+    // A hop: off to the left until the camera has zoomed in and `space.hopDelay` has passed, then sliding in from the right (1 parked).
+    const delay = Math.max(0, spaceSettings().hopDelay ?? 0.5), slide = Math.max(0.05, spaceSettings().hopSlide ?? 0.8);
+    const hopNow = hopping() && (space.travel < 1 || hop.tail < delay + slide)
+      ? { arrive: space.travel < 1 ? 0 : clamp01((hop.tail - delay) / slide) } : null;
     flight.update({
       camera, sun: sunNow, width: w, height: h, ratio: renderer.getPixelRatio?.() ?? 1, dt: lobbyDt, airAt,
-      trip: { travelling, land, inSpace: travelling && land < 0.9, aim: flightCentre, hop },
+      trip: { travelling, land, inSpace: travelling && land < 0.9, aim: flightCentre, hop: hopNow },
     });
     lobbyDt = 0;
   }
@@ -961,7 +967,10 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
     else {
       const homing = space.goal < space.t && (space.travel < 0.55 || space.near > 0.4); // back to the horizon: fly home first, then settle
       if (!homing) space.t = Math.max(0, Math.min(1, space.t + Math.sign(space.goal - space.t) * dt / 1.4));
-      if (space.travel < 1) space.travel = Math.min(1, space.travel + dt / (sp.travelSeconds * (longTrip() ? 1.6 : 1)));
+      // A hop holds the camera until the rocket is off the left edge (or HOP_HOLD_MAX passes), then counts on from the zoom-in.
+      if (hop.hold >= 0) { hop.hold += dt; if (!flight || (flight.stats.hop ?? 0) < -1.1 || hop.hold > HOP_HOLD_MAX) hop.hold = -1; }
+      else if (space.travel < 1) space.travel = Math.min(1, space.travel + dt / (sp.travelSeconds * (longTrip() ? 1.6 : 1)));
+      else if (hop.tail < hopLength()) hop.tail += dt;
       if (space.t > 0) space.orbit = (space.orbit + dt / sp.orbitSeconds) % 1;
       space.near = Math.max(0, Math.min(1, space.near + Math.sign(space.nearGoal - space.near) * dt / (sp.travelSeconds * 1.2)));
     }
@@ -1015,11 +1024,13 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
         space.from = space.to;
         space.to = target;
         space.travel = space.t > 0 || inSpace ? 0 : 1;
+        const hops = space.travel < 1 && hopping() && !reducedMotion;
+        hop.hold = hops ? 0 : -1; hop.tail = hops ? 0 : Infinity;
         // The trip carries the camera from the closeness it had to the one asked for, so the view it arrives at holds still once there.
         space.nearFrom = space.near;
         if (space.travel < 1) space.near = space.nearGoal;
       }
-      if (reducedMotion) { space.t = space.goal; space.travel = 1; space.near = space.nearGoal; snap.on = false; draw(); }
+      if (reducedMotion) { space.t = space.goal; space.travel = 1; space.near = space.nearGoal; snap.on = false; hop.hold = -1; hop.tail = Infinity; draw(); }
     },
     /**
      * Where a planet ('gaia', 'luna' or 'ares') is from the camera right now: camera-space x (right) and y (up) per unit ahead, or
