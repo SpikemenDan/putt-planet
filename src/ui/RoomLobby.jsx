@@ -3,7 +3,7 @@ import { GameModes } from '../shared/session.js';
 import { lobbyVehicleFor } from '../render/lobby-models.js';
 import { MODE_OPTIONS, sanitizeName, UiCommands } from './commands.js';
 import { useCommands, useUiContext, useView } from './context.js';
-import { LobbyTicket } from './LobbyTicket.jsx';
+import { LobbyTicket, seatOf } from './LobbyTicket.jsx';
 import { LobbyVehicle, VEHICLE_SEATS } from './LobbyVehicle.jsx';
 import { ModePicker } from './ModePicker.jsx';
 import { PlanetPicker, useLobbySky } from './PlanetPicker.jsx';
@@ -96,6 +96,7 @@ export function RoomLobby({ hidden }) {
         <LobbyTicket vehicle={vehicle} name={nameDraft ?? me?.name ?? ''} onName={setNameDraft} onNameDone={commitName} color={lobby?.myColor ?? null} taken={lobby?.takenColors} hidden={hidden || !lobby}
           onPick={c => send(UiCommands.SET_COLOR, { color: c })} destination={destination}
           passengers={roster} seats={VEHICLE_SEATS[vehicle] ?? 8}
+          seat={seatOf(roster.indexOf(me))} mode={party || lobby?.launch ? lobby?.leadingMode : mode} boarding={lobby?.boarding ?? null}
           code={party ? lobby.code : ''} onCopy={() => send(UiCommands.INVITE)}
           onBack={() => send(UiCommands.LEAVE)} backLabel="Leave room">
           {lobby?.showStart && <button type="button" className={styles.go} onClick={start} data-ui="start-game">Start Game</button>}

@@ -4,7 +4,7 @@
  * the faint wind lines of flight in air. Clean cel shading with ink outlines. src/render/planet-scene.js places and flies it; this
  * module only builds and animates the parts. Presentation only: it never reads or changes room state.
  */
-import { makeLobbyVehicle, BALL_RADIUS, isRocket } from './lobby-models.js';
+import { makeLobbyVehicle, BALL_RADIUS, isRocket, isSoloCraft } from './lobby-models.js';
 import { createInkMaterial, createInkUniforms, smoothHullGeometry } from './outline.js';
 
 export { BALL_RADIUS, isRocket };
@@ -143,11 +143,29 @@ export function createCraftKit(THREE, { reducedMotion = false } = {}) {
     for (const b of c.balls) b.material.dispose();
     for (const r of c.owned) r.dispose();
   };
+  /** The colour a Solo vehicle wears: its rider's ball (owner, 2026-11-19). Party vehicles keep their own colours (null). */
+  const accentOf = (kind, colors) => (isSoloCraft(kind) && colors[0] ? colors[0] : null);
+  /**
+   * Repaints a Solo vehicle when its rider changes colour: the model is built again in the new colour and its vertex colours copied
+   * across (the same parts, so the same vertices), keeping the craft, its ink and its flight as they are.
+   */
+  const repaint = (c, colors) => {
+    const accent = accentOf(c.kind, colors);
+    if (accent === c.accent) return;
+    c.accent = accent;
+    const fresh = makeLobbyVehicle(THREE, c.kind, accent);
+    const copy = (mesh, geometry) => { if (mesh && geometry) { mesh.geometry.attributes.color.array.set(geometry.attributes.color.array); mesh.geometry.attributes.color.needsUpdate = true; } };
+    copy(c.body, fresh.body);
+    copy(c.inner, fresh.inner);
+    fresh.spinners.forEach((s, k) => copy(c.spinners[k], s.geometry));
+    for (const g of [fresh.body, fresh.inner, fresh.glass, fresh.flame, ...fresh.spinners.map(s => s.geometry)]) g?.dispose();
+  };
   /** One vehicle with its passengers, trails and flame, in a `holder` group that carries its slide. Its nose points along +x. */
   const makeCraft = (kind, colors = []) => {
     const mine = new Set(), keep = r => { mine.add(r); return r; };
     const inkMine = mesh => { mesh.add(new THREE.Mesh(keep(smoothHullGeometry(THREE, mesh.geometry)), inkMaterial)); return mesh; };
-    const model = makeLobbyVehicle(THREE, kind);
+    const accent = accentOf(kind, colors);
+    const model = makeLobbyVehicle(THREE, kind, accent);
     const built = new THREE.Group();
     built.rotation.z = model.tilt ?? 0;
     built.add(inkMine(new THREE.Mesh(keep(model.body), painted)));
@@ -190,7 +208,7 @@ export function createCraftKit(THREE, { reducedMotion = false } = {}) {
     });
     const holder = new THREE.Group();
     holder.add(built);
-    const c = { kind, model, built, holder, owned: mine, balls: [], spinners, trails, flame };
+    const c = { kind, model, built, holder, owned: mine, balls: [], spinners, trails, flame, accent, body: built.children[0], inner: model.inner ? built.children[1] : null };
     seatBalls(c, colors);
     return c;
   };
@@ -207,7 +225,7 @@ export function createCraftKit(THREE, { reducedMotion = false } = {}) {
     }
   };
   return {
-    inkUniforms, wind, makeCraft, seatBalls, disposeCraft, animateCraft, animateWind,
+    inkUniforms, wind, makeCraft, repaint, seatBalls, disposeCraft, animateCraft, animateWind,
     dispose() { for (const r of owned) r.dispose?.(); owned.clear(); },
   };
 }

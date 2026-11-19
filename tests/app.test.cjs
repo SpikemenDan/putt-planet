@@ -45,7 +45,7 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
       for (const [k, v] of Object.entries(storage)) win.w.sessionStorage.setItem(k, v); // a reloaded tab keeps its sessionStorage
       const audio = createAudioRecorder();
       let app;
-      await act(async () => { app = createApp({ root: win.w.document.getElementById('root'), THREE, window: win.w, random, createWebGLRenderer, createAudio: () => audio, createTransport: memoryTransport ? options => hub.create(options) : undefined }); });
+      await act(async () => { app = createApp({ root: win.w.document.getElementById('root'), THREE, window: win.w, random, soloBoardingMs: 30, createWebGLRenderer, createAudio: () => audio, createTransport: memoryTransport ? options => hub.create(options) : undefined }); });
       await settle();
       const doc = win.w.document;
       const shown = el => !!el && !el.closest('[hidden]');

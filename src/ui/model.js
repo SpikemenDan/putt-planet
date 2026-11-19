@@ -165,6 +165,8 @@ export function lobbyView(room, local, now, courses) {
     powerups: room.powerups !== false,
     showStart: !!local.isHost && room.phase === SessionPhases.LOBBY && !launch,
     launch,
+    // Whole seconds of the launch countdown left for the pass's Boarding field: null before Start, 0 once it has ended.
+    boarding: launch === 'countdown' ? Math.ceil((launchAt - now) / 1000) : launch === 'landing' ? 0 : null,
     // The host's client opens the map vote once everyone has flown to the planet.
     launchReady: launch === 'landing' && now >= launchAt + LAUNCH_LANDING_MS,
     showInvite: !!local.roomCode,

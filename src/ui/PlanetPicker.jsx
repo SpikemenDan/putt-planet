@@ -9,7 +9,7 @@ export const PLAYABLE_WORLDS = Object.freeze(['gaia', ...Object.keys(OFFWORLD_RE
 
 /** Arrow order (owner, 2026-11-12): left goes Gaia → Luna → Ares → Gaia, right goes back the other way. */
 export const WORLD_ORDER = Object.freeze(['gaia', 'luna', 'ares']);
-export const WORLD_BLURB = Object.freeze({ gaia: 'Home: six regions of courses', luna: 'Low gravity: long, floaty putts', ares: 'Lighter gravity: red canyons and highlands' });
+export const WORLD_BLURB = Object.freeze({ gaia: 'Home World. Six Regions Of Courses', luna: 'Low Gravity. Long, Floaty Putts', ares: 'Lighter Gravity. Red Canyon Greens' });
 
 /** The next planet from `id` in the arrow's direction, skipping planets that cannot be picked. */
 export function nextWorld(id, dir, open = PLAYABLE_WORLDS) {
@@ -40,9 +40,10 @@ export function PlanetPicker({ value = 'gaia', onPick = null, open = PLAYABLE_WO
     <section className={styles.card} data-ui="planet-picker" data-world={value} data-voting={voters ? '' : undefined} onKeyDown={onKeyDown} aria-label="Destination">
       <div className={styles.head}>
         {onPick && <button type="button" className={styles.arrow} onClick={() => turn('left')} aria-label="Previous planet" data-ui="world-left">&lsaquo;</button>}
-        <div className={styles.name} aria-live="polite"><small>Destination</small><b data-ui="planet-name">{shown.name}</b><span>{WORLD_BLURB[shown.id]}</span></div>
+        <div className={styles.name} aria-live="polite"><small>Destination</small><b data-ui="planet-name">{shown.name}</b></div>
         {onPick && <button type="button" className={styles.arrow} onClick={() => turn('right')} aria-label="Next planet" data-ui="world-right">&rsaquo;</button>}
       </div>
+      <p className={styles.blurb} data-ui="planet-blurb">{WORLD_BLURB[shown.id]}</p>
       <div className={styles.chips} role="radiogroup" aria-label="Planet" data-ui="destination-pick">
         {WORLD_ORDER.map(id => {
           const can = open.includes(id);

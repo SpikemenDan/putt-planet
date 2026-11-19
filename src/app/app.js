@@ -46,10 +46,11 @@ const RESUME_KEY = code => 'putt-pals:server-resume:' + code;
  * @param {Function} [options.createWebGLRenderer] Renderer seam (tests)
  * @param {() => object} [options.createAudio] Audio seam (tests)
  * @param {typeof DISPLAY} [options.display] Presentation settings; development builds pass a live, tunable object
+ * @param {number} [options.soloBoardingMs] Solo's boarding countdown after Play Solo (tests shorten it); 5 s by default
  * @param {(options: object) => object} [options.createTransport] Online transport seam (tests use the in-memory hub)
  * @param {{active: boolean, gravity: number}|null} [options.worldPreview] Development only (src/devtools/world-preview.js): world gravity used in solo rooms; parties always use Gaia's shipped gravity
  */
-export function createApp({ worldPreview = null, soloHazards = false, root, THREE, window: win = root.ownerDocument.defaultView, random = Math.random, createWebGLRenderer, createAudio = () => createAudioAdapter(), createTransport, serverEndpoint, WebSocket = win.WebSocket, display = DISPLAY }) {
+export function createApp({ worldPreview = null, soloHazards = false, soloBoardingMs, root, THREE, window: win = root.ownerDocument.defaultView, random = Math.random, createWebGLRenderer, createAudio = () => createAudioAdapter(), createTransport, serverEndpoint, WebSocket = win.WebSocket, display = DISPLAY }) {
   const clock = { now: () => win.performance.now(), setTimeout: (f, d) => win.setTimeout(f, d), clearTimeout: id => win.clearTimeout(id) };
   const data = createCourseData();
   const courses = createCourseInfo(data);
@@ -679,7 +680,7 @@ export function createApp({ worldPreview = null, soloHazards = false, root, THRE
   root.addEventListener('pointerover', onHover);
   root.addEventListener('click', onPress);
   setLocal({ volume: audio.getStatus?.().volume ?? 1, camera: cameraPrefs, motion: motionPref });
-  const unmount = mountUi(root, { store, dispatch, aim, onCanvas, initialRoomCode: startCode, initialView: inviteLink ? 'party' : 'home', initialName: resume.read(startCode)?.name || '', display, createLoadingScene: options => createPlanetScene({ THREE, ...options }), createAtlasScene: options => createAtlasScene({ THREE, ...options }) });
+  const unmount = mountUi(root, { store, dispatch, aim, onCanvas, initialRoomCode: startCode, initialView: inviteLink ? 'party' : 'home', initialName: resume.read(startCode)?.name || '', display, soloBoardingMs, createLoadingScene: options => createPlanetScene({ THREE, ...options }), createAtlasScene: options => createAtlasScene({ THREE, ...options }) });
 
   return {
     store,

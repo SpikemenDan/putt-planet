@@ -1,3 +1,5 @@
+import { useEffect, useRef, useState } from 'react';
+import { GameModes } from '../shared/session.js';
 import { WORLDS } from '../shared/worlds.js';
 import { NAME_LIMIT } from './commands.js';
 import { ColorBadge } from './BadgePicker.jsx';
@@ -42,6 +44,45 @@ export function flightOf(code = '', world = 'gaia') {
   if (clean.length >= 3) return { flight: clean.slice(0, 2) + ' ' + keypad(clean.slice(2, 6)) };
   return { flight: 'PP ' + (keypad(world).slice(0, 4) || '1000') };
 }
+
+/** The mode as the pass prints it (owner, 2026-11-19); Solo calls Standard "Casual". */
+const MODE_NAME = Object.freeze({
+  [GameModes.STANDARD]: 'Standard', [GameModes.PONG]: 'Putt Pong', [GameModes.TOURNAMENT_3]: 'Tournament 3', [GameModes.TOURNAMENT_5]: 'Tournament 5',
+  [GameModes.TOURNAMENT_7]: 'Tournament 7', [GameModes.PRACTICE]: 'Practice Map', [GameModes.PUTT_PRACTICE]: 'Practice Putt',
+});
+export const modeName = (mode, solo = false) => solo && mode === GameModes.STANDARD ? 'Casual' : MODE_NAME[mode] ?? 'Standard';
+/** Seats run two to a row, airline style: the first passenger sits in 1A, the second in 1B, the third in 2A. */
+export const seatOf = index => index < 0 ? '--' : (Math.floor(index / 2) + 1) + 'AB'[index % 2];
+/** Boarding (owner, 2026-11-19): "Awaiting" until Start or Play is pressed, then the 5 s countdown as 00:05 … 00:01, then "Now". */
+export const boardingText = seconds => seconds === null || seconds === undefined ? 'Awaiting' : seconds > 0 ? '00:' + String(seconds).padStart(2, '0') : 'Now';
+
+/** The pass's fields under the route: seat, mode and boarding time. */
+function Fields({ seat, mode, boarding }) {
+  const state = boarding === null || boarding === undefined ? 'awaiting' : boarding > 0 ? 'counting' : 'now';
+  return (
+    <dl className={styles.fields} data-ui="ticket-fields">
+      <div><dt>Seat</dt><dd data-ui="ticket-seat">{seat}</dd></div>
+      <div className={styles.modeField}><dt>Mode</dt><dd data-ui="ticket-mode">{mode}</dd></div>
+      <div className={styles.boarding}><dt>Boarding</dt><dd data-ui="ticket-boarding" data-state={state} aria-live="polite">{boardingText(boarding)}</dd></div>
+    </dl>
+  );
+}
+
+/** A quick shine across the header when the ball colour changes (owner, 2026-11-19: "very minimalistic and quick"); not on first show. */
+function useSheen(ball) {
+  const first = useRef(ball), [sheen, setSheen] = useState(0);
+  useEffect(() => { if (ball !== first.current) { first.current = ball; setSheen(n => n + 1); } }, [ball]);
+  return sheen;
+}
+
+/** The pass leans a little toward a mouse pointer (owner, 2026-11-19); off with reduced motion (CSS) and for touch. */
+const lean = e => {
+  if (e.pointerType !== 'mouse') return;
+  const el = e.currentTarget, r = el.getBoundingClientRect();
+  el.style.setProperty('--tx', ((e.clientX - r.left) / r.width - 0.5).toFixed(3));
+  el.style.setProperty('--ty', ((e.clientY - r.top) / r.height - 0.5).toFixed(3));
+};
+const unlean = e => { e.currentTarget.style.removeProperty('--tx'); e.currentTarget.style.removeProperty('--ty'); };
 
 /**
  * The passenger's name on the pass. With `onName` it is edited right there, like the colour badge beside it: the name is a field that
@@ -102,13 +143,18 @@ function Passengers({ list, seats }) {
  * destination only: both lobbies pick the planet on their planet picker (PlanetPicker.jsx). Names render as React text only, cut to
  * NAME_LIMIT. A party passes `passengers` (and `seats`) to list everyone aboard under your name.
  */
-export function LobbyTicket({ vehicle = 'plane', name = '', onName = null, onNameDone = null, color = null, taken = {}, onPick, solo = false, destination = 'gaia', code = '', onCopy = null, onBack = null, backLabel = 'Back', hidden = false, passengers = null, seats = 8, children }) {
+export function LobbyTicket({ vehicle = 'plane', name = '', onName = null, onNameDone = null, color = null, taken = {}, onPick, solo = false, destination = 'gaia', code = '', onCopy = null, onBack = null, backLabel = 'Back', hidden = false, passengers = null, seats = 8, seat = '1A', mode = GameModes.STANDARD, boarding = null, children }) {
   const planet = WORLDS.find(w => w.id === destination)?.name ?? 'Gaia';
   const pass = PASS[vehicle] ?? PASS.plane;
   const ball = colorHex(color ?? 0);
+  const sheen = useSheen(ball);
+  // Boarding has begun: the stub tears off along the dashed line (owner, 2026-11-19).
+  const torn = boarding !== null && boarding !== undefined;
   return (
-    <aside className={styles.ticket} data-ui="lobby-ticket" data-world={destination} data-vehicle={vehicle} data-light={isLight(ball) || undefined} style={{ '--ball': ball }} aria-label={pass.title}>
+    <aside className={styles.ticket} data-ui="lobby-ticket" data-world={destination} data-vehicle={vehicle} data-light={isLight(ball) || undefined} data-torn={torn || undefined}
+      style={{ '--ball': ball }} aria-label={pass.title} onPointerMove={lean} onPointerLeave={unlean}>
       <header className={styles.head}>
+        {sheen > 0 && <span key={sheen} className={styles.sheen} aria-hidden="true" />}
         <span className={styles.brand}>Putt Planet Air</span>
         <span className={styles.title} data-ui="ticket-title">{pass.title}</span>
       </header>
@@ -125,7 +171,9 @@ export function LobbyTicket({ vehicle = 'plane', name = '', onName = null, onNam
         <span className={styles.path} aria-hidden="true"><span className={styles.dots} /><svg className={styles.arrow} viewBox="0 0 16 16"><path d="M5 3l6 5-6 5" /></svg></span>
         <div className={styles.to}><b data-ui="ticket-code"><Flaps text={CODES[destination] ?? 'GAI'} world={destination} /></b><small data-ui="ticket-destination">{planet}</small></div>
       </div>
+      <Fields seat={seat} mode={modeName(mode, solo)} boarding={boarding} />
       <div className={styles.actions}>{children}</div>
+      <div className={styles.stubWrap} data-ui="ticket-stub"><div>
       <div className={styles.stub}>
         {onBack && <button type="button" className={styles.back} onClick={onBack} data-ui={solo ? 'menu-back' : 'pass-leave'} data-kind={solo ? 'back' : 'leave'}>{backLabel}</button>}
         {solo && !code && (
@@ -138,6 +186,7 @@ export function LobbyTicket({ vehicle = 'plane', name = '', onName = null, onNam
           </span>
         )}
       </div>
+      </div></div>
     </aside>
   );
 }

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { LAUNCH_COUNTDOWN_MS } from '../shared/constants.js';
 import { createStageHandle, UiContext, useView } from './context.js';
 import { Banner } from './Banner.jsx';
 import { GameScreen } from './GameScreen.jsx';
@@ -46,12 +47,13 @@ function Screens({ onCanvas, initialName, initialRoomCode, initialView }) {
  * @param {string} [props.initialView] Main menu view to open on: 'home', or 'party' for a `#room=` invite link
  * @param {typeof DISPLAY} [props.display] Presentation settings (read live by the planet behind the menu and loading screen); defaults to DISPLAY
  * @param {Function} [props.createAtlasScene] Builds the 3D level select on a canvas; without it the plain course list shows
+ * @param {number} [props.soloBoardingMs] Solo's boarding countdown after Play Solo; the party launch countdown's length by default
  * @param {Function} [props.createLoadingScene] Builds the 3D planet behind the menu and loading screen; without it only the CSS sky shows
  */
-export function PuttPalsUi({ store, dispatch, aim = null, onCanvas, initialName = '', initialRoomCode = '', initialView = 'home', display = DISPLAY, createLoadingScene = null, createAtlasScene = null }) {
+export function PuttPalsUi({ store, dispatch, aim = null, onCanvas, initialName = '', initialRoomCode = '', initialView = 'home', display = DISPLAY, createLoadingScene = null, createAtlasScene = null, soloBoardingMs = LAUNCH_COUNTDOWN_MS }) {
   const [stage] = useState(createStageHandle);
   return (
-    <UiContext.Provider value={{ store, dispatch, aim, display, createLoadingScene, createAtlasScene, stage }}>
+    <UiContext.Provider value={{ store, dispatch, aim, display, createLoadingScene, createAtlasScene, stage, soloBoardingMs }}>
       <Screens onCanvas={onCanvas} initialName={initialName} initialRoomCode={initialRoomCode} initialView={initialView} />
     </UiContext.Provider>
   );

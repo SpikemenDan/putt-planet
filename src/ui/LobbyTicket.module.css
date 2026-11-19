@@ -51,12 +51,12 @@
 .actions{display:flex;flex-direction:column;gap:8px;padding:0 16px}
 .actions > button,.actions > label{width:100%;margin:0}
 /* Perforation and the stub: Back and the party code. */
-.stub{position:relative;display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:14px;margin-top:2px;padding:12px 14px 0 18px;border-top:3px dashed var(--ink)}
+.stub{position:relative;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-top:2px;padding:10px 14px 0 18px;border-top:3px dashed var(--ink)}
 .stub::before,.stub::after{content:'';position:absolute;top:-14px;width:24px;height:24px;border-radius:50%;background:#fffdf4;border:4px solid var(--ink)}
 .stub::before{left:-16px;clip-path:inset(0 0 0 50%)}
 .stub::after{right:-16px;clip-path:inset(0 50% 0 0)}
 /* The party code, like a booking reference, with a small copy-invite icon. */
-.code{display:flex;flex:1 0 100%;align-items:center;justify-content:center;gap:10px;min-width:0;padding-top:2px}
+.code{order:-1;display:flex;flex:1 1 auto;align-items:center;justify-content:flex-start;gap:10px;min-width:0;padding-top:2px}
 .code small{flex:none;translate:0 3px;white-space:nowrap;font:900 10px/1 var(--font);letter-spacing:.5px;text-transform:none;color:var(--mut)}
 .code strong{display:block;padding-top:2px;font:400 19px/1 var(--font);letter-spacing:2px;color:var(--ink);user-select:all;white-space:nowrap}
 .copy{flex:none;width:24px;height:24px;margin:0;padding:0;border:2px solid var(--ink);border-radius:7px;background:#fff center/14px no-repeat;cursor:pointer;
@@ -65,12 +65,13 @@
 .copy:active{scale:.9}
 .hiddenText{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 /* Back (Solo) or Leave room (party), in the stub's bottom-right corner: a round-cornered comic tag with an arrow. */
-.back{flex:none;display:inline-flex;align-items:center;gap:6px;margin:0;padding:7px 14px 7px 10px;font:900 15px var(--font);letter-spacing:.5px;text-transform:none;text-shadow:none;
-  color:var(--ink);background:var(--yellow);border:3px solid var(--ink);border-radius:999px;box-shadow:0 4px 0 var(--ink);cursor:pointer;transition:translate .1s,box-shadow .1s,background .15s}
-.back::before{content:'';width:18px;height:18px;border-radius:50%;background:var(--ink) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M14 6l-6 6 6 6' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/14px no-repeat;transition:translate .15s}
-.back:hover{background:#fff27a;translate:0 -2px;box-shadow:0 6px 0 var(--ink)}
+/* Smaller (owner, 2026-11-19), so the stub reads as a real ticket stub with the flight number or code in front. */
+.back{flex:none;display:inline-flex;align-items:center;gap:5px;margin:0;padding:3px 10px 3px 5px;font:900 12px var(--font);letter-spacing:.5px;text-transform:none;text-shadow:none;
+  color:var(--ink);background:var(--yellow);border:2.5px solid var(--ink);border-radius:999px;box-shadow:0 3px 0 var(--ink);cursor:pointer;transition:translate .1s,box-shadow .1s,background .15s}
+.back::before{content:'';width:15px;height:15px;border-radius:50%;background:var(--ink) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M14 6l-6 6 6 6' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/11px no-repeat;transition:translate .15s}
+.back:hover{background:#fff27a;translate:0 -1px;box-shadow:0 4px 0 var(--ink)}
 .back:hover::before{translate:-3px 0}
-.back:active{translate:0 3px;box-shadow:0 1px 0 var(--ink)}
+.back:active{translate:0 2px;box-shadow:0 1px 0 var(--ink)}
 .back[data-kind=leave]{background:#ffb3c9}
 .back[data-kind=leave]:hover{background:#ffc9d8}
 @media (prefers-reduced-motion:reduce){.back,.back::before,.pencil{transition:none}}
@@ -102,3 +103,32 @@
 .ticket .actions > button{background:var(--ball,var(--pink))}
 .ticket .actions > button:hover:not(:disabled){background:color-mix(in srgb,var(--ball,var(--pink)) 82%,#fff)}
 .ticket[data-light] .actions > button{color:var(--ink);text-shadow:none}
+/* Seat, mode and boarding (owner, 2026-11-19), under the route like an airline pass. */
+.fields{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:14px;margin:0 18px;padding:7px 0 0;border-top:2px solid color-mix(in srgb,var(--ink) 12%,transparent)}
+.fields div{min-width:0}
+.fields dt{font:900 11px var(--font);letter-spacing:.5px;color:var(--mut)}
+.fields dd{margin:2px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:900 17px/1.1 var(--font);letter-spacing:.5px;color:var(--ink)}
+.boarding{text-align:right}
+.boarding dd{font-variant-numeric:tabular-nums}
+.boarding dd[data-state=awaiting]{color:var(--mut)}
+.boarding dd[data-state=awaiting]::before{content:'';display:inline-block;width:7px;height:7px;margin:0 5px 2px 0;border-radius:50%;background:var(--ball,var(--pink));animation:await 1.6s ease-in-out infinite}
+.boarding dd[data-state=counting],.boarding dd[data-state=now]{color:var(--pink)}
+@keyframes await{50%{opacity:.25}}
+/* A quick shine across the header when the ball colour changes. */
+.sheen{position:absolute;inset:0;pointer-events:none;background:linear-gradient(105deg,transparent 30%,rgb(255 255 255 / .55) 48%,transparent 66%);translate:-100% 0;animation:sheen .45s ease-out forwards}
+@keyframes sheen{to{translate:100% 0}}
+/* A slight lean toward the mouse (--tx and --ty run -0.5 … 0.5, set as the pointer moves). */
+.ticket{transform:perspective(900px) rotateY(calc(var(--tx,0) * 5deg)) rotateX(calc(var(--ty,0) * -5deg));transition:transform .25s ease-out}
+/* The stub tears off along the dashed line once boarding starts, then its room closes up; Cancel (Solo) brings it back. */
+.stubWrap{display:grid;grid-template-rows:1fr;transition:grid-template-rows .25s ease}
+.stubWrap > div{min-height:0}
+.ticket[data-torn] .stubWrap{grid-template-rows:0fr;transition-delay:.4s}
+.ticket[data-torn] .stub{pointer-events:none;transform-origin:0 0;animation:tear .55s cubic-bezier(.5,0,.75,0) forwards}
+@keyframes tear{0%{transform:none}25%{transform:rotate(-2deg) translateY(2px)}100%{transform:translate(28px,90px) rotate(12deg);opacity:0}}
+@media (prefers-reduced-motion:reduce){
+  .ticket{transform:none;transition:none}
+  .sheen,.boarding dd::before{animation:none}
+  .sheen{display:none}
+  .stubWrap{transition:none}
+  .ticket[data-torn] .stub{animation:none;visibility:hidden}
+}

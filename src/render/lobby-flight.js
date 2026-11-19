@@ -308,7 +308,7 @@ export function createLobbyFlight({ THREE, display, reducedMotion = false }) {
       if (fresh) lastInsets = -1;
       if (next.colors) {
         colors = [...next.colors];
-        if (craft) { kit.seatBalls(craft, colors); stats.passengers = craft.balls.length; }
+        if (craft) { kit.seatBalls(craft, colors); kit.repaint(craft, colors); stats.passengers = craft.balls.length; }
       }
     },
     update,

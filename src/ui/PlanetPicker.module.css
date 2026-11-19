@@ -12,7 +12,7 @@
 .name{flex:1;min-width:0;text-align:center}
 .name small{display:block;font:900 11px var(--font);letter-spacing:1.5px;text-transform:uppercase;opacity:.7}
 .name b{display:block;font:400 clamp(30px,3.2vw,44px)/1.05 var(--font);letter-spacing:2px;text-transform:uppercase;color:var(--tone);-webkit-text-stroke:3px var(--ink);paint-order:stroke fill;text-shadow:3px 3px 0 var(--ink)}
-.name span{display:block;margin-top:4px;font:800 12px var(--pp-body,'Nunito',sans-serif);line-height:1.25}
+.blurb{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin:-2px 4px 0;font:700 13px/1.3 var(--pp-body,'Nunito',sans-serif);text-align:center;letter-spacing:.2px;opacity:.75;text-wrap:balance}
 .chips{display:flex;gap:8px}
 .chip{--c:#2fbf5b;position:relative;display:flex;flex:1;align-items:center;justify-content:center;gap:6px;margin:0;padding:6px;font:900 14px var(--font);letter-spacing:.5px;text-transform:none;text-shadow:none;color:var(--ink);
   background:#fff;border:3px solid var(--ink);border-radius:999px;box-shadow:0 3px 0 var(--ink);cursor:pointer;transition:translate .1s,background .15s}

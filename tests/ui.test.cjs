@@ -238,7 +238,7 @@ function fakeClock() {
   await scenario('solo lobby picker (owner, 2026-11-18): Solo opens on its lobby; the planet picker flies the sky; the mode bar and planet reach play-solo; Back and Escape leave', async () => {
     const views = [];
     const createLoadingScene = () => ({ start() {}, dispose() {}, setView: v => views.push({ space: v.space, target: v.target }) });
-    const t = await setup({ mountProps: { createLoadingScene } });
+    const t = await setup({ mountProps: { createLoadingScene, soloBoardingMs: 20 } });
     await act(async () => t.store.setLocal({ active: false, connecting: false }));
     await act(async () => { await new Promise(r => setTimeout(r, 20)); }); // the scene attaches after the first paint
     const landing = t.within('[data-ui=landing]');
@@ -300,6 +300,7 @@ function fakeClock() {
       const typed = $('[data-ui=ticket-name]').value;
       t.commands.length = 0;
       await click(button('Play Solo'));
+      await act(async () => { await new Promise(r => setTimeout(r, 60)); }); // the boarding countdown (shortened here)
       assert.deepEqual(t.commands, [{ type: 'play-solo', name: typed, mode, world: 'ares' }], mode);
     }
     assert.ok(!/practis/i.test(lobby.textContent), 'US spelling "practice" (owner, 2026-11-14)');
@@ -319,7 +320,7 @@ function fakeClock() {
   await scenario('solo lobby (owner, 2026-11-16): the 3D helicopter carries one ball in your colour; the ticket on the right has your name, the colour badge with the party picker (nothing crossed out) and Play', async () => {
     const skies = [];
     const createLoadingScene = () => { const sky = { lobby: null, sent: [], start() {}, dispose() { sky.disposed = true; }, setView() {}, setLobby(l) { sky.lobby = l; sky.sent.push(l); return true; } }; skies.push(sky); return sky; };
-    const t = await setup({ mountProps: { createLoadingScene } });
+    const t = await setup({ mountProps: { createLoadingScene, soloBoardingMs: 20 } });
     await act(async () => t.store.setLocal({ active: false, connecting: false, colorPref: 4 }));
     await act(async () => { await new Promise(r => setTimeout(r, 20)); }); // the sky attaches after the first paint
     await click(t.within('[data-ui=landing]').querySelector('[data-menu=solo]'));
@@ -336,8 +337,9 @@ function fakeClock() {
     assert.equal(ticket.querySelector('[data-ui=ticket-destination]').textContent, 'Gaia');
     // The planet is picked in the lobby's planet picker, so the Solo pass only shows it (owner, 2026-11-18).
     assert.equal(ticket.querySelector('[data-ui=destination-pick]'), null, 'no planet picker on the Solo pass');
-    // A simpler pass (owner, 2026-11-18): no flight details, barcode, seal or stamp.
-    assert.equal(ticket.querySelector('dl, [data-ui=barcode]'), null, 'no flight details or barcode on the pass');
+    // A simpler pass (owner, 2026-11-18): no barcode, seal or stamp; seat, mode and boarding came back (owner, 2026-11-19).
+    assert.ok(!ticket.querySelector('[data-ui=barcode]'), 'no barcode on the pass');
+    assert.deepEqual([...ticket.querySelectorAll('[data-ui=ticket-fields] dt')].map(d => d.textContent), ['Seat', 'Mode', 'Boarding']);
     assert.equal(ticket.querySelector('[data-ui=ticket-title]').textContent, 'Helicopter Boarding Pass');
     const bar = stage.querySelector('[data-ui=solo-modes] [data-ui=mode-picker]');
     assert.deepEqual([...bar.querySelectorAll('[data-mode]')].map(b => b.dataset.mode), ['standard', 'tournament_3', 'tournament_5', 'tournament_7', 'practice', 'putt_practice'], 'the mode bar has every Solo mode, and no Putt Pong');
@@ -372,6 +374,7 @@ function fakeClock() {
     assert.deepEqual(t.commands, [{ type: 'set-color', color: 7 }], 'the same SET_COLOR command as the party lobby, saved the same way');
     t.commands.length = 0;
     await click(button('Play Solo'));
+    await act(async () => { await new Promise(r => setTimeout(r, 60)); }); // the boarding countdown (shortened here)
     assert.deepEqual(t.commands, [{ type: 'play-solo', name: 'Ana', mode: 'standard', world: 'gaia' }], 'Play starts the chosen mode and world');
     await click($('[data-ui=menu-back]'));
     assert.equal($('[data-ui=solo-lobby]'), null, 'Back leaves the lobby');
@@ -918,7 +921,7 @@ function fakeClock() {
   });
 
   await scenario('landing (VIS-M3): Party has Create and a Join code box; no code exists until Create; Join needs a code', async () => {
-    const t = await setup({ roomCode: '' });
+    const t = await setup({ roomCode: '', mountProps: { soloBoardingMs: 60 } });
     await act(async () => t.store.setLocal({ active: false }));
     const landing = t.within('[data-ui=landing]');
     assert.ok(shown(landing));
@@ -950,7 +953,21 @@ function fakeClock() {
     await click(landing.querySelector('[data-menu=solo]'));
     assert.equal($('[data-ui=ticket-name]').value, '  Zed  ', 'the name carries from Party to Solo');
     const solo = $('[data-ui=solo-play]');
+    assert.equal($('[data-ui=ticket-boarding]').textContent, 'Awaiting', 'the pass awaits boarding until Play Solo');
+    assert.equal($('[data-ui=ticket-seat]').textContent, '1A');
+    assert.equal($('[data-ui=ticket-mode]').textContent, 'Casual');
+    // Play Solo starts the boarding countdown (5 s in the game, shortened here); Cancel stops it and nothing is sent.
     await click(solo);
+    assert.equal(solo.textContent, 'Cancel');
+    assert.equal($('[data-ui=ticket-boarding]').textContent, '00:01', 'the boarding time counts down');
+    assert.ok($('[data-ui=lobby-ticket]').hasAttribute('data-torn'), 'the stub tears off as boarding starts');
+    await click(solo);
+    await act(async () => { await new Promise(r => setTimeout(r, 120)); });
+    assert.equal($('[data-ui=ticket-boarding]').textContent, 'Awaiting', 'Cancel puts the pass back');
+    assert.equal(t.commands.length, 3, 'a cancelled countdown sends nothing');
+    await click(solo);
+    await act(async () => { await new Promise(r => setTimeout(r, 120)); });
+    assert.equal(solo.textContent, 'Play Solo', 'once the countdown has sent Play, the button is back');
     assert.deepEqual(t.commands, [
       { type: 'join', name: '  Zed  ', roomCode: 'Fun-Room!' },
       { type: 'join', name: '  Zed  ', roomCode: 'Fun-Room!' },

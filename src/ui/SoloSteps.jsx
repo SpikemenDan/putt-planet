@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { LAUNCH_COUNTDOWN_MS } from '../shared/constants.js';
 import { GameModes } from '../shared/session.js';
 import { lobbyVehicleFor } from '../render/lobby-models.js';
 import { WORLDS } from '../shared/worlds.js';
@@ -60,12 +61,33 @@ const SOLO_MODE_OPTIONS = Object.freeze(Object.entries(SOLO_MODES).map(([value, 
  * replaces it); it stays accepted so Landing.jsx needs no change.
  */
 export function SoloSteps({ name, onName, colorField, connecting, send, onExit, overlay = null }) {
-  const { stage, display } = useUiContext();
+  const { stage, display, soloBoardingMs = LAUNCH_COUNTDOWN_MS } = useUiContext();
   const color = useView(v => v.landing?.color ?? null);
   const [mode, setMode] = useState(GameModes.STANDARD);
   const [world, setWorld] = useState('gaia');
   const body = useRef(null), side = useRef(null), look = useRef(null);
   useLobbyLook(look, display);
+  // Boarding (owner, 2026-11-19): Play Solo starts a 5 s countdown like a party's launch (Cancel stops it), then the room opens with
+  // the mode and planet chosen by then. `boarding` is the whole seconds still to go (null before Play). Counted on the window's own
+  // timers, so a test clock can run it.
+  const [boarding, setBoarding] = useState(null);
+  const latest = useRef(null);
+  latest.current = { name, mode, world };
+  const counting = boarding !== null;
+  useEffect(() => {
+    if (!counting) return undefined;
+    const view = body.current?.ownerDocument.defaultView ?? globalThis;
+    let remaining = soloBoardingMs, id = 0;
+    const step = () => {
+      setBoarding(Math.max(0, Math.ceil(remaining / 1000)));
+      if (remaining <= 0) { send(UiCommands.PLAY_SOLO, latest.current); setBoarding(null); return; }
+      const wait = Math.min(remaining, remaining % 1000 || 1000);
+      id = view.setTimeout(() => { remaining -= wait; step(); }, wait);
+    };
+    step();
+    return () => view.clearTimeout(id);
+  }, [counting]);
+  const play = () => setBoarding(counting ? null : Math.ceil(soloBoardingMs / 1000));
   useEffect(() => { body.current?.ownerDocument.querySelector('[data-ui=solo-play]')?.focus(); }, []);
   // The Solo lobby takes the whole screen: the menu card steps away while it shows (the pass has the name, Play and Back).
   useEffect(() => {
@@ -96,8 +118,9 @@ export function SoloSteps({ name, onName, colorField, connecting, send, onExit, 
         <PlanetPicker value={world} onPick={setWorld} />
       </div>
       <div className={solo.pass}>
-        <LobbyTicket vehicle={vehicle} solo name={name} onName={onName} color={color} onPick={c => send(UiCommands.SET_COLOR, { color: c })} destination={world} onBack={onExit}>
-          <button type="button" className={room.go} disabled={connecting} onClick={() => send(UiCommands.PLAY_SOLO, { name, mode, world })} data-ui="solo-play">Play Solo</button>
+        <LobbyTicket vehicle={vehicle} solo name={name} onName={onName} color={color} onPick={c => send(UiCommands.SET_COLOR, { color: c })} destination={world} onBack={onExit}
+          seat="1A" mode={mode} boarding={boarding}>
+          <button type="button" className={room.go} disabled={connecting} onClick={play} data-ui="solo-play" data-boarding={boarding === null ? undefined : ''}>{boarding === null ? 'Play Solo' : 'Cancel'}</button>
         </LobbyTicket>
       </div>
       <div className={solo.dock} data-ui="solo-modes">

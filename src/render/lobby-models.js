@@ -33,6 +33,9 @@ function wing(THREE, points, thick) {
   return new THREE.ExtrudeGeometry(shape, { depth: thick, bevelEnabled: true, bevelThickness: 0.04, bevelSize: 0.05, bevelSegments: 2 }).rotateX(-Math.PI / 2).translate(0, -thick / 2, 0);
 }
 
+/** `color` mixed toward ink by `k` (0..1): the darker partner of an accent colour. */
+const shade = (THREE, color, k) => new THREE.Color(color).lerp(new THREE.Color(0x2a2346), k).getHex();
+
 /** A capsule lying along x: `length` is the straight middle, `r` the radius. */
 const capsule = (THREE, r, length, cap = 12, radial = 28) => new THREE.CapsuleGeometry(r, length, cap, radial).rotateZ(Math.PI / 2);
 
@@ -73,9 +76,11 @@ function inward(THREE, geometry) {
  * tapers into a slim tail boom, a dark wraparound windscreen and a rounded engine housing under a two-blade rotor. A wide doorway
  * on the viewer's side stands open, framed in yellow, and the ball sits out in it on a blue floor
  * against a violet seat back, inside a soft lilac cabin. A blue fin and stabiliser with yellow tips, a pink tail rotor, slim skids.
+ * `accent` (owner, 2026-11-19) paints the coloured parts (the belly, boom band, fin, stabiliser and cabin floor) in the player's ball
+ * colour; the blue is the default.
  */
-export function makeHelicopter(THREE) {
-  const white = 0xf8f6ff, blue = 0x3e8ef7, pink = 0xff3d8b, yellow = 0xffd23f, metal = 0x8f8bb3, dark = 0x3b3557, screen = 0x2c5cb8, seatColor = 0x5a4fb0;
+export function makeHelicopter(THREE, accent = null) {
+  const white = 0xf8f6ff, blue = accent ?? 0x3e8ef7, pink = 0xff3d8b, yellow = 0xffd23f, metal = 0x8f8bb3, dark = 0x3b3557, screen = 0x2c5cb8, seatColor = 0x5a4fb0;
   const Y = 1.5; // the fuselage axis height: the skids rest on y = 0
   const R = 1.1; // the cabin's radius, constant through the doorway
   const DOOR = [-0.85, 0.98], A = 1.05; // the doorway along x, and its half-angle around the side facing the viewer (-z)
@@ -144,7 +149,7 @@ export function makeHelicopter(THREE) {
   const floorShape = new THREE.Shape(outline.map(([x, w]) => new THREE.Vector2(x, w)).concat([...outline].reverse().map(([x, w]) => new THREE.Vector2(x, -w))));
   const inner = mergeParts(THREE, [
     ...pod(0.95, 0xd9dcf2, 0xb3b6dc).map(p => ({ ...p, geometry: inward(THREE, p.geometry) })),
-    { geometry: new THREE.ShapeGeometry(floorShape).rotateX(Math.PI / 2), color: 0x3a5fae, at: at(THREE, 0, FLOOR, 0) },
+    { geometry: new THREE.ShapeGeometry(floorShape).rotateX(Math.PI / 2), color: accent === null ? 0x3a5fae : shade(THREE, accent, 0.35), at: at(THREE, 0, FLOOR, 0) },
     { geometry: new THREE.BoxGeometry(1.05, 1.0, 0.16), color: seatColor, at: at(THREE, 0.1, Y + 0.05, 0.62, -0.1, 0, 0) }, // seat back
     { geometry: new THREE.BoxGeometry(1.05, 0.16, 0.5), color: seatColor, at: at(THREE, 0.1, FLOOR + 0.08, 0.38) }, // seat base
   ]);
@@ -244,15 +249,16 @@ export function makeLobbyRocket(THREE, seatsCount = 8) {
 
 /**
  * The Solo rocket for Ares and Luna (owner, 2026-11-18): a small red and white rocket with the player's ball riding inside a glass
- * dome on top, a yellow rim round the dome, a porthole, four fins and a live flame. One seat.
+ * dome on top, a yellow rim round the dome, a porthole, four fins and a live flame. One seat. `accent` (owner, 2026-11-19) paints the
+ * nose cone and fins in the player's ball colour (the fins alternate with a darker shade of it); red and violet are the default.
  */
-export function makeSoloRocket(THREE) {
-  const white = 0xf8f6ff, red = 0xe5484d, violet = 0x8e4ec6, yellow = 0xffd23f, cyan = 0x25d1e6, metal = 0x4b4570, dark = 0x2a2346;
+export function makeSoloRocket(THREE, accent = null) {
+  const white = 0xf8f6ff, red = 0xe5484d, violet = 0x8e4ec6, cone = accent ?? red, finA = accent ?? red, finB = accent === null ? violet : shade(THREE, accent, 0.3), yellow = 0xffd23f, cyan = 0x25d1e6, metal = 0x4b4570, dark = 0x2a2346;
   const r = 0.95, mid = 2.4, domeY = 0.78, domeR = 0.8;
   const seat = new THREE.Vector3(0.1, 1.02, 0);
   const parts = [
     { geometry: capsule(THREE, r, mid), color: white },
-    { geometry: new THREE.ConeGeometry(r * 0.98, 1.9, 28).rotateZ(-Math.PI / 2), color: red, at: at(THREE, mid / 2 + 0.9, 0, 0) }, // nose cone
+    { geometry: new THREE.ConeGeometry(r * 0.98, 1.9, 28).rotateZ(-Math.PI / 2), color: cone, at: at(THREE, mid / 2 + 0.9, 0, 0) }, // nose cone
     { geometry: new THREE.ConeGeometry(0.62, 0.8, 22).rotateZ(Math.PI / 2), color: metal, at: at(THREE, -mid / 2 - 0.95, 0, 0) }, // nozzle
     { geometry: new THREE.CylinderGeometry(r * 1.015, r * 1.015, 0.36, 28, 1, true).rotateZ(Math.PI / 2), color: red, at: at(THREE, -0.95, 0, 0) }, // band
     { geometry: new THREE.TorusGeometry(domeR, 0.08, 10, 36).rotateX(Math.PI / 2), color: yellow, at: at(THREE, seat.x, domeY, 0) }, // the dome's rim
@@ -262,7 +268,7 @@ export function makeSoloRocket(THREE) {
     parts.push({ geometry: new THREE.CylinderGeometry(0.22, 0.22, 0.1, 18).rotateX(Math.PI / 2), color: cyan, at: at(THREE, -0.3, -0.3, side * (r - 0.03)) });
     parts.push({ geometry: new THREE.TorusGeometry(0.24, 0.05, 8, 20), color: yellow, at: at(THREE, -0.3, -0.3, side * (r + 0.02)) }); // portholes
   }
-  for (const a of [0, Math.PI / 2, Math.PI, Math.PI * 1.5]) parts.push({ geometry: fin(THREE, [[-mid / 2 + 0.3, 0.7], [-mid / 2 - 0.9, 1.75], [-mid / 2 - 1.25, 1.75], [-mid / 2 - 1.0, 0.7]], 0.16), color: a % Math.PI ? violet : red, at: at(THREE, 0, 0, 0, a + Math.PI / 4, 0, 0) });
+  for (const a of [0, Math.PI / 2, Math.PI, Math.PI * 1.5]) parts.push({ geometry: fin(THREE, [[-mid / 2 + 0.3, 0.7], [-mid / 2 - 0.9, 1.75], [-mid / 2 - 1.25, 1.75], [-mid / 2 - 1.0, 0.7]], 0.16), color: a % Math.PI ? finB : finA, at: at(THREE, 0, 0, 0, a + Math.PI / 4, 0, 0) });
   const flame = mergeParts(THREE, [
     { geometry: new THREE.ConeGeometry(0.46, 1.8, 18).rotateZ(Math.PI / 2).translate(-0.9, 0, 0), color: 0xff8a1f },
     { geometry: new THREE.ConeGeometry(0.28, 1.2, 16).rotateZ(Math.PI / 2).translate(-0.65, 0, 0), color: 0xffe36b },
@@ -279,13 +285,19 @@ export function makeSoloRocket(THREE) {
   };
 }
 
-/** The vehicle for a kind: 'helicopter' (Solo on Gaia), 'minirocket' (Solo to Ares or Luna), 'plane' (a party bound for Gaia) or 'rocket' (a party to Ares or Luna). */
-export function makeLobbyVehicle(THREE, kind) {
-  if (kind === 'helicopter') return makeHelicopter(THREE);
-  if (kind === 'minirocket') return makeSoloRocket(THREE);
+/**
+ * The vehicle for a kind: 'helicopter' (Solo on Gaia), 'minirocket' (Solo to Ares or Luna), 'plane' (a party bound for Gaia) or 'rocket' (a party to Ares or Luna).
+ * `accent` (a colour, or null) paints the Solo vehicles in the player's ball colour; the party vehicles keep their own.
+ */
+export function makeLobbyVehicle(THREE, kind, accent = null) {
+  if (kind === 'helicopter') return makeHelicopter(THREE, accent);
+  if (kind === 'minirocket') return makeSoloRocket(THREE, accent);
   if (kind === 'rocket') return makeLobbyRocket(THREE);
   return makeLobbyPlane(THREE);
 }
+
+/** The Solo vehicles, which wear the player's ball colour. */
+export const isSoloCraft = kind => kind === 'helicopter' || kind === 'minirocket';
 
 /** Rockets fly between planets; the plane and helicopter stay in Gaia's air. */
 export const isRocket = kind => kind === 'rocket' || kind === 'minirocket';
