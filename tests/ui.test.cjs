@@ -186,6 +186,7 @@ function fakeClock() {
     const { createDisplay } = await import('../src/shared/display.js');
     const live = structuredClone(createDisplay());
     live.menu.buttonScale = 1.3; live.menu.tilt = 4; live.menu.stagger = 0.2; live.menu.bob = 5; live.menu.shineSeconds = 0; live.menu.cardTint = 0.5;
+    live.lobbyLook.glow = 1.5; live.lobbyLook.flipSeconds = 0; live.lobbyLook.stripeSeconds = 2; live.lobbyLook.orbSeconds = 0;
     const t = await setup({ mountProps: { display: live } });
     await act(async () => t.store.setLocal({ active: false, connecting: false }));
     const landing = t.within('[data-ui=landing]');
@@ -216,6 +217,16 @@ function fakeClock() {
     await click(landing.querySelector('[data-menu=solo]'));
     assert.ok($('[data-ui=solo-lobby]'), 'Solo opens straight onto its lobby (owner, 2026-11-18)');
     assert.ok(button('Play Solo'), 'with Play Solo ready');
+    const soloLook = $('[data-ui=solo-lobby]').style;
+    assert.equal(soloLook.getPropertyValue('--look-glow'), '1.5', 'display.lobbyLook.glow reaches the Solo lobby glows');
+    assert.equal(soloLook.getPropertyValue('--look-flip'), '0.001s', 'display.lobbyLook.flipSeconds 0 shows the code at once');
+    assert.equal(soloLook.getPropertyValue('--look-stripe'), '2s', 'display.lobbyLook.stripeSeconds times the Play stripes');
+    assert.equal(soloLook.getPropertyValue('--look-orb'), '1000000s', 'display.lobbyLook.orbSeconds 0 holds the planet card still');
+    live.lobbyLook.orbSeconds = 12;
+    await act(async () => { await new Promise(r => setTimeout(r, 40)); });
+    assert.equal(soloLook.getPropertyValue('--look-orb'), '12s', 'and follows the live display object');
+    assert.equal($('[data-ui=ticket-code]').textContent, 'GAI', 'the split-flap code still reads as the plain code');
+    assert.ok($('[data-ui=planet-gravity]').textContent.includes('100%'), 'the planet card shows Gaia at full gravity');
     assert.ok(!button('Create party'), 'and not the party one');
     await t.teardown();
     const invited = await setup({ mountProps: { initialView: 'party' }, inRoom: false });

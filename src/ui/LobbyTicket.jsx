@@ -5,6 +5,15 @@ import { ColorBadge } from './BadgePicker.jsx';
 import styles from './LobbyTicket.module.css';
 
 const CODES = Object.freeze({ gaia: 'GAI', luna: 'LUN', ares: 'ARS' });
+
+/**
+ * The destination code as a split-flap board (owner, 2026-11-18: a livelier pass): each letter is its own flap, keyed by the
+ * destination, so a new planet flips the letters in one after another (`--look-flip` sets how long each takes). The text stays the
+ * plain code for screen readers and tests.
+ */
+function Flaps({ text, world }) {
+  return [...text].map((ch, i) => <span key={world + i} className={styles.flap} style={{ '--i': i }}>{ch}</span>);
+}
 /** What each vehicle's pass calls itself and where it boards, as on a real pass: a gate, a helipad or a launch pad. */
 export const PASS = Object.freeze({
   plane: { title: 'Plane Boarding Pass', gate: 'Gate' },
@@ -79,6 +88,7 @@ export function LobbyTicket({ vehicle = 'plane', name = '', onName = null, onNam
       <header className={styles.head}>
         <span className={styles.brand}>Putt Planet Air</span>
         <span className={styles.title} data-ui="ticket-title">{pass.title}</span>
+        <span className={styles.seal} aria-hidden="true">PP</span>
       </header>
       <div className={styles.passenger}>
         <small>Passenger</small>
@@ -90,8 +100,9 @@ export function LobbyTicket({ vehicle = 'plane', name = '', onName = null, onNam
       <div className={styles.route}>
         <div><b>HOM</b><small>Home</small></div>
         <span className={styles.path} aria-hidden="true" />
-        <div className={styles.to}><b data-ui="ticket-code">{CODES[destination] ?? 'GAI'}</b><small data-ui="ticket-destination">{planet}</small></div>
+        <div className={styles.to}><b data-ui="ticket-code"><Flaps text={CODES[destination] ?? 'GAI'} world={destination} /></b><small data-ui="ticket-destination">{planet}</small></div>
       </div>
+      {solo && <span key={destination} className={styles.stamp} aria-hidden="true">{destination === 'gaia' ? 'Cleared for takeoff' : 'Cleared for launch'}</span>}
       <dl className={styles.details}>
         {fields.map(([label, value]) => <div key={label} data-field={label}><dt>{label}</dt><dd data-gate={label === pass.gate ? gateMark.kind : undefined}>{value}</dd></div>)}
       </dl>

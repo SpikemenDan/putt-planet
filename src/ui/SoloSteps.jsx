@@ -26,6 +26,34 @@ export const SOLO_MODES = Object.freeze({
   [GameModes.PONG]: 'Practice · Putt Pong',
 });
 
+/** A duration that "0 holds it still" turns into: long enough that nothing visibly moves. */
+const STILL = 1e6;
+const secs = v => (v > 0 ? v : STILL) + 's';
+
+/**
+ * Copies `display.lobbyLook` onto the Solo lobby as CSS variables (owner, 2026-11-18: a livelier lobby), like the main menu's
+ * `display.menu`: once for the shipped (frozen) display, every frame for the development tuner's live object.
+ */
+export function useLobbyLook(ref, display) {
+  useEffect(() => {
+    const el = ref.current, look = display?.lobbyLook;
+    if (!el || !look) return undefined;
+    const apply = () => {
+      el.style.setProperty('--look-glow', String(look.glow));
+      el.style.setProperty('--look-flip', (look.flipSeconds > 0 ? look.flipSeconds : 0.001) + 's');
+      el.style.setProperty('--look-stripe', secs(look.stripeSeconds));
+      el.style.setProperty('--look-orb', secs(look.orbSeconds));
+    };
+    apply();
+    const view = el.ownerDocument.defaultView;
+    if (Object.isFrozen(look) || !view?.requestAnimationFrame) return undefined;
+    let id = 0;
+    const tick = () => { apply(); id = view.requestAnimationFrame(tick); };
+    id = view.requestAnimationFrame(tick);
+    return () => view.cancelAnimationFrame(id);
+  }, [ref, display]);
+}
+
 /** The Solo lobby's mode bar (owner, 2026-11-17): every Solo mode, changeable right up to Play. */
 const SOLO_MODE_OPTIONS = Object.freeze(Object.entries(SOLO_MODES).map(([value, label]) => ({ value, label })));
 
@@ -38,11 +66,12 @@ const SOLO_MODE_OPTIONS = Object.freeze(Object.entries(SOLO_MODES).map(([value, 
  * replaces it); it stays accepted so Landing.jsx needs no change.
  */
 export function SoloSteps({ name, onName, colorField, connecting, send, onExit, overlay = null }) {
-  const { stage } = useUiContext();
+  const { stage, display } = useUiContext();
   const color = useView(v => v.landing?.color ?? null);
   const [mode, setMode] = useState(GameModes.STANDARD);
   const [world, setWorld] = useState('gaia');
-  const body = useRef(null), side = useRef(null);
+  const body = useRef(null), side = useRef(null), look = useRef(null);
+  useLobbyLook(look, display);
   useEffect(() => { body.current?.ownerDocument.querySelector('[data-ui=solo-play]')?.focus(); }, []);
   // The Solo lobby takes the whole screen: the menu card steps away while it shows (the pass has the name, Play and Back).
   useEffect(() => {
@@ -64,7 +93,7 @@ export function SoloSteps({ name, onName, colorField, connecting, send, onExit, 
     return { left: planets ? planets.right + 16 : 24, right: pass ? view.innerWidth - pass.left + 16 : 0, top: 8, bottom: bar ? view.innerHeight - bar.top + 8 : 8 };
   };
   const lobby = (
-    <div data-ui="solo-lobby" onKeyDown={e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); onExit(); } }}>
+    <div ref={look} data-ui="solo-lobby" onKeyDown={e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); onExit(); } }}>
       <LobbyVehicle vehicle={vehicle} passengers={[{ id: 'you', name: name.trim() || 'Player', color: color ?? 0, you: true }]} insets={insets} />
       <div className={room.hiddenText} data-ui="solo-title">
         <h1>Solo lobby</h1>
