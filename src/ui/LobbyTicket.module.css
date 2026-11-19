@@ -98,3 +98,7 @@
 .seats{display:flex;gap:3px}
 .seat{width:10px;height:10px;box-sizing:border-box;border-radius:50%;border:2px dashed color-mix(in srgb,var(--ink) 35%,transparent)}
 .seat[data-taken]{border:2px solid var(--ink);background:var(--ball)}
+/* The pass's main button (Start Game, Play Solo) takes your ball's colour too (owner, 2026-11-19); a pale ball gets dark words. */
+.ticket .actions > button{background:var(--ball,var(--pink))}
+.ticket .actions > button:hover:not(:disabled){background:color-mix(in srgb,var(--ball,var(--pink)) 82%,#fff)}
+.ticket[data-light] .actions > button{color:var(--ink);text-shadow:none}
