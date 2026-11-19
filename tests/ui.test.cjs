@@ -1266,13 +1266,16 @@ function fakeClock() {
     assert.ok(sky.lobbyStats.air > 0.9, "wind while in Gaia's air");
     // A journey (owner, 2026-11-18): the camera flies to Luna and the rocket flies along with it, chasing Luna, then settles side-on.
     sky.setView({ space: true, target: 'luna' });
-    const seen = new Set(); let chase = 0, small = 1, big = 0;
+    const seen = new Set(); let chase = 0, small = 1, big = 0, covers = 0, behind = 0;
     const sizes = () => { small = Math.min(small, sky.lobbyStats.size); big = Math.max(big, sky.lobbyStats.size); };
-    run(12, () => { seen.add(sky.lobbyStats.trip); chase = Math.max(chase, sky.lobbyStats.chase); sizes(); });
+    run(12, () => { seen.add(sky.lobbyStats.trip); chase = Math.max(chase, sky.lobbyStats.chase); sizes(); covers = Math.max(covers, sky.lobbyStats.covers); if (sky.lobbyStats.hidden) behind++; });
+    // It goes behind planets for real (owner, 2026-11-18: "physically make it go behind the planets"): they stand in its pass as depth.
+    assert.ok(covers === 3 && behind > 0, `on the way the three planets cover it where they stand in front (${behind} frames behind one)`);
     assert.ok(seen.has('travelling') && seen.has('arriving'), 'it travels, then arrives');
     assert.ok(chase > 0.9, 'on the way the rocket turns to chase Luna');
     assert.equal(sky.lobbyStats.trip, null, 'arrived');
     assert.equal(sky.lobbyStats.chase, 0, 'and back side-on');
+    assert.equal(sky.lobbyStats.covers, 0, 'parked, nothing covers it');
     assert.ok(sky.lobbyStats.nose[0] < 0, 'parked nose-left, flying on along its orbit (owner, 2026-11-18)');
     assert.equal(sky.lobbyStats.vehicle, 'rocket');
     assert.ok(sky.lobbyStats.air < 0.05, 'no wind in space');

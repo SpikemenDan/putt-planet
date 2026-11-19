@@ -6,10 +6,11 @@
  * route through the world (src/render/lobby-route.js, planned by the planet scene): straight on the way its nose points, one smooth
  * curve toward the planet ahead, then sideways onto that planet's orbit, round it to where it parks (owner, 2026-11-18: "the rocket
  * flies across", "curve into orbit"). The camera holds a wide view while it crosses, so it is drawn where it really is, shrunk when far
- * away and hidden behind a planet it passes; parked, it keeps circling as the planet turns under it. The plane or helicopter takes over
+ * away and covered by a planet it passes behind; parked, it keeps circling as the planet turns under it. The plane or helicopter takes over
  * again once it is home. Wind lines and wakes show only while it is inside a planet's air.
  *
- * Drawn in its own pass after the planets (depth cleared), so a planet never cuts through it; it uses the main camera's pose.
+ * Drawn in its own pass after the planets (depth cleared), so a planet never cuts through it while parked; on a trip the planets stand
+ * in that pass as depth only, so it goes behind them. It uses the main camera's pose.
  */
 import { createCraftKit, isRocket, BALL_RADIUS, SWAP, DASH, easeIn, easeOut, easeOutBack } from './lobby-craft.js';
 import { sizeInk } from './outline.js';
@@ -49,6 +50,16 @@ export function createLobbyFlight({ THREE, display, reducedMotion = false }) {
   follow.add(body, frameOf);
   frameOf.add(kit.wind);
   vScene.add(follow);
+  // The planets, as depth only (owner, 2026-11-18: "physically make it go behind the planets"): drawn first and invisible, they cover
+  // the rocket wherever a planet stands in front of it, a part at a time as it slips behind the limb. The rocket is drawn nearer than
+  // it really is, so they are too: the whole world shrunk toward the lens by the same factor, which looks the same from the lens.
+  const occluderShape = new THREE.SphereGeometry(1, 48, 32), occluderLook = new THREE.MeshBasicMaterial({ colorWrite: false });
+  const occluders = [0, 1, 2].map(() => {
+    const mesh = new THREE.Mesh(occluderShape, occluderLook);
+    mesh.renderOrder = -10; mesh.visible = false; mesh.frustumCulled = false;
+    follow.add(mesh);
+    return mesh;
+  });
 
   // The parked pose's view: seen from LOBBY_EYE, looking at the vehicle.
   const eye = new THREE.Vector3(...LOBBY_EYE), eyeDistance = eye.length();
@@ -171,6 +182,7 @@ export function createLobbyFlight({ THREE, display, reducedMotion = false }) {
     worldInv.copy(camera.matrixWorld).invert();
     camQInv.copy(camera.quaternion).invert();
     let hidden = false, size = 1;
+    for (const o of occluders) o.visible = false;
     if (w > 0) {
       // Where it really is, seen along the line of sight at a drawable distance.
       chaseP.copy(trip.position).applyMatrix4(worldInv);
@@ -189,25 +201,22 @@ export function createLobbyFlight({ THREE, display, reducedMotion = false }) {
       facing(noseC, chaseQ);
       chaseQ.multiply(q1.setFromAxisAngle(v1.set(1, 0, 0), bank + Math.sin(t * 0.9) * 0.04));
       chaseQ.multiply(q1.setFromAxisAngle(v1.set(0, 0, 1), Math.sin(t * 0.7 + 1) * 0.03));
-      // Behind a planet it passes, it is out of sight.
-      if (w > 0.5 && trip.blockers) {
-        ray.subVectors(trip.position, camera.position);
-        const len = ray.length();
-        ray.divideScalar(Math.max(1e-6, len));
-        for (const { centre, radius } of trip.blockers) {
-          m.subVectors(camera.position, centre);
-          const b = m.dot(ray), c = m.lengthSq() - radius * radius * 0.96;
-          if (c < 0) continue;
-          const disc = b * b - c;
-          if (disc < 0) continue;
-          const hit = -b - Math.sqrt(disc);
-          if (hit > 0 && hit < len) { hidden = true; break; }
-        }
-      }
+      // The planets it can pass behind, shrunk toward the lens as the rocket is; and, for checks, whether its centre is behind one.
+      const shrink = shown / Math.max(1e-6, real);
+      ray.subVectors(trip.position, camera.position).divideScalar(Math.max(1e-6, real));
+      (trip.blockers ?? []).forEach(({ centre, radius }, k) => {
+        const o = occluders[k];
+        if (!o) return;
+        o.visible = true;
+        o.position.copy(centre).applyMatrix4(worldInv).multiplyScalar(shrink);
+        o.scale.setScalar(radius * shrink);
+        m.subVectors(camera.position, centre);
+        const b = m.dot(ray), c = m.lengthSq() - radius * radius, disc = b * b - c;
+        if (c > 0 && disc > 0 && -b - Math.sqrt(disc) > 0 && -b - Math.sqrt(disc) < real) hidden = true;
+      });
     } else { lastHeading.set(0, 0, 0); bank = 0; }
     body.position.lerpVectors(parkedP, chaseP, w);
     if (w > 0) body.quaternion.slerpQuaternions(parkedQ, chaseQ, w); else body.quaternion.copy(parkedQ);
-    body.visible = !hidden;
     follow.position.copy(camera.position);
     follow.quaternion.copy(camera.quaternion);
     frameOf.visible = w < 0.5;
@@ -236,7 +245,7 @@ export function createLobbyFlight({ THREE, display, reducedMotion = false }) {
 
     stats.swapping = swapping || w > 0.01;
     stats.trip = trip.travelling ? (trip.land > 0 ? 'arriving' : 'travelling') : null;
-    stats.air = airLevel; stats.chase = w; stats.hidden = hidden; stats.size = size;
+    stats.air = airLevel; stats.chase = w; stats.hidden = hidden; stats.size = size; stats.covers = occluders.filter(o => o.visible).length;
     const ahead = Math.max(1e-6, -body.position.z);
     stats.screen = [body.position.x / ahead / (tan * aspect), body.position.y / ahead / tan]; // where it is drawn, -1..1 across the view
     const seen = v2.set(1, 0, 0).applyQuaternion(body.quaternion);
@@ -300,6 +309,6 @@ export function createLobbyFlight({ THREE, display, reducedMotion = false }) {
       renderer.render(vScene, vCamera);
       renderer.autoClear = auto;
     },
-    dispose() { clear(); kit.dispose(); lobby = null; },
+    dispose() { clear(); kit.dispose(); occluderShape.dispose(); occluderLook.dispose(); lobby = null; },
   };
 }
