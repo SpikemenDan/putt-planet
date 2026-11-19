@@ -68,7 +68,7 @@ export function createLobbyFlight({ THREE, display, reducedMotion = false }) {
 
   let lobby = null, colors = [], craft = null, leaving = null, swap = SWAP, arriveAt = -1, frameHalf = null, frames = 0;
   let w = 0, bank = 0, airLevel = 1, lastInsets = -1, clock = 0;
-  const insets = { left: 0, right: 0, top: 0, bottom: 0 };
+  const insets = { left: 0, right: 0, top: 0, bottom: 0 }, screenSize = { width: 0, height: 0 };
   const stats = { vehicle: null, passengers: 0, swapping: false, trip: null, air: 0, chase: 0, frames: 0, nose: [-1, 0, 0], hidden: false, size: 1 };
   const noseC = new THREE.Vector3(-1, 0, 0), lastHeading = new THREE.Vector3(), atW = new THREE.Vector3(), ray = new THREE.Vector3(), m = new THREE.Vector3();
   /** The parked pose, camera space, before the bob: where a trip sets off from and which way the nose points. */
@@ -119,7 +119,9 @@ export function createLobbyFlight({ THREE, display, reducedMotion = false }) {
   function update(view) {
     if (!lobby) { follow.visible = false; return; }
     follow.visible = true;
-    const { camera, width, height, trip } = view, l = display.lobby, dt = reducedMotion ? 1 : Math.min(0.1, Math.max(0, view.dt));
+    const { camera, width, height, trip } = view;
+    screenSize.width = width; screenSize.height = height;
+    const l = display.lobby, dt = reducedMotion ? 1 : Math.min(0.1, Math.max(0, view.dt));
     clock += reducedMotion ? 0 : dt;
     const t = reducedMotion ? 0 : clock;
     const still = reducedMotion || frames === 0;
@@ -248,6 +250,12 @@ export function createLobbyFlight({ THREE, display, reducedMotion = false }) {
     stats.air = airLevel; stats.chase = w; stats.hidden = hidden; stats.size = size; stats.covers = occluders.filter(o => o.visible).length;
     const ahead = Math.max(1e-6, -body.position.z);
     stats.screen = [body.position.x / ahead / (tan * aspect), body.position.y / ahead / tan]; // where it is drawn, -1..1 across the view
+    // Whether the rocket, as drawn, has a planet in front of its centre (what the viewer sees, not where it really is).
+    stats.covered = occluders.some(o => {
+      if (!o.visible) return false;
+      const d = body.position.length(), along = o.position.dot(body.position) / Math.max(1e-6, d), r = o.scale.x;
+      return along < d && o.position.lengthSq() - along * along < r * r && o.position.length() - r < d;
+    });
     const seen = v2.set(1, 0, 0).applyQuaternion(body.quaternion);
     stats.nose = [seen.x, seen.y, seen.z];
     stats.frames = ++frames;
@@ -277,6 +285,16 @@ export function createLobbyFlight({ THREE, display, reducedMotion = false }) {
     get active() { return !!lobby && !!craft; },
     /** The parked pose (camera space, `p` and `nose`), once it has been drawn, for a trip to set off from. */
     get parked() { return lobby && frames > 0 ? parked : null; },
+    /**
+     * The part of the view no lobby panel covers (owner, 2026-11-18: the rocket went behind the boarding pass), as its centre
+     * (`x`, `y`) and half size (`w`, `h`) in -1..1 view units, for a trip to keep the rocket inside; null with no lobby.
+     */
+    get free() {
+      const { width, height } = screenSize;
+      if (!lobby || !width || !height) return null;
+      const w = Math.max(120, width - insets.left - insets.right) / width, h = Math.max(120, height - insets.top - insets.bottom) / height;
+      return { x: (insets.left - insets.right) / width, y: (insets.bottom - insets.top) / height, w, h };
+    },
     /**
      * Shows the lobby vehicle (`{vehicle, colors, insets(), onAnchors(anchors, {width, height})}`), updates it, or (null) removes it.
      * `colors` is one CSS colour per seat, null for an empty seat.

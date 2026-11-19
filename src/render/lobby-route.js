@@ -13,9 +13,11 @@
  *
  * Pure geometry (three.js maths only), no scene objects: planet-scene.js plans it, lobby-flight.js flies the rocket along it.
  */
-const MIN_ARC = 1.0, MAX_ARC = 2.6, SAMPLES = 32;
+// A simple route (owner, 2026-11-18: "make the path simpler"): a short way round each orbit, never a long loop that swings behind a
+// planet. The orbits here are wide (the rocket parks near the camera), so a fraction of a radian already reads as a curve.
+const MIN_ARC = 0.45, MAX_ARC = 0.8, SAMPLES = 32;
 /** Round the planet it leaves: at least MIN_DEPART radians, so the circling reads, and no more than MAX_DEPART. */
-const MIN_DEPART = 0.5, MAX_DEPART = 1.6 * Math.PI;
+const MIN_DEPART = 0.3, MAX_DEPART = 0.8;
 
 export function createLobbyRoute(THREE) {
   const V = () => new THREE.Vector3();
@@ -53,9 +55,11 @@ export function createLobbyRoute(THREE) {
     get length() { return total; },
     /**
      * Plans the route. `from` is the centre of the planet the rocket is in orbit round (none when it is already on its way);
-     * `blockers` is a list of `{ centre, radius }` planets the curve must keep out of.
+     * `blockers` is a list of `{ centre, radius }` planets the curve must keep out of. `eye` (optional) is where the camera ends up and
+     * `ground` the radius of the planet ahead: the way round its orbit then starts where that camera can see it, never over its
+     * horizon (owner, 2026-11-18: close in at Ares the rocket stayed behind the planet a moment before it settled).
      */
-    plan({ start, startDir, from = null, centre, end, endDir, blockers = [] }) {
+    plan({ start, startDir, from = null, centre, end, endDir, blockers = [], eye = null, ground = 0 }) {
       S.copy(start); TS.copy(startDir).normalize(); C.copy(centre); E.copy(end);
       // Round the orbit it is in, until its heading points past the planet ahead (a line on from it just grazes that planet's centre).
       depart = 0; L.copy(S); TL.copy(TS);
@@ -93,6 +97,20 @@ export function createLobbyRoute(THREE) {
         back = ((-meet) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
       }
       arc = Math.min(MAX_ARC, Math.max(MIN_ARC, back));
+      if (eye && ground > 0) { // shorten it until all of it is in sight of the camera, clear of the ground by a margin
+        const clear = ground * 1.04, seen = s => { // whether the line from the eye to the orbit point `s` back misses the ground
+          orbitAt(-s, c); a.subVectors(c, eye); b.subVectors(C, eye);
+          const t = Math.max(0, Math.min(1, b.dot(a) / Math.max(1e-9, a.lengthSq())));
+          return b.addScaledVector(a, -t).length() > clear;
+        };
+        let reach = 0;
+        while (reach < arc && seen(reach + 0.05)) reach += 0.05;
+        if (reach < arc) { // then exactly where it goes out of sight, so the route changes smoothly as the view does
+          let hi = reach + 0.05;
+          for (let i = 0; i < 12; i++) { const mid = (reach + hi) / 2; if (seen(mid)) reach = mid; else hi = mid; }
+        }
+        arc = Math.max(0.12, Math.min(arc, reach));
+      }
       orbitAt(-arc, O, TO);
       // The curve: leaves along the start heading, arrives along the orbit.
       const span = Math.max(1e-3, L.distanceTo(O));
@@ -114,7 +132,9 @@ export function createLobbyRoute(THREE) {
           if (push.lengthSq() < 1e-8) push.copy(normal);
           push.normalize().multiplyScalar((keep - worst) * 1.6);
           P1.add(push); P2.add(push); moved = true;
-          // The curve still meets the orbit along it: the end handle stays on the orbit's line, only lengthening.
+          // The curve still leaves and meets the orbits along them: each handle stays on its orbit's line, only lengthening, so the
+          // heading never jumps where the curve begins or ends.
+          P1.copy(L).addScaledVector(TL, Math.max(span * 0.55, a.subVectors(P1, L).dot(TL)));
           P2.copy(O).addScaledVector(TO, -Math.max(span * 0.4, a.subVectors(O, P2).dot(TO)));
         }
         if (!moved) break;

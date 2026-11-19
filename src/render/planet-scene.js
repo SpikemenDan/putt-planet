@@ -451,14 +451,16 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
     orbit(ares, body, radius, lean, phase, speed);
   });
 
-  // ---- The destination view (VIS-M4): the camera pulls back from the horizon into space, where Gaia hangs with Luna slowly orbiting it (framed on Gaia alone: Luna shows only when its orbit brings it into view)
-  // and Ares stands far off. Sizes and distances are staged for the view, not real. `setView` picks the planet; the camera flies between
+  // ---- The destination view (VIS-M4): the camera pulls back from the horizon into space, where Gaia hangs with Luna on its orbit
+  // and Ares stands far off. The planets hold still while the planet menu shows (owner, 2026-11-18): they move on in the main menu,
+  // where Luna crosses the sky (placeSkyLuna), so the rocket's route never chases a moving planet. Sizes and distances are staged for the view, not real. `setView` picks the planet; the camera flies between
   // them, and the long trips to and from Ares widen the lens and then zoom in. Reads the live `display.space` settings.
   const spaceSettings = () => display.space ?? { orbitSeconds: 120, travelSeconds: 3.2, nebula: 0.6, distance: 1, revolveSeconds: 180 };
   // The little solar system (owner, 2026-11-17): the sun shines from where the light comes from, Gaia orbits it, and Ares orbits further
   // out, behind Gaia as seen from the sun and a little to the side, so from Ares the sun and Gaia both show in the sky beyond it. In
   // space everything revolves slightly and softly: a few degrees back and forth around the sun (`space.revolveSeconds`). Gaia stays the
-  // centre of the scene, so its revolving shows as the sun (and its light) easing around it. The horizon view never moves.
+  // centre of the scene, so its revolving shows as the sun (and its light) easing around it. The swing moves on only in the main menu
+  // (`skyClock`), where it cannot be seen, so each visit to the planet menu finds the planets a little further round, standing still.
   const SUN_HOME = sun.clone(), SUN_ORBIT_NORMAL = new THREE.Vector3(), SUN_SIDE = new THREE.Vector3().crossVectors(SUN_HOME, yAxis).normalize();
   SUN_ORBIT_NORMAL.crossVectors(SUN_HOME, SUN_SIDE).normalize();
   const SPACE_SUN = { distance: 7000, radius: 300, revolve: 4 * Math.PI / 180 };
@@ -541,6 +543,16 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
   function lunaSpacePosition(phase, out) {
     const a = phase * Math.PI * 2;
     return out.set(Math.cos(a) * SPACE_LUNA.orbit, -Math.sin(a) * SPACE_LUNA.orbit * Math.sin(SPACE_LUNA.lean), Math.sin(a) * SPACE_LUNA.orbit * Math.cos(SPACE_LUNA.lean)); // the near side of the orbit passes below Gaia
+  }
+  // In the main menu Luna crosses the sky as it orbits (owner, 2026-11-18: the planets orbit in the main menu sky): it rises over
+  // Gaia's horizon on the right, climbs to SKY_LUNA.peak (of the screen half height above the middle) and sets on the left, out of
+  // sight behind Gaia for the rest of its orbit. At `phase` it stands where the main menu always showed it.
+  const SKY_LUNA = { phase: 0.96, x: 0.86, y: 0.5, reach: 1.25 };
+  SKY_LUNA.start = Math.acos(SKY_LUNA.x / SKY_LUNA.reach);
+  function placeSkyLuna() {
+    const tan = Math.tan(FOV * Math.PI / 360), a = SKY_LUNA.start + (space.orbit - SKY_LUNA.phase) * Math.PI * 2, d = luna.distance;
+    const nx = Math.cos(a) * SKY_LUNA.reach, ny = stats.limb + (SKY_LUNA.y - stats.limb) * Math.sin(a) / Math.sin(SKY_LUNA.start);
+    home.luna.position.set(nx * d * tan * camera.aspect, framing.y + ny * d * tan, framing.z - d);
   }
   const bodyCentre = (id, out) => id === 'luna' ? lunaSpacePosition(space.orbit, out) : id === 'ares' ? out.copy(aresNow) : out.set(0, 0, 0);
   const ease = x => x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
@@ -649,7 +661,7 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
   }
 
   // ---- Per-frame state
-  let lastCloudSort = -1, slowFrames = 0, quality = 1, frameId = null, last = null, spin = 0, cloudSpin = 0, clock = 0, disposed = false, sizeKey = '', framing = { y: 0, z: 0 };
+  let lastCloudSort = -1, slowFrames = 0, quality = 1, frameId = null, last = null, spin = 0, cloudSpin = 0, clock = 0, skyClock = 0, disposed = false, sizeKey = '', framing = { y: 0, z: 0 };
   const stats = { limb: 0, deckClouds: 0, tallestCity: 0, ink: 0, lunaPixels: 0, paintedMaps: [] };
   const scratch = new THREE.Vector3(), scratch2 = new THREE.Vector3();
 
@@ -815,7 +827,7 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
   const route = createLobbyRoute(THREE);
   const trip = { ready: false, fresh: true, side: 0, weight: 0, start: new THREE.Vector3(), startDir: new THREE.Vector3(), pos: new THREE.Vector3(), dir: new THREE.Vector3(), endPos: new THREE.Vector3(), endQ: new THREE.Quaternion() };
   const tripEnd = new THREE.Vector3(), tripEndDir = new THREE.Vector3(), wideAt = new THREE.Vector3(), wideMid = new THREE.Vector3(), wideDir = new THREE.Vector3();
-  const landPos = new THREE.Vector3(), landLook = new THREE.Vector3(), landUp = new THREE.Vector3(), lookNow = new THREE.Vector3(), armA = new THREE.Vector3(), armB = new THREE.Vector3(), routePoint = new THREE.Vector3();
+  const viewSide = new THREE.Vector3(), viewUp = new THREE.Vector3(), landPos = new THREE.Vector3(), landLook = new THREE.Vector3(), landUp = new THREE.Vector3(), lookNow = new THREE.Vector3(), armA = new THREE.Vector3(), armB = new THREE.Vector3(), routePoint = new THREE.Vector3();
   const bodyRadius = { gaia: PLANET_RADIUS, luna: SPACE_LUNA.radius, ares: SPACE_ARES.radius };
   const blockers = ['gaia', 'luna', 'ares'].map(id => ({ id, centre: new THREE.Vector3(), radius: bodyRadius[id] }));
   const PARKED = { p: new THREE.Vector3(0, 0, -12), nose: new THREE.Vector3(-1, 0, 0.24).normalize() };
@@ -860,7 +872,7 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
       const parked = flight?.parked ?? PARKED;
       tripEnd.copy(parked.p).applyQuaternion(trip.endQ).add(trip.endPos);
       tripEndDir.copy(parked.nose).applyQuaternion(trip.endQ);
-      route.plan({ start: trip.start, startDir: trip.startDir, from: trip.fresh ? fromAt : null, centre: aimAt, end: tripEnd, endDir: tripEndDir, blockers });
+      route.plan({ start: trip.start, startDir: trip.startDir, from: trip.fresh ? fromAt : null, centre: aimAt, end: tripEnd, endDir: tripEndDir, blockers, eye: landPos, ground: bodyRadius[space.to] });
       route.at(trip.fresh ? smoother(x) : easeOutCubic(x), trip.pos, trip.dir);
       trip.weight = (trip.fresh ? smoother(clamp01(x / TRIP.blendIn)) : 1) * (1 - smoother(clamp01((x - 1 + TRIP.blendOut) / TRIP.blendOut)));
       spinAxis.copy(route.normal); spinBody = space.to === 'gaia' ? null : space.to;
@@ -895,18 +907,27 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
       lookNow.lerp(landLook, land);
       upNow.lerp(landUp, land);
     }
-    // Keep the rocket in the picture: once it is past part of the way to the edge, the view turns after it, gently, never letting it
-    // slip out of sight.
+    // Keep the rocket in the picture, and out from under the lobby panels (owner, 2026-11-18: it went behind the boarding pass): once
+    // it is past `edge` of the way from the middle of the uncovered part to its side, the view turns after it, gently (a soft knee,
+    // so the turn starts with no jolt), and it never gets past `edge` + (1 - `edge`) / 2 of the way.
     if (trip.weight > 0) {
+      const free = flight?.free ?? { x: 0, y: 0, w: 1, h: 1 };
       armA.subVectors(lookNow, spacePos);
-      const dist = Math.max(1e-3, armA.length()), knee = Math.atan(tanV) * TRIP.edge * 0.5;
+      const dist = Math.max(1e-3, armA.length());
       armA.divideScalar(dist);
-      armB.subVectors(trip.pos, spacePos).normalize();
-      const angle = Math.acos(Math.max(-1, Math.min(1, armA.dot(armB))));
-      if (angle > knee) {
-        const turn = (angle - knee - knee * Math.tanh((angle - knee) / knee)) * trip.weight;
-        armB.crossVectors(armA, armB);
-        if (armB.lengthSq() > 1e-12) lookNow.copy(spacePos).addScaledVector(armA.applyAxisAngle(armB.normalize(), turn), dist);
+      if (upNow.lengthSq() < 1e-6) upNow.copy(yAxis);
+      viewSide.crossVectors(armA, upNow).normalize(); viewUp.crossVectors(viewSide, armA);
+      routePoint.subVectors(trip.pos, spacePos);
+      const ahead = routePoint.dot(armA);
+      if (ahead > 1e-3) {
+        const soft = (v, c, h) => { // how far along the axis to turn the view, in view units, to bring v within reach
+          const knee = h * TRIP.edge, top = h * (1 + TRIP.edge) / 2, d = v - c, a = Math.abs(d);
+          return a <= knee ? 0 : Math.sign(d) * (a - knee - (top - knee) * Math.tanh((a - knee) / (top - knee)));
+        };
+        const tanH = tanV * aspect, vx = routePoint.dot(viewSide) / ahead / tanH, vy = routePoint.dot(viewUp) / ahead / tanV;
+        const yaw = Math.atan(vx * tanH) - Math.atan((vx - soft(vx, free.x, free.w)) * tanH), pitch = Math.atan(vy * tanV) - Math.atan((vy - soft(vy, free.y, free.h)) * tanV);
+        armA.applyAxisAngle(viewUp, -yaw * trip.weight).applyAxisAngle(viewSide, pitch * trip.weight);
+        lookNow.copy(spacePos).addScaledVector(armA, dist);
       }
     }
     if (upNow.lengthSq() < 1e-6) upNow.copy(landUp);
@@ -918,10 +939,11 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
     if (focus) return;
     const k = ease(space.t), x = Math.min(1, space.travel), e = snap.on ? 1 - Math.pow(1 - x, 3) : ease(x); // a redirected flight is already moving
     worldDim.value = 1 + ((settings().backgroundDim ?? 1) - 1) * (1 - k); // Luna and Ares sit back in the horizon sky, full bright in space
-    revolve(clock, k);
+    revolve(skyClock, k);
     sunBody.visible = k > 0.001;
     if (sunBody.visible) { sunBody.position.copy(sunNow); sunBody.userData.rays.rotation.z = reducedMotion ? 0 : clock * 0.12; }
     lunaSpacePosition(space.orbit, tmpA);
+    placeSkyLuna();
     luna.mesh.position.lerpVectors(home.luna.position, tmpA, k);
     luna.mesh.scale.setScalar(home.luna.scale + (SPACE_LUNA.radius - home.luna.scale) * k);
     // Ares stays put (owner, 2026-11-17): one planet at its place in the little solar system, behind Gaia from the sun, so from the
@@ -1036,7 +1058,8 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
       stepStreak(dt);
     }
     const sp = spaceSettings();
-    if (!reducedMotion && space.t > 0) space.orbit = (space.orbit + dt / sp.orbitSeconds) % 1;
+    // The planets move on only in the main menu, with no trip under way (owner, 2026-11-18); in the planet menu they hold still.
+    if (!reducedMotion && space.t === 0 && space.goal === 0 && space.travel >= 1) { space.orbit = (space.orbit + dt / sp.orbitSeconds) % 1; skyClock += dt; }
     // Parked in orbit at Luna or Ares, the planet turns under the rocket, easing in after the arrival and out on leaving.
     const orbiting = !reducedMotion && !!flight?.active && space.goal === 1 && space.t >= 1 && space.travel >= 1 && spinBody === space.to;
     spinLevel = Math.max(0, Math.min(1, spinLevel + (orbiting ? dt / 2.5 : -dt / 1.2)));
