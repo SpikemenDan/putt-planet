@@ -180,7 +180,7 @@ export function lobbyView(room, local, now, courses) {
     leadingMode: lobbyWinner(ballots, 'mode', ids, hostId, open, open.includes(GameModes.STANDARD) ? GameModes.STANDARD : open[0] ?? GameModes.STANDARD),
     leadingWorld,
     multiplayer: n > 1,
-    countdown: inCountdown(room, now) || !!launch,
+    countdown: inCountdown(room, now), // the launch countdown shows on the pass's Boarding field instead (owner, 2026-11-19)
     status,
     tie,
   };

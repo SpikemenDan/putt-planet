@@ -67,6 +67,13 @@ export function RoomLobby({ hidden }) {
   const votePlanet = world => { setPick(world); vote({ world }); };
   const echoed = lobby?.myVote?.world ?? null;
   useEffect(() => setPick(null), [echoed]); // the room has my vote now
+  // A new party member's planet vote starts on the planet shown (owner, 2026-11-19), so their ball sits on its chip at once.
+  const defaulted = useRef(null);
+  useEffect(() => {
+    if (!voting || echoed !== null || defaulted.current === lobby.code) return;
+    defaulted.current = lobby.code;
+    vote({ world: lobby.destination ?? 'gaia' });
+  });
   const destination = lobby?.launch === 'landing' ? lobby.leadingWorld : (voting && (pick ?? lobby?.myVote?.world)) || (lobby?.destination ?? 'gaia');
   const vehicle = lobbyVehicleFor({ solo: !party, destination });
   // The sky behind follows the destination (useLobbySky): Gaia's air for the plane, Ares's or Luna's sky for the rocket.

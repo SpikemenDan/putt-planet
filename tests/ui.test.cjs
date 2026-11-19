@@ -1084,6 +1084,7 @@ function fakeClock() {
       assert.deepEqual(plane.map(b => [b.textContent, Number(b.dataset.color), b.dataset.side]), [['Anayou', players.host.color, 'top'], ['Ben', players.g1.color, 'bottom']], 'both balls ride in their own colours; tags alternate top and bottom');
     }
     assert.ok(button('Copy invite'));
+    assert.equal(t.session.getSnapshot().lobbyVotes.host?.world, 'gaia', 'your planet vote starts on the planet shown (owner, 2026-11-19)');
     await t.send({ type: 'LOBBY_VOTE', playerId: 'g1', mode: 'tournament_5', world: null });
     assert.equal(leading(), 'tournament_5', "Ben's vote leads");
     assert.deepEqual(voters('tournament_5'), [t.session.getSnapshot().players.g1.color], "Ben's ball on his choice");
@@ -1099,6 +1100,8 @@ function fakeClock() {
     assert.deepEqual(t.commands.map(c => c.event), [{ type: 'LAUNCH' }]);
     const status = () => lobby.querySelector('[data-ui=lobby-status]').textContent;
     assert.equal(status(), 'Take-off in 5…');
+    assert.ok(!/countdown/.test(lobby.querySelector('[data-ui=lobby-status]').className), 'the launch countdown is on the pass, not in a pill at the bottom');
+    assert.equal(lobby.querySelector('[data-ui=ticket-boarding]').textContent, '00:05');
     assert.equal(lobby.querySelector('[data-ui=start-game]'), null, 'no Start while counting down');
     await t.send({ type: 'JOIN_ROOM', playerId: 'g3', name: 'Cy' });
     assert.ok(lobby.querySelector('[data-ui=start-game]'), 'a join stops the countdown and Start returns');
