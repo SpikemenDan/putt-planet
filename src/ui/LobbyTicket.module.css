@@ -17,7 +17,7 @@
 .passenger small,.route small,.manifest small{display:block;font:900 11px var(--font);letter-spacing:.5px;text-transform:none;color:var(--mut)}
 .passenger{position:relative;margin:0 12px;padding:9px 12px;border:2px solid var(--ink);border-radius:14px;background:#fff}
 .who{display:flex;align-items:center;gap:12px;margin-top:3px}
-.name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:900 27px var(--font);letter-spacing:.5px;color:var(--ink)}
+.name{min-width:0;overflow:hidden;white-space:nowrap;font:900 27px var(--font);letter-spacing:.5px;color:var(--ink)}
 /* The editable name (Solo): printed text until clicked, then a field with a pink underline; a small pencil says it can change. */
 .nameEdit{position:relative;display:flex;flex:1;align-items:center;gap:6px;min-width:0;margin:0;cursor:text}
 .nameEdit .name{flex:1;width:100%;margin:0;padding:0 2px;background:transparent;border:0;border-bottom:3px dashed transparent;border-radius:0;box-shadow:none;outline:none;transition:border-color .15s}
@@ -51,23 +51,24 @@
 .actions{display:flex;flex-direction:column;gap:8px;padding:0 16px}
 .actions > button,.actions > label{width:100%;margin:0}
 /* Perforation and the stub: Back and the party code. */
-.stub{position:relative;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin:2px -4px -16px;padding:10px 18px 12px 22px;
+.stub{position:relative;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 10px;margin:2px -4px -16px;padding:9px 16px 11px 20px;
   background:#fffdf4;border:4px solid var(--ink);border-top:3px dashed var(--ink);border-radius:0 0 20px 20px;box-shadow:7px 7px 0 var(--ink)}
 .stub::before,.stub::after{content:'';position:absolute;top:-14px;width:24px;height:24px;border-radius:50%;background:#fffdf4;border:4px solid var(--ink)}
 .stub::before{left:-16px;clip-path:inset(0 0 0 50%)}
 .stub::after{right:-16px;clip-path:inset(0 50% 0 0)}
 /* The party code, like a booking reference, with a small copy-invite icon. */
-.code{order:-1;display:flex;flex:1 1 auto;align-items:center;justify-content:flex-start;gap:10px;min-width:0;padding-top:2px}
-.code small{flex:none;translate:0 3px;white-space:nowrap;font:900 10px/1 var(--font);letter-spacing:.5px;text-transform:none;color:var(--mut)}
-.code strong{display:block;padding-top:2px;font:400 19px/1 var(--font);letter-spacing:2px;color:var(--ink);user-select:all;white-space:nowrap}
-.copy{flex:none;width:24px;height:24px;margin:0;padding:0;border:2px solid var(--ink);border-radius:7px;background:#fff center/14px no-repeat;cursor:pointer;
+/* The label sits over the code (owner, 2026-11-19: the code and Leave room looked "chopped"), so code and Leave share one row. */
+.code{order:-1;display:grid;grid-template-columns:auto auto;align-items:center;justify-content:start;gap:3px 6px;min-width:0}
+.code small{grid-column:1/-1;white-space:nowrap;font:900 10px/1 var(--font);letter-spacing:.5px;text-transform:none;color:var(--mut)}
+.code strong{display:block;padding-top:2px;font:400 17px/1 var(--font);letter-spacing:1.5px;color:var(--ink);user-select:all;white-space:nowrap}
+.copy{flex:none;width:22px;height:22px;margin:0;padding:0;border:2px solid var(--ink);border-radius:7px;background:#fff center/14px no-repeat;cursor:pointer;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23141029' stroke-width='2.6' stroke-linejoin='round'%3E%3Crect x='8' y='8' width='12' height='12' rx='3'/%3E%3Cpath d='M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2'/%3E%3C/svg%3E");transition:background-color .15s,scale .1s}
 .copy:hover{background-color:var(--yellow)}
 .copy:active{scale:.9}
 .hiddenText{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 /* Back (Solo) or Leave room (party), in the stub's bottom-right corner: a round-cornered comic tag with an arrow. */
 /* Smaller (owner, 2026-11-19), so the stub reads as a real ticket stub with the flight number or code in front. */
-.back{flex:none;display:inline-flex;align-items:center;gap:5px;margin:0;padding:3px 10px 3px 5px;font:900 12px var(--font);letter-spacing:.5px;text-transform:none;text-shadow:none;
+.back{flex:none;display:inline-flex;align-items:center;gap:4px;margin:0 0 0 auto;padding:3px 9px 3px 4px;font:900 11px var(--font);letter-spacing:.5px;text-transform:none;text-shadow:none;
   color:var(--ink);background:var(--yellow);border:2.5px solid var(--ink);border-radius:999px;box-shadow:0 3px 0 var(--ink);cursor:pointer;transition:translate .1s,box-shadow .1s,background .15s}
 .back::before{content:'';width:15px;height:15px;border-radius:50%;background:var(--ink) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M14 6l-6 6 6 6' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/11px no-repeat;transition:translate .15s}
 .back:hover{background:#fff27a;translate:0 -1px;box-shadow:0 4px 0 var(--ink)}
@@ -92,8 +93,9 @@
 .aboard{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;margin:4px 0 0;padding:0;list-style:none}
 .aboard li{display:flex;align-items:center;gap:5px;min-width:0}
 .ball{flex:none;width:16px;height:16px;border-radius:50%;border:2px solid var(--ink);background:var(--ball)}
-.who2{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:900 15px var(--font)}
-.aboard li[data-you] .who2{color:var(--pink)}
+.who2{min-width:0;overflow:hidden;white-space:nowrap;font:900 15px var(--font);color:var(--ink)}
+/* A name too long for half a row, even shrunk, takes the whole row. */
+.aboard li[data-wide]{grid-column:1/-1}
 .host{flex:none;width:16px;height:16px;background:var(--yellow);border:2px solid var(--ink);border-radius:50%;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 4l2.4 5 5.4.6-4 3.7 1.1 5.4L12 16l-4.9 2.7 1.1-5.4-4-3.7 5.4-.6z' fill='%23141029'/%3E%3C/svg%3E");background-size:12px;background-position:center;background-repeat:no-repeat}
 .manifestHead{display:flex;align-items:center;justify-content:space-between;gap:8px}
@@ -115,35 +117,34 @@
 .boarding dd[data-state=awaiting]::before{content:'';display:inline-block;width:7px;height:7px;margin:0 5px 2px 0;border-radius:50%;background:var(--ball,var(--pink));animation:await 1.6s ease-in-out infinite}
 .boarding dd[data-state=counting],.boarding dd[data-state=now]{color:var(--ink)}
 @keyframes await{50%{opacity:.25}}
-/* The countdown's split-flap tiles: black digits on pale card with a hairline split, flipping down on each tick. */
-.boarding dd[data-state=counting]{display:inline-flex;align-items:center;gap:2px;perspective:220px}
-.tile{display:inline-block;min-width:.72em;padding:1px 2px 0;text-align:center;color:var(--ink);border:2px solid var(--ink);border-radius:5px;transform-origin:50% 0;
-  background:linear-gradient(#fff 0 calc(50% - 1px),var(--ink) calc(50% - 1px) calc(50% + .5px),#efe9d6 calc(50% + .5px));
-  box-shadow:0 2px 0 var(--ink);animation:flipTick .38s cubic-bezier(.3,1.45,.55,1) calc(var(--i) * 35ms) both}
-.colon{padding:0 1px;color:var(--ink)}
-@keyframes flipTick{from{transform:rotateX(-95deg);filter:brightness(.7)}to{transform:none;filter:none}}
+/* The countdown: plain black digits (owner, 2026-11-19: "simpler"); the digit that changes flips down into place on the tick. */
+.boarding dd[data-state=counting]{display:inline-flex;perspective:200px}
+.tile{display:inline-block;min-width:.62em;text-align:center;color:var(--ink);transform-origin:50% 0;animation:flipTick .3s ease-out both}
+.colon{color:var(--ink)}
+@keyframes flipTick{from{transform:rotateX(-90deg);opacity:0}to{transform:none;opacity:1}}
 /* A quick shine across the header when the ball colour changes. */
 .sheen{position:absolute;inset:0;pointer-events:none;background:linear-gradient(105deg,transparent 30%,rgb(255 255 255 / .55) 48%,transparent 66%);translate:-100% 0;animation:sheen .45s ease-out forwards}
 @keyframes sheen{to{translate:100% 0}}
 /* A slight lean toward the mouse (--tx and --ty run -0.5 … 0.5, set as the pointer moves). */
 .ticket{transform:perspective(900px) rotateY(calc(var(--tx,0) * 5deg)) rotateX(calc(var(--ty,0) * -5deg));transition:transform .25s ease-out}
-/* The stub tears off along the perforation once boarding starts (owner, 2026-11-19: "make the tearing off animation better"):
-   a tug, the left side rips first while the right corner holds, then it comes free with a ragged top edge, lifts off the pass
-   (its hard shadow softens) and drops away spinning. The pass closes up behind it at once (no second sheet of paper shows under the stub) with a small jolt. Cancel (Solo) brings it back. */
+/* The stub tears off along the perforation once boarding starts (owner, 2026-11-19: "peel then rip"): a small tug, then the right
+   corner peels up off the pass while the left end holds, it strains a moment, rips free with a snap (the pass jolts and closes up
+   behind it) and falls away under gravity, turning as it drops. Cancel (Solo) brings it back. */
 .stubWrap{display:grid;grid-template-rows:1fr;transition:grid-template-rows .3s cubic-bezier(.3,0,.2,1)}
 .stubWrap > div{min-height:0}
-.ticket[data-torn] .stubWrap{grid-template-rows:0fr;transition:grid-template-rows .22s cubic-bezier(.3,0,.2,1) .08s}
-.ticket[data-torn] .stub{z-index:2;pointer-events:none;transform-origin:100% 0;animation:tear .9s linear forwards,gone 0s .9s forwards;
+.ticket[data-torn] .stubWrap{grid-template-rows:0fr;transition:grid-template-rows .2s cubic-bezier(.3,0,.2,1) .56s}
+.ticket[data-torn] .stub{z-index:2;pointer-events:none;transform-origin:0 0;animation:tear 1.15s linear forwards,gone 0s 1.15s forwards;
   -webkit-mask:conic-gradient(from 135deg at top,#0000,#000 1deg 89deg,#0000 90deg) 50% 0/11px 100%;mask:conic-gradient(from 135deg at top,#0000,#000 1deg 89deg,#0000 90deg) 50% 0/11px 100%}
 .ticket[data-torn] .stub::before,.ticket[data-torn] .stub::after{display:none}
-.ticket[data-torn]{animation:jolt .32s ease-out .1s}
+.ticket[data-torn]{animation:jolt .32s ease-out .56s}
 @keyframes tear{
-  0%{transform:none;animation-timing-function:ease-out}
-  10%{transform:translateY(-3px);animation-timing-function:ease-in-out}
-  26%{transform:translate(0,4px) rotate(5deg);box-shadow:7px 7px 0 var(--ink);animation-timing-function:ease-out}
-  40%{transform:translate(4px,12px) rotate(9deg);box-shadow:4px 14px 18px rgb(0 0 0 / .28);opacity:1;animation-timing-function:cubic-bezier(.45,0,.9,.5)}
-  78%{opacity:1}
-  100%{transform:translate(36px,110px) rotate(22deg) scale(.88);box-shadow:4px 18px 24px rgb(0 0 0 / .18);opacity:0}}
+  0%{transform:perspective(600px) translate(0,0) rotateY(0) rotate(0) scale(1);animation-timing-function:ease-in-out}
+  7%{transform:perspective(600px) translate(0,-2px) rotateY(0) rotate(0) scale(1);box-shadow:7px 7px 0 var(--ink);animation-timing-function:cubic-bezier(.2,.6,.3,1)}
+  36%{transform:perspective(600px) translate(0,0) rotateY(-26deg) rotate(4deg) scale(1);box-shadow:10px 12px 14px rgb(0 0 0 / .25);animation-timing-function:ease-in-out}
+  46%{transform:perspective(600px) translate(0,-1px) rotateY(-31deg) rotate(5deg) scale(1);animation-timing-function:cubic-bezier(.2,.8,.3,1)}
+  52%{transform:perspective(600px) translate(7px,14px) rotateY(-10deg) rotate(13deg) scale(1);box-shadow:4px 14px 18px rgb(0 0 0 / .25);opacity:1;animation-timing-function:cubic-bezier(.55,0,1,.6)}
+  86%{opacity:1}
+  100%{transform:perspective(600px) translate(30px,112px) rotateY(-4deg) rotate(27deg) scale(.88);box-shadow:4px 18px 24px rgb(0 0 0 / .15);opacity:0}}
 /* Once it has fallen it takes up no room, so the lobby never scrolls to where it landed. */
 @keyframes gone{to{transform:scale(0);visibility:hidden;opacity:0}}
 @keyframes jolt{30%{translate:0 -4px}65%{translate:0 1px}}

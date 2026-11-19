@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { GameModes } from '../shared/session.js';
 import { WORLDS } from '../shared/worlds.js';
 import { NAME_LIMIT } from './commands.js';
@@ -21,6 +21,34 @@ const CODES = Object.freeze({ gaia: 'GAI', luna: 'LUN', ares: 'ARS' });
  */
 function Flaps({ text, world }) {
   return [...text].map((ch, i) => <span key={world + i} className={styles.flap} style={{ '--i': i }}>{ch}</span>);
+}
+/**
+ * Shrinks a name's font until the whole name shows (owner, 2026-11-19: twelve-character names fit, never cut off or "..."). The CSS
+ * size is the largest; it steps down a pixel at a time to `min`. Returns false if it still does not fit at `min`. Measures the real
+ * DOM, so it re-runs when the text changes and when the element resizes; jsdom (no layout) leaves the CSS size alone.
+ */
+function fitText(el, min) {
+  el.style.fontSize = '';
+  const view = el.ownerDocument?.defaultView;
+  if (!view?.getComputedStyle) return true;
+  let size = parseFloat(view.getComputedStyle(el).fontSize) || 0;
+  while (size > min && el.scrollWidth > el.clientWidth + 1) el.style.fontSize = --size + 'px';
+  return el.scrollWidth <= el.clientWidth + 1;
+}
+function useFit(text, min, onFit) {
+  const ref = useRef(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    const run = () => { const ok = fitText(el, min); onFit?.(el, ok); };
+    run();
+    if (typeof ResizeObserver !== 'function') return undefined;
+    let width = el.parentElement?.clientWidth;
+    const ro = new ResizeObserver(() => { const w = el.parentElement?.clientWidth; if (w !== width) { width = w; run(); } });
+    ro.observe(el.parentElement ?? el);
+    return () => ro.disconnect();
+  }, [text, min]);
+  return ref;
 }
 /** What each vehicle's pass calls itself. */
 export const PASS = Object.freeze({
@@ -57,8 +85,8 @@ export const seatOf = index => index < 0 ? '--' : (Math.floor(index / 2) + 1) + 
 export const boardingText = seconds => seconds === null || seconds === undefined ? 'Awaiting' : seconds > 0 ? '00:' + String(seconds).padStart(2, '0') : 'Now';
 
 /**
- * The boarding countdown as a split-flap board (owner, 2026-11-19): each digit is a small tile, and a tile whose digit changes
- * remounts (its key is position and digit), so it flips down into place on the tick; the colon stays put.
+ * The boarding countdown (owner, 2026-11-19: split-flap, then "simpler"): plain black digits like the destination code, and a digit
+ * that changes remounts (its key is position and digit), so it flips down into place on the tick; the colon stays put.
  */
 function Clock({ text }) {
   return [...text].map((ch, i) => ch === ':'
@@ -102,10 +130,11 @@ const unlean = e => { e.currentTarget.style.removeProperty('--tx'); e.currentTar
  */
 function PassengerName({ name, onName, onNameDone }) {
   const shown = String(name).trim().slice(0, NAME_LIMIT) || 'Player';
-  if (!onName) return <strong className={styles.name} data-ui="ticket-name">{shown}</strong>;
+  const fit = useFit(onName ? name : shown, 15);
+  if (!onName) return <strong ref={fit} className={styles.name} data-ui="ticket-name">{shown}</strong>;
   return (
     <label className={styles.nameEdit} data-ui="ticket-name-edit" data-empty={String(name).trim() ? undefined : ''}>
-      <input className={styles.name} data-ui="ticket-name" aria-label="Your name" maxLength={NAME_LIMIT} autoComplete="off" spellCheck={false}
+      <input ref={fit} className={styles.name} data-ui="ticket-name" aria-label="Your name" maxLength={NAME_LIMIT} autoComplete="off" spellCheck={false}
         placeholder="NAME" value={name} onChange={e => onName(e.target.value)} onBlur={() => onNameDone?.()}
         onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); e.currentTarget.blur(); } }} />
       <svg className={styles.pencil} viewBox="0 0 24 24" aria-hidden="true"><path className={styles.pencilBody} d="M15.2 3.6l5.2 5.2L9.6 19.6l-5.2-5.2z" /><path className={styles.pencilTip} d="M4.4 14.4l5.2 5.2-6.6 1.4z" /><path className={styles.pencilEnd} d="M15.2 3.6l1.6-1.6a1.6 1.6 0 0 1 2.3 0l2.9 2.9a1.6 1.6 0 0 1 0 2.3l-1.6 1.6z" /></svg>
@@ -115,10 +144,29 @@ function PassengerName({ name, onName, onNameDone }) {
 
 /**
  * The passenger list on the pass (owner, 2026-11-19: "put the passenger list on the ticket", replacing the separate manifest card):
- * everyone aboard with their ball and name (the host wears a star, your own name is pink), two to a row. The seats show as a row of pips
+ * everyone aboard with their ball and name in black (owner, 2026-11-19; the host wears a star), two to a row. The seats show as a row of pips
  * by the heading (owner, 2026-11-19: instead of "7 seats open"): one per seat, filled with its passenger's ball or left open. Names render as React
  * text only, cut to NAME_LIMIT.
  */
+/** One passenger: the name shrinks to fit its half of the row; a name too long even then takes the whole row. */
+function Aboard({ p }) {
+  const text = String(p.name).slice(0, NAME_LIMIT);
+  const fit = useFit(text, 12, (el, ok) => {
+    const li = el.closest('li');
+    if (ok || li.hasAttribute('data-wide')) return;
+    li.setAttribute('data-wide', '');
+    fitText(el, 12);
+  });
+  return (
+    <li data-you={p.you || undefined} style={{ '--ball': colorHex(p.color) }}>
+      <span className={styles.ball} aria-hidden="true" />
+      <span ref={fit} className={styles.who2}>{text}</span>
+      {p.host && <span className={styles.host} title="Host"><span className={styles.hiddenText}>Host</span></span>}
+      {p.you && <span className={styles.hiddenText}>You</span>}
+    </li>
+  );
+}
+
 function Passengers({ list, seats }) {
   const open = Math.max(0, seats - list.length);
   return (
@@ -132,14 +180,7 @@ function Passengers({ list, seats }) {
         </span>
       </div>
       <ol className={styles.aboard}>
-        {list.map(p => (
-          <li key={p.id} data-you={p.you || undefined} style={{ '--ball': colorHex(p.color) }}>
-            <span className={styles.ball} aria-hidden="true" />
-            <span className={styles.who2}>{String(p.name).slice(0, NAME_LIMIT)}</span>
-            {p.host && <span className={styles.host} title="Host"><span className={styles.hiddenText}>Host</span></span>}
-            {p.you && <span className={styles.hiddenText}>You</span>}
-          </li>
-        ))}
+        {list.map(p => <Aboard key={p.id} p={p} />)}
       </ol>
     </section>
   );
