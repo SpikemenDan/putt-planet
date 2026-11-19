@@ -15,7 +15,7 @@ import room from './RoomLobby.module.css';
 // Moved to PlanetPicker.jsx (owner, 2026-11-18); re-exported for older imports.
 export { PLAYABLE_WORLDS, WORLD_ORDER };
 
-/** The modes the Solo steps can start, and how each is described (VIS-M4 #176). */
+/** The modes the Solo steps can start, and how each is described (VIS-M4 #176). Putt Pong is not one: it will be its own mode later (owner, 2026-11-19). */
 export const SOLO_MODES = Object.freeze({
   [GameModes.STANDARD]: 'Casual · 1 map',
   [GameModes.TOURNAMENT_3]: 'Tournament · 3 maps',
@@ -23,7 +23,6 @@ export const SOLO_MODES = Object.freeze({
   [GameModes.TOURNAMENT_7]: 'Tournament · 7 maps',
   [GameModes.PRACTICE]: 'Practice · whole map',
   [GameModes.PUTT_PRACTICE]: 'Practice · one putt',
-  [GameModes.PONG]: 'Practice · Putt Pong',
 });
 
 
@@ -103,7 +102,7 @@ export function SoloSteps({ name, onName, colorField, connecting, send, onExit, 
       </div>
       <div className={solo.dock} data-ui="solo-modes">
         <div className={room.controls}>
-          <ModePicker modes={SOLO_MODE_OPTIONS} value={mode} onChange={setMode} pongIsPractice names={{ [GameModes.STANDARD]: 'Casual' }} />
+          <ModePicker modes={SOLO_MODE_OPTIONS} value={mode} onChange={setMode} names={{ [GameModes.STANDARD]: 'Casual' }} />
         </div>
       </div>
     </div>

@@ -139,7 +139,7 @@ export function lobbyView(room, local, now, courses) {
     if (custom.length) status += ' Custom rules: ' + custom.map(id => CUSTOM_RULES.find(r => r.id === id).label + ' ' + ruleValueText(id, room.rules[id])).join(', ') + '.';
   }
   // Lobby votes (owner, 2026-11-17): in a party everyone votes for the mode and the planet; each option shows its voters' balls.
-  const modes = MODE_OPTIONS.filter(o => o.value !== GameModes.PONG || !local.roomCode || n === 2)
+  const modes = MODE_OPTIONS.filter(o => o.value !== GameModes.PONG || (!!local.roomCode && n === 2))
     .map(o => ({ value: o.value, label: o.label, disabled: o.soloOnly && n > 1 }));
   const voters = key => {
     const out = {};
@@ -168,7 +168,7 @@ export function lobbyView(room, local, now, courses) {
     // The host's client opens the map vote once everyone has flown to the planet.
     launchReady: launch === 'landing' && now >= launchAt + LAUNCH_LANDING_MS,
     showInvite: !!local.roomCode,
-    // Putt Pong is 1v1: a party offers it only with exactly two players (owner, 2026-11-11); solo keeps it as practice.
+    // Putt Pong is 1v1: a party offers it only with exactly two players (owner, 2026-11-11); solo leaves it out until it is its own mode (2026-11-19).
     modes,
     // Votes count until the launch countdown ends; then the planet and mode are final.
     voting: !!local.roomCode && room.phase === SessionPhases.LOBBY && launch !== 'landing',

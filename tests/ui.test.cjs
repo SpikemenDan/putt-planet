@@ -293,7 +293,6 @@ function fakeClock() {
       ['tournament_7', 'Tournament · 7 maps on Ares'],
       ['practice', 'Practice · whole map on Ares'],
       ['putt_practice', 'Practice · one putt on Ares'],
-      ['pong', 'Practice · Putt Pong on Ares'],
     ];
     for (const [mode, summary] of expected) {
       await click(bar.querySelector(`[data-mode=${mode}]`));
@@ -341,7 +340,7 @@ function fakeClock() {
     assert.equal(ticket.querySelector('dl, [data-ui=barcode]'), null, 'no flight details or barcode on the pass');
     assert.equal(ticket.querySelector('[data-ui=ticket-title]').textContent, 'Helicopter Boarding Pass');
     const bar = stage.querySelector('[data-ui=solo-modes] [data-ui=mode-picker]');
-    assert.deepEqual([...bar.querySelectorAll('[data-mode]')].map(b => b.dataset.mode), ['standard', 'tournament_3', 'tournament_5', 'tournament_7', 'practice', 'putt_practice', 'pong'], 'the mode bar has every Solo mode');
+    assert.deepEqual([...bar.querySelectorAll('[data-mode]')].map(b => b.dataset.mode), ['standard', 'tournament_3', 'tournament_5', 'tournament_7', 'practice', 'putt_practice'], 'the mode bar has every Solo mode, and no Putt Pong');
     assert.equal(bar.querySelector('[aria-checked=true]').dataset.mode, 'standard', 'Casual to start');
     assert.equal(bar.querySelector('[data-mode=standard] span span').textContent, 'Casual');
     await click(bar.querySelector('[data-mode=tournament_5]'));
@@ -1131,7 +1130,7 @@ function fakeClock() {
     assert.deepEqual(t.commands.map(c => c.event), [{ type: 'LAUNCH' }, { type: 'SET_MODE', mode: 'standard' }, { type: 'START_VOTING' }], 'Start never sends SET_POWERUPS');
     await t.teardown();
     const solo = await setup({ roomCode: '' });
-    assert.ok([...solo.within('[data-ui=room-lobby]').querySelectorAll('[data-ui=mode-picker] [data-mode]')].some(b => b.dataset.mode === 'pong'), 'solo keeps Putt Pong as practice');
+    assert.ok([...solo.within('[data-ui=room-lobby]').querySelectorAll('[data-ui=mode-picker] [data-mode]')].every(b => b.dataset.mode !== 'pong'), 'solo leaves Putt Pong out until it is its own mode');
     await solo.teardown();
   });
 
