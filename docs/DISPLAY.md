@@ -53,9 +53,8 @@ Units: world units (ball radius 5) and multipliers. Opacity is 0..1. The shaft h
 | `lobby.sway` | 4 | 0 to 25 | Lobby vehicles: how far the vehicle turns back and forth, degrees (0 holds it at one angle; off under reduced motion). |
 | `lobby.bob` | 0.08 | 0 to 0.6 | Lobby vehicles: how far the vehicle rises and sinks, ball diameters (0 holds it level; off under reduced motion). |
 | `lobby.spinSeconds` | 0.4 | 0 to 2 | Lobby vehicles: one turn of the helicopter rotor and plane propellers, seconds (0 holds them still; off under reduced motion). |
-| `lobbyLook.glow` | 1 | 0 to 2 | Solo lobby look (owner, 2026-11-18: "make it look cool and color"): how strongly the planet card, the pass and Play Solo glow in the destination colour (0 turns the glow off). Units: multiplier. Off under reduced motion. |
+| `lobbyLook.glow` | 1 | 0 to 2 | Solo lobby look (owner, 2026-11-18: "make it look cool and color"): how strongly the pass glows in the destination colour (0 turns the glow off). Units: multiplier. Off under reduced motion. |
 | `lobbyLook.flipSeconds` | 0.5 | 0 to 1.5 | Solo lobby look (owner, 2026-11-18: "make it look cool and color"): how long each letter of the destination code takes to flip into place on the pass (0 shows it at once). Units: seconds. Off under reduced motion. |
-| `lobbyLook.stripeSeconds` | 1.2 | 0 to 4 | Solo lobby look (owner, 2026-11-18: "make it look cool and color"): how long the stripes on Play Solo take to slide one stripe along (0 holds them still). Units: seconds. Off under reduced motion. |
 | `environment.aresWind` | 1 | 0 to 2 | Ares courses: wind scenery strength, multiplier: speed and opacity of the wind streaks and blown dust, and the rust haze (0 hides it). |
 | `environment.aresWindDensity` | 1 | 0 to 2 | Ares courses: wind streaks and dust grains, multiplier of 1100 streaks and 2400 grains (plus 140 and 360 close around the camera). |
 | `environment.lunaDust` | 1 | 0 to 2 | Luna courses: brightness of the floating dust motes, multiplier (0 hides them). |

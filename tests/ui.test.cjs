@@ -186,7 +186,7 @@ function fakeClock() {
     const { createDisplay } = await import('../src/shared/display.js');
     const live = structuredClone(createDisplay());
     live.menu.buttonScale = 1.3; live.menu.tilt = 4; live.menu.stagger = 0.2; live.menu.bob = 5; live.menu.shineSeconds = 0; live.menu.cardTint = 0.5;
-    live.lobbyLook.glow = 1.5; live.lobbyLook.flipSeconds = 0; live.lobbyLook.stripeSeconds = 2;
+    live.lobbyLook.glow = 1.5; live.lobbyLook.flipSeconds = 0;
     const t = await setup({ mountProps: { display: live } });
     await act(async () => t.store.setLocal({ active: false, connecting: false }));
     const landing = t.within('[data-ui=landing]');
@@ -220,10 +220,10 @@ function fakeClock() {
     const soloLook = $('[data-ui=solo-lobby]').style;
     assert.equal(soloLook.getPropertyValue('--look-glow'), '1.5', 'display.lobbyLook.glow reaches the Solo lobby glows');
     assert.equal(soloLook.getPropertyValue('--look-flip'), '0.001s', 'display.lobbyLook.flipSeconds 0 shows the code at once');
-    assert.equal(soloLook.getPropertyValue('--look-stripe'), '2s', 'display.lobbyLook.stripeSeconds times the Play stripes');
-    live.lobbyLook.stripeSeconds = 3;
+    live.lobbyLook.glow = 0.5;
     await act(async () => { await new Promise(r => setTimeout(r, 40)); });
-    assert.equal(soloLook.getPropertyValue('--look-stripe'), '3s', 'and follows the live display object');
+    assert.equal(soloLook.getPropertyValue('--look-glow'), '0.5', 'and follows the live display object');
+    assert.equal($('[data-ui=solo-flight]')?.textContent, 'FlightPP 4242', 'the Solo stub carries its flight where a party shows its code');
     assert.equal($('[data-ui=ticket-code]').textContent, 'GAI', 'the split-flap code still reads as the plain code');
     assert.ok(!button('Create party'), 'and not the party one');
     await t.teardown();
@@ -1079,7 +1079,23 @@ function fakeClock() {
     assert.ok(start, 'Start Game is on the pass');
     t.commands.length = 0;
     await click(start);
-    assert.deepEqual(t.commands.map(c => c.event), [{ type: 'SET_MODE', mode: 'tournament_3' }, { type: 'START_VOTING' }]);
+    // Party launch (owner, 2026-11-19): Start counts down; a join stops it and brings Start back.
+    assert.deepEqual(t.commands.map(c => c.event), [{ type: 'LAUNCH' }]);
+    const status = () => lobby.querySelector('[data-ui=lobby-status]').textContent;
+    assert.equal(status(), 'Take-off in 5…');
+    assert.equal(lobby.querySelector('[data-ui=start-game]'), null, 'no Start while counting down');
+    await t.send({ type: 'JOIN_ROOM', playerId: 'g3', name: 'Cy' });
+    assert.ok(lobby.querySelector('[data-ui=start-game]'), 'a join stops the countdown and Start returns');
+    await t.send({ type: 'LEAVE_ROOM', playerId: 'g3' });
+    t.commands.length = 0;
+    await click(lobby.querySelector('[data-ui=start-game]'));
+    await t.step(2000);
+    assert.equal(status(), 'Take-off in 3…');
+    await t.step(3000);
+    assert.match(status(), /^Flying to /, 'votes lock and everyone flies to the leading planet');
+    t.commands.length = 0;
+    await t.step(4000);
+    assert.deepEqual(t.commands.map(c => c.event), [{ type: 'SET_MODE', mode: 'tournament_3' }, { type: 'START_VOTING' }], 'after landing the host opens the map vote');
     assert.equal(t.session.getSnapshot().phase, 'select');
     t.commands.length = 0;
     await click(button('Leave room'));
@@ -1111,7 +1127,8 @@ function fakeClock() {
     assert.equal(lobby.querySelector('[data-ui=mode-picker] [data-leading]').dataset.mode, 'standard', 'a Pong vote falls back to Standard');
     t.commands.length = 0;
     await click(button('Start Game'));
-    assert.deepEqual(t.commands.map(c => c.event), [{ type: 'SET_MODE', mode: 'standard' }, { type: 'START_VOTING' }], 'Start never sends SET_POWERUPS');
+    await t.step(9000);
+    assert.deepEqual(t.commands.map(c => c.event), [{ type: 'LAUNCH' }, { type: 'SET_MODE', mode: 'standard' }, { type: 'START_VOTING' }], 'Start never sends SET_POWERUPS');
     await t.teardown();
     const solo = await setup({ roomCode: '' });
     assert.ok([...solo.within('[data-ui=room-lobby]').querySelectorAll('[data-ui=mode-picker] [data-mode]')].some(b => b.dataset.mode === 'pong'), 'solo keeps Putt Pong as practice');

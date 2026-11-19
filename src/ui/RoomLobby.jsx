@@ -18,8 +18,10 @@ import styles from './RoomLobby.module.css';
  * On the left, the passenger manifest (no title board; the start countdown shows above the mode bar); on the right, your boarding pass (your name and colour badge,
  * the destination, the host's Start Game, the party code and Leave room on the stub); along the bottom, one bar of colourful mode tiles.
  * In a party everyone votes for the mode (the tiles) and the planet (the planet picker on the left, owner 2026-11-17, 2026-11-18): each voter's ball sits in the
- * corner of their choice, the vehicle follows the leading planet, and Start Game plays the leading mode. Players arrive with a free
- * colour and change it from the badge on their pass.
+ * corner of their choice, and Start Game plays the leading mode. Players arrive with a free colour and change it from the badge on their pass.
+ * The planet preview is your own (owner, 2026-11-19): the sky, vehicle, ticket and manifest follow your vote (the room's planet until you
+ * vote). The host's Start runs a launch countdown that a join cancels; when it ends the vote is final, everyone's lobby flies to the
+ * winning planet, and then the host's client opens the map vote there.
  */
 export function RoomLobby({ hidden }) {
   const { send, session } = useCommands();
@@ -33,12 +35,24 @@ export function RoomLobby({ hidden }) {
   const party = !!lobby?.code;
   const voting = !!lobby?.voting;
   const vote = choice => session({ type: 'LOBBY_VOTE', mode: choice.mode ?? null, world: choice.world ?? null });
-  const start = () => {
-    const chosen = voting ? lobby.leadingMode : mode;
+  const openMapVote = () => {
+    const chosen = voting || lobby?.launch ? lobby.leadingMode : mode;
     if (!available(chosen)) return;
     session({ type: 'SET_MODE', mode: chosen });
     session({ type: 'START_VOTING' });
   };
+  // A party's Start begins the launch countdown; a room without a party code opens the map vote at once.
+  const start = () => party ? session({ type: 'LAUNCH' }) : openMapVote();
+  // Once everyone has flown to the planet, the host opens the map vote (again each second, should the room not be ready yet).
+  const ready = !!lobby?.launchReady && !!lobby?.showModes;
+  const opener = useRef(openMapVote);
+  opener.current = openMapVote;
+  useEffect(() => {
+    if (!ready) return undefined;
+    opener.current();
+    const again = setInterval(() => opener.current(), 1000);
+    return () => clearInterval(again);
+  }, [ready]);
   const roster = lobby?.roster ?? [];
   const me = roster.find(p => p.you);
   // Rename on the pass (owner, 2026-11-17): typed into a draft, sent to the room once when editing ends.
@@ -49,7 +63,13 @@ export function RoomLobby({ hidden }) {
     const next = sanitizeName(nameDraft);
     if (next !== me?.name) send(UiCommands.SET_NAME, { name: next });
   };
-  const destination = lobby?.destination ?? 'gaia';
+  // Your preview: your own planet vote until the countdown ends, then the planet everyone flies to.
+  // The pick shows at once, before the room echoes the vote back.
+  const [pick, setPick] = useState(null);
+  const votePlanet = world => { setPick(world); vote({ world }); };
+  const echoed = lobby?.myVote?.world ?? null;
+  useEffect(() => setPick(null), [echoed]); // the room has my vote now
+  const destination = lobby?.launch === 'landing' ? lobby.leadingWorld : (voting && (pick ?? lobby?.myVote?.world)) || (lobby?.destination ?? 'gaia');
   const vehicle = lobbyVehicleFor({ solo: !party, destination });
   const { flight } = flightOf(lobby?.code ?? '', destination);
   const planet = WORLDS.find(w => w.id === destination)?.name ?? 'Gaia';
@@ -73,8 +93,8 @@ export function RoomLobby({ hidden }) {
           <h1>{party ? 'Party lobby' : 'Room lobby'}</h1>
           <p>{lobby?.label}</p>
         </div>
-        <PlanetPicker value={voting ? lobby?.myVote?.world ?? destination : destination} voters={voting ? lobby.votes.world : null} leading={destination}
-          onPick={voting ? world => vote({ world }) : lobby?.canPickDestination ? world => session({ type: 'SET_DESTINATION', world }) : null} />
+        <PlanetPicker value={destination} voters={voting || lobby?.launch ? lobby.votes.world : null} leading={party ? lobby.leadingWorld : destination}
+          onPick={voting ? votePlanet : lobby?.canPickDestination ? world => session({ type: 'SET_DESTINATION', world }) : null} />
         <LobbyManifest passengers={roster} seats={VEHICLE_SEATS[vehicle] ?? 8} flight={flight} destination={planet} />
       </div>
       <div ref={right} className={styles.right}>
@@ -86,7 +106,7 @@ export function RoomLobby({ hidden }) {
         </LobbyTicket>
       </div>
       <div ref={dock} className={styles.dock}>
-        {/* The room's status: read out to screen readers; shown only for the start countdown ("… starts in 3…"). */}
+        {/* The room's status: read out to screen readers; shown only for the launch ("Take-off in 3…") and start ("… starts in 3…") countdowns. */}
         <p className={lobby?.countdown ? styles.countdown : styles.hiddenText} data-ui="lobby-status" aria-live="polite">{lobby?.status}</p>
         <TiePicker tie={lobby?.tie} />
         {(voting || lobby?.showModes) && <div className={styles.controls}>

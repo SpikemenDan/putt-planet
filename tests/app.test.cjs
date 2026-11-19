@@ -236,7 +236,7 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
     assert.equal(ana.snapshot.powerups, false); assert.equal(ben.snapshot.powerups, false, 'the rule reaches the joiner');
     assert.match(ben.text('[data-ui=room-lobby]'), /Power-ups are off/);
     await ana.click('Start Game');
-    await W.until(() => ben.shown('[data-ui=map-select]'), 3000, 'voting');
+    await W.until(() => ben.shown('[data-ui=map-select]'), 15000, 'voting');
     assert.match(ana.text('[data-ui=map-select] p'), /Vote/);
     for (const c of [ana, ben]) await c.click([...c.doc.querySelectorAll('[data-ui=map-select] button[data-v]')][0]);
     await W.until(() => [ana, ben].every(c => c.ready()), 10000, 'map start');
@@ -447,7 +447,7 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
     await W.run(300);
     await ana.select('tournament_3');
     await ana.click('Start Game');
-    await W.until(() => ben.shown('[data-ui=map-select]'), 3000, 'guest voting');
+    await W.until(() => ben.shown('[data-ui=map-select]'), 15000, 'guest voting');
     for (const c of [ana, ben]) await c.click([...c.doc.querySelectorAll('[data-ui=map-select] button[data-v]')][0]);
     await W.until(() => ana.ready() && ben.ready(), 10000, 'putt start');
     const canvas = ben.$('canvas:not([data-ui=loading-planet])');
@@ -512,7 +512,7 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
     assert.equal(ben.$('[data-ui=room-lobby] [data-ui=start-game]'), null, 'only the host starts');
     await ana.select('tournament_3');
     await ana.click('Start Game');
-    await W.until(() => guests.every(g => g.shown('[data-ui=map-select]')), 3000, 'guests voting');
+    await W.until(() => guests.every(g => g.shown('[data-ui=map-select]')), 15000, 'guests voting');
     const vote = async (c, i) => c.click([...c.doc.querySelectorAll('[data-ui=map-select] button[data-v]')][i]);
     const all = [ana, ben, cy, dee];
     for (const c of all) await vote(c, 0);
@@ -716,7 +716,7 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
     const ben = await W.client('Ben'); await ben.join('resume');
     const benId = ben.app.room.localId, hostId = ana.app.room.localId;
     await ana.click('Start Game');
-    await W.until(() => ben.shown('[data-ui=map-select]'), 3000, 'voting');
+    await W.until(() => ben.shown('[data-ui=map-select]'), 15000, 'voting');
     for (const c of [ana, ben]) await c.click(c.$('[data-ui=map-select] button[data-v]'));
     await W.until(() => ana.ready() && ben.ready(), 10000, 'map start');
     // Network loss (no LEAVE): Ben sees a reconnecting notice, the host keeps his seat.
@@ -770,7 +770,7 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
     assert.equal(late.app.room, null);
     assert.equal(late.button('Join').disabled, false, 'the player can try again');
     await all[0].click('Start Game');
-    await W.until(() => all.slice(1).every(c => c.shown('[data-ui=map-select]')), 3000, 'guests voting');
+    await W.until(() => all.slice(1).every(c => c.shown('[data-ui=map-select]')), 15000, 'guests voting');
     for (const c of all) await c.click(c.$('[data-ui=map-select] button[data-v]'));
     await W.until(() => all.every(c => c.ready()), 10000, 'eight-player map start');
     await W.run(500);

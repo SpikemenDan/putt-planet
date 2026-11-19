@@ -36,6 +36,7 @@ export const SessionCommands = Object.freeze({
   SET_COLOR: 'SET_COLOR', // any member, lobby only: choose an unused ball colour (#161)
   SET_NAME: 'SET_NAME', // any member, lobby only: rename yourself on your boarding pass (owner, 2026-11-17)
   LOBBY_VOTE: 'LOBBY_VOTE', // any member, lobby only: vote for a game mode and/or a planet (owner, 2026-11-17)
+  LAUNCH: 'LAUNCH', // host only, lobby: start the party's launch countdown (owner, 2026-11-19); a join cancels it
   START_VOTING: 'START_VOTING',
   CAST_VOTE: 'CAST_VOTE',
   START_ROUND: 'START_ROUND',
@@ -57,6 +58,7 @@ export function createInitialSessionState(options = {}) {
     mode: options.mode ?? GameModes.STANDARD,
     destination: 'gaia', // the party's planet, voted for on the lobby ticket (owner, 2026-11-16, 2026-11-17); the map vote opens on it
     lobbyVotes: {}, // playerId -> { mode?, world? }: each player's lobby vote (owner, 2026-11-17)
+    launchAt: 0, // room-clock ms the party's launch countdown ends (0: not counting down); its end locks the planet
     powerups: options.powerups ?? options.rules?.powerups ?? true, // false = No Power-Ups: no boxes, no inventory (GM1)
     rules: { ...(options.rules ?? DEFAULT_RULES) }, // Custom rules (VIS-U #168), fixed when the room is created
     mapIndex: 0,
@@ -222,6 +224,7 @@ export function canExecuteCommand(phase, commandType, isHost) {
   // Only hosts can trigger room transitions
   const hostOnlyCommands = [
     SessionCommands.SET_DESTINATION,
+    SessionCommands.LAUNCH,
     SessionCommands.START_VOTING,
     SessionCommands.START_ROUND,
     SessionCommands.ADVANCE_PUTT,
@@ -244,6 +247,7 @@ export function canExecuteCommand(phase, commandType, isHost) {
         SessionCommands.SET_COLOR,
         SessionCommands.SET_NAME,
         SessionCommands.LOBBY_VOTE,
+        SessionCommands.LAUNCH,
         SessionCommands.START_VOTING,
       ].includes(commandType);
 

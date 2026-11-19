@@ -59,7 +59,7 @@ function PassengerName({ name, onName, onNameDone }) {
  * The lobby ticket (owner, 2026-11-16; simpler, owner 2026-11-18: "make the ticket simpler it looks like too much"): a bright boarding
  * pass on the right of the Solo and party lobbies with the vehicle's pass title, the passenger with their colour badge (click it to
  * change colour) and name (`onName`: click it to edit), the route in airport-style codes, the lobby's buttons (`children`: Play or
- * Start Game) and, on the stub, Back (`onBack`) and the party code (`code`, with a copy-invite icon: `onCopy`). The route shows the
+ * Start Game) and, on the stub, Back (`onBack`) and the party code (`code`, with a copy-invite icon: `onCopy`) or, Solo, its flight number in the same place (owner, 2026-11-19: Solo's pass matches the party's). The route shows the
  * destination only: both lobbies pick the planet on their planet picker (PlanetPicker.jsx). Names render as React text only, cut to
  * NAME_LIMIT.
  */
@@ -87,6 +87,9 @@ export function LobbyTicket({ vehicle = 'plane', name = '', onName = null, onNam
       <div className={styles.actions}>{children}</div>
       <div className={styles.stub}>
         {onBack && <button type="button" className={styles.back} onClick={onBack} data-ui={solo ? 'menu-back' : 'pass-leave'} data-kind={solo ? 'back' : 'leave'}>{backLabel}</button>}
+        {solo && !code && (
+          <span className={styles.code} data-ui="solo-flight"><small>Flight</small><strong>{flightOf('', destination).flight}</strong></span>
+        )}
         {code && (
           <span className={styles.code} data-ui="party-code">
             <small>Party code</small><strong>{code}</strong>

@@ -104,7 +104,6 @@ export const DISPLAY_UNITS = Object.freeze({
   'lobby.spinSeconds': 'seconds',
   'lobbyLook.glow': 'multiplier',
   'lobbyLook.flipSeconds': 'seconds',
-  'lobbyLook.stripeSeconds': 'seconds',
   'environment.aresWind': 'multiplier',
   'environment.aresWindDensity': 'multiplier of the base count',
   'environment.lunaDust': 'multiplier',

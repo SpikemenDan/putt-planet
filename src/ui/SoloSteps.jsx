@@ -26,9 +26,6 @@ export const SOLO_MODES = Object.freeze({
   [GameModes.PONG]: 'Practice · Putt Pong',
 });
 
-/** A duration that "0 holds it still" turns into: long enough that nothing visibly moves. */
-const STILL = 1e6;
-const secs = v => (v > 0 ? v : STILL) + 's';
 
 /**
  * Copies `display.lobbyLook` onto the Solo lobby as CSS variables (owner, 2026-11-18: a livelier lobby), like the main menu's
@@ -41,7 +38,6 @@ export function useLobbyLook(ref, display) {
     const apply = () => {
       el.style.setProperty('--look-glow', String(look.glow));
       el.style.setProperty('--look-flip', (look.flipSeconds > 0 ? look.flipSeconds : 0.001) + 's');
-      el.style.setProperty('--look-stripe', secs(look.stripeSeconds));
     };
     apply();
     const view = el.ownerDocument.defaultView;
@@ -102,7 +98,7 @@ export function SoloSteps({ name, onName, colorField, connecting, send, onExit, 
       </div>
       <div className={solo.pass}>
         <LobbyTicket vehicle={vehicle} solo name={name} onName={onName} color={color} onPick={c => send(UiCommands.SET_COLOR, { color: c })} destination={world} onBack={onExit}>
-          <button type="button" className={solo.go} disabled={connecting} onClick={() => send(UiCommands.PLAY_SOLO, { name, mode, world })} data-ui="solo-play">Play Solo</button>
+          <button type="button" className={room.go} disabled={connecting} onClick={() => send(UiCommands.PLAY_SOLO, { name, mode, world })} data-ui="solo-play">Play Solo</button>
         </LobbyTicket>
       </div>
       <div className={solo.dock} data-ui="solo-modes">

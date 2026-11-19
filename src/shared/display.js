@@ -8,7 +8,7 @@
  * Units: distances in world units (the ball radius is 5). Opacity is 0..1; scale is a multiplier. The `loading` group
  * (loading screen, src/render/planet-scene.js) uses degrees, seconds, CSS px and a screen-height fraction as listed per field;
  * the `menu` group (main menu, src/ui/Landing.jsx) uses a multiplier, seconds, CSS px and degrees; the `lobby` group (the 3D lobby
- * vehicles, src/render/lobby-flight.js in the planet sky) uses a multiplier, degrees, ball diameters and seconds; the `lobbyLook` group (the Solo lobby's pass and Play button,
+ * vehicles, src/render/lobby-flight.js in the planet sky) uses a multiplier, degrees, ball diameters and seconds; the `lobbyLook` group (the Solo lobby's pass,
  * src/ui/SoloSteps.jsx, as CSS variables) uses a multiplier and seconds; the `space` group (the Solo
  * destination view in src/render/planet-scene.js) uses seconds, fractions and a multiplier. The `environment` group (VIS-E
  * world atmosphere, src/render/atmosphere.js) holds multipliers for the Ares and Luna scenery.
@@ -58,9 +58,8 @@ export const DISPLAY_FIELDS = Object.freeze([
   ['lobby.zoom', 0.6, 1.6, 'Lobby vehicles: how big the helicopter, plane or rocket shows in its frame, as a multiplier (higher is closer).'],
   ['lobby.sway', 0, 25, 'Lobby vehicles: how far the vehicle turns back and forth as it flies, in degrees (0 holds it at one angle). Off under reduced motion.'],
   ['lobby.bob', 0, 0.6, 'Lobby vehicles: how far the vehicle rises and sinks, in ball diameters (0 holds it level). Off under reduced motion.'],
-  ['lobbyLook.glow', 0, 2, 'Solo lobby look (owner, 2026-11-18: "make it look cool and color"): how strongly the planet card, the pass and Play Solo glow in the destination colour (0 turns the glow off).'],
+  ['lobbyLook.glow', 0, 2, 'Solo lobby look (owner, 2026-11-18: "make it look cool and color"): how strongly the pass glows in the destination colour (0 turns the glow off).'],
   ['lobbyLook.flipSeconds', 0, 1.5, 'Solo lobby look (owner, 2026-11-18: "make it look cool and color"): how long each letter of the destination code takes to flip into place on the pass (0 shows it at once).'],
-  ['lobbyLook.stripeSeconds', 0, 4, 'Solo lobby look (owner, 2026-11-18: "make it look cool and color"): how long the stripes on Play Solo take to slide one stripe along (0 holds them still).'],
   ['lobby.spinSeconds', 0, 2, 'Lobby vehicles: seconds for one turn of the helicopter rotor and the plane propellers (0 holds them still). Off under reduced motion.'],
   ['environment.aresWind', 0, 2, 'Ares courses: strength of the wind scenery: speed and opacity of the wind streaks and blown dust, and the rust haze (0 hides it). Visual only.'],
   ['environment.aresWindDensity', 0, 2, 'Ares courses: how many wind streaks and dust grains fill the air, as a multiplier of 1100 streaks and 2400 grains (plus 140 and 360 close around the camera). Visual only.'],
@@ -77,7 +76,7 @@ export const DEFAULT_DISPLAY = {
   space: { travelSeconds: 4.5, nebula: 0.6, distance: 1, revolveSeconds: 180, hopZoom: 0.35, hopWait: 0.5, hopDelay: 0.5, hopSlide: 0.8 },
   menu: { buttonScale: 1, stagger: 0.07, bob: 2, tilt: 1.5, shineSeconds: 5, cardTint: 0.22 },
   lobby: { zoom: 1, sway: 4, bob: 0.08, spinSeconds: 0.4 },
-  lobbyLook: { glow: 1, flipSeconds: 0.5, stripeSeconds: 1.2 },
+  lobbyLook: { glow: 1, flipSeconds: 0.5 },
   environment: { aresWind: 1, aresWindDensity: 1, lunaDust: 1, lunaDustDensity: 1, lunaSolar: 1 },
 };
 

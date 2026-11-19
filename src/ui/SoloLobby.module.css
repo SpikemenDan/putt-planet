@@ -2,25 +2,19 @@
    the right and the mode bar runs along the bottom (no title card, owner 2026-11-17); the menu card steps away while the lobby shows. */
 :global([data-menu-view][data-solo-lobby]){visibility:hidden;opacity:0;pointer-events:none}
 .pass{position:fixed;z-index:3;right:clamp(12px,2.5vw,40px);top:50%;translate:0 -50%;width:min(360px,32vw);pointer-events:auto;animation:arrive .5s cubic-bezier(.2,1.3,.4,1) both}
-/* Play Solo (owner, 2026-11-18: livelier): candy stripes sliding along (--look-stripe), a play arrow and a pulsing pink glow (--look-glow). */
-.go{position:relative;display:flex;align-items:center;justify-content:center;gap:10px;width:100%;margin:0;padding:12px 16px;font:400 26px/1 var(--font);letter-spacing:1px;text-transform:none;color:#fff;
-  text-shadow:2px 2px 0 var(--ink);border:3px solid var(--ink);border-radius:14px;cursor:pointer;transition:translate .1s,box-shadow .1s,filter .15s;
-  background:repeating-linear-gradient(-45deg,var(--pink) 0 14px,#ff5a9c 14px 28px) 0 0/39.6px 39.6px;
-  box-shadow:0 5px 0 var(--ink),0 0 calc(22px * var(--look-glow,1)) calc(2px * var(--look-glow,1)) color-mix(in srgb,var(--pink) 75%,transparent);
-  animation:stripes var(--look-stripe,1.2s) linear infinite,pulse 1.6s ease-in-out infinite alternate}
-.go::before{content:'';flex:none;width:0;height:0;border-style:solid;border-width:9px 0 9px 15px;border-color:transparent transparent transparent #fff;filter:drop-shadow(2px 2px 0 var(--ink))}
-.go:hover:not(:disabled){filter:brightness(1.08) saturate(1.15);translate:0 -2px}
-.go:active:not(:disabled){translate:0 3px;box-shadow:0 1px 0 var(--ink)}
-.go:disabled{filter:grayscale(.6);animation:none}
-@keyframes stripes{to{background-position:39.6px 0}}
-@keyframes pulse{to{box-shadow:0 5px 0 var(--ink),0 0 calc(36px * var(--look-glow,1)) calc(6px * var(--look-glow,1)) color-mix(in srgb,var(--pink) 80%,transparent)}}
-.dock{position:fixed;z-index:3;left:50%;bottom:clamp(10px,2vh,24px);translate:-50% 0;max-width:calc(100vw - min(360px,32vw) - 80px);pointer-events:auto;animation:rise .5s cubic-bezier(.2,1.3,.4,1) both;
+/* Play Solo uses the party pass's Start button (RoomLobby.module.css .go: owner, 2026-11-19, "the solo ticket does not hit the same"). */
+/* The mode bar sits centred in the room left of the pass and keeps all three tiles inside it: when the window is too narrow for one row,
+   Practice wraps under the others instead of spilling past the box (owner, 2026-11-19). */
+.dock{position:fixed;z-index:3;left:calc((100vw - min(360px,32vw) - clamp(12px,2.5vw,40px)) / 2);bottom:clamp(10px,2vh,24px);translate:-50% 0;width:max-content;max-width:calc(100vw - min(360px,32vw) - 80px);box-sizing:border-box;pointer-events:auto;animation:rise .5s cubic-bezier(.2,1.3,.4,1) both;
   padding:10px 12px 8px;border:3px solid var(--ink);border-radius:22px;box-shadow:0 6px 0 var(--ink);
   background:linear-gradient(180deg,rgba(255,255,255,.42),rgba(255,255,255,.16));-webkit-backdrop-filter:blur(10px) saturate(1.4);backdrop-filter:blur(10px) saturate(1.4)}
+.dock > *{max-width:100%;box-sizing:border-box;padding:12px 12px 14px}
+.dock [data-ui=mode-picker]{flex-wrap:wrap;justify-content:center;gap:16px 8px}
+.dock [data-ui=mode-picker] > *{padding-right:16px}
 @keyframes rise{from{opacity:0;translate:-50% 30px}to{opacity:1;translate:-50% 0}}
 @keyframes arrive{from{opacity:0;translate:40px -50%}to{opacity:1;translate:0 -50%}}
-@media (max-width:900px){.dock{position:static;translate:none;margin:12px}.pass{position:static;translate:none;width:auto;margin:12px auto;max-width:360px}}
-@media (prefers-reduced-motion:reduce){.pass,.dock,.go{animation:none}.go{transition:none}}
+@media (max-width:900px){.dock{position:static;translate:none;width:auto;margin:12px}.pass{position:static;translate:none;width:auto;margin:12px auto;max-width:360px}}
+@media (prefers-reduced-motion:reduce){.pass,.dock{animation:none}}
 /* The planet picker (owner, 2026-11-18): on the left, centred, facing the pass on the right. */
 .planets{position:fixed;z-index:3;left:clamp(12px,2.5vw,40px);top:50%;translate:0 -50%;width:min(340px,28vw);pointer-events:auto;animation:enter .5s cubic-bezier(.2,1.3,.4,1) both}
 @keyframes enter{from{opacity:0;translate:-40px -50%}to{opacity:1;translate:0 -50%}}
