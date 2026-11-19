@@ -1266,8 +1266,9 @@ function fakeClock() {
     assert.ok(sky.lobbyStats.air > 0.9, "wind while in Gaia's air");
     // A journey (owner, 2026-11-18): the camera flies to Luna and the rocket flies along with it, chasing Luna, then settles side-on.
     sky.setView({ space: true, target: 'luna' });
-    const seen = new Set(); let chase = 0;
-    run(12, () => { seen.add(sky.lobbyStats.trip); chase = Math.max(chase, sky.lobbyStats.chase); });
+    const seen = new Set(); let chase = 0, small = 1, big = 0;
+    const sizes = () => { small = Math.min(small, sky.lobbyStats.size); big = Math.max(big, sky.lobbyStats.size); };
+    run(12, () => { seen.add(sky.lobbyStats.trip); chase = Math.max(chase, sky.lobbyStats.chase); sizes(); });
     assert.ok(seen.has('travelling') && seen.has('arriving'), 'it travels, then arrives');
     assert.ok(chase > 0.9, 'on the way the rocket turns to chase Luna');
     assert.equal(sky.lobbyStats.trip, null, 'arrived');
@@ -1276,6 +1277,12 @@ function fakeClock() {
     assert.equal(sky.lobbyStats.vehicle, 'rocket');
     assert.ok(sky.lobbyStats.air < 0.05, 'no wind in space');
     assert.deepEqual(anchors.map(a => a.seat), [0, 2], 'the passengers arrive aboard');
+    // Far off on the way it is drawn small (owner, 2026-11-18: it "looks ginormous"), never bigger than parked; space.rocketFar sets how small.
+    assert.ok(big <= 1.001 && small < 0.3 && small >= 1 / 8 - 1e-6, `drawn between 1/8 and parked size on the way (smallest ${small.toFixed(3)})`);
+    display.space.rocketFar = 2; small = 1;
+    sky.setView({ space: true, target: 'gaia' }); run(10, sizes);
+    assert.ok(small >= 0.5 - 1e-6 && small < 0.9, `space.rocketFar = 2 keeps it at least half size (smallest ${small.toFixed(3)})`);
+    display.space.rocketFar = 8;
     // A plane bound for space becomes a rocket for the trip; spamming planets never builds a second vehicle.
     sky.setView({ space: false, target: 'gaia' });
     sky.setLobby(lobby('plane', ['#ff4fb8']));

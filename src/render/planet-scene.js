@@ -850,7 +850,7 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
       const parked = flight?.parked ?? PARKED;
       tripEnd.copy(parked.p).applyQuaternion(trip.endQ).add(trip.endPos);
       tripEndDir.copy(parked.nose).applyQuaternion(trip.endQ);
-      route.plan({ start: trip.start, startDir: trip.startDir, centre: aimAt, end: tripEnd, endDir: tripEndDir, blockers });
+      route.plan({ start: trip.start, startDir: trip.startDir, from: trip.fresh ? fromAt : null, centre: aimAt, end: tripEnd, endDir: tripEndDir, blockers });
       route.at(trip.fresh ? smoother(x) : easeOutCubic(x), trip.pos, trip.dir);
       trip.weight = (trip.fresh ? smoother(clamp01(x / TRIP.blendIn)) : 1) * (1 - smoother(clamp01((x - 1 + TRIP.blendOut) / TRIP.blendOut)));
       spinAxis.copy(route.normal); spinBody = space.to === 'gaia' ? null : space.to;

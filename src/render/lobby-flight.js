@@ -22,11 +22,11 @@ const TURN = Math.PI + 0.24;
 const CENTRE_PULL = 0.55; // 1 centres the vehicle in the free area between the panels, 0 on the screen
 const LOBBY_EYE = [0.1, 0.32, 1]; // where the parked pose is seen from, per unit of distance: a little right and above
 /**
- * Flying the route: the rocket is drawn along the line of sight to where it really is, no nearer than `near` and no farther than
- * `cruise` times its parked distance, so far away it reads as a small rocket rather than a speck. It banks `bank` per radian a second of
- * turn, up to `maxBank`.
+ * Flying the route: the rocket is drawn along the line of sight to where it really is, never nearer than its parked distance (so never
+ * bigger than parked) and no farther than `space.rocketFar` times it, so far away it reads as a small rocket rather than a speck
+ * (owner, 2026-11-18: smaller, it "looks ginormous in perspective"). It banks `bank` per radian a second of turn, up to `maxBank`.
  */
-const ROUTE = { near: 0.6, cruise: 3, bank: 0.55, maxBank: 0.6 };
+const ROUTE = { near: 1, bank: 0.55, maxBank: 0.6 };
 
 const clamp01 = v => Math.max(0, Math.min(1, v));
 const smoother = v => v * v * v * (v * (v * 6 - 15) + 10);
@@ -58,7 +58,7 @@ export function createLobbyFlight({ THREE, display, reducedMotion = false }) {
   let lobby = null, colors = [], craft = null, leaving = null, swap = SWAP, arriveAt = -1, frameHalf = null, frames = 0;
   let w = 0, bank = 0, airLevel = 1, lastInsets = -1, clock = 0;
   const insets = { left: 0, right: 0, top: 0, bottom: 0 };
-  const stats = { vehicle: null, passengers: 0, swapping: false, trip: null, air: 0, chase: 0, frames: 0, nose: [-1, 0, 0], hidden: false };
+  const stats = { vehicle: null, passengers: 0, swapping: false, trip: null, air: 0, chase: 0, frames: 0, nose: [-1, 0, 0], hidden: false, size: 1 };
   const noseC = new THREE.Vector3(-1, 0, 0), lastHeading = new THREE.Vector3(), atW = new THREE.Vector3(), ray = new THREE.Vector3(), m = new THREE.Vector3();
   /** The parked pose, camera space, before the bob: where a trip sets off from and which way the nose points. */
   const parked = { p: new THREE.Vector3(0, 0, -12), nose: new THREE.Vector3(-1, 0, 0.24).normalize() };
@@ -170,12 +170,14 @@ export function createLobbyFlight({ THREE, display, reducedMotion = false }) {
     camera.updateMatrixWorld();
     worldInv.copy(camera.matrixWorld).invert();
     camQInv.copy(camera.quaternion).invert();
-    let hidden = false;
+    let hidden = false, size = 1;
     if (w > 0) {
       // Where it really is, seen along the line of sight at a drawable distance.
       chaseP.copy(trip.position).applyMatrix4(worldInv);
-      const real = chaseP.length(), shown = Math.max(depth * ROUTE.near, Math.min(real, depth * ROUTE.cruise));
+      const far = Math.max(ROUTE.near, display.space?.rocketFar ?? 8);
+      const real = chaseP.length(), shown = Math.max(depth * ROUTE.near, Math.min(real, depth * far));
       chaseP.multiplyScalar(shown / Math.max(1e-6, real));
+      size = 1 + (depth / shown - 1) * w; // drawn size against parked
       chaseP.y += Math.sin(t * 1.1 + 0.5) * 0.015 * shown;
       // Nose along the route; banking into the turn from how fast the heading swings round.
       noseC.copy(trip.heading).applyQuaternion(camQInv).normalize();
@@ -234,7 +236,7 @@ export function createLobbyFlight({ THREE, display, reducedMotion = false }) {
 
     stats.swapping = swapping || w > 0.01;
     stats.trip = trip.travelling ? (trip.land > 0 ? 'arriving' : 'travelling') : null;
-    stats.air = airLevel; stats.chase = w; stats.hidden = hidden;
+    stats.air = airLevel; stats.chase = w; stats.hidden = hidden; stats.size = size;
     const seen = v2.set(1, 0, 0).applyQuaternion(body.quaternion);
     stats.nose = [seen.x, seen.y, seen.z];
     stats.frames = ++frames;
