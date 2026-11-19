@@ -70,13 +70,13 @@
 /* Smaller (owner, 2026-11-19), so the stub reads as a real ticket stub with the flight number or code in front. */
 /* Leave room lines up with the code itself, not the label above it (owner, 2026-11-19). */
 .back{flex:none;align-self:flex-end;display:inline-flex;align-items:center;gap:4px;margin:0 0 0 auto;padding:3px 9px 3px 4px;font:900 11px var(--font);letter-spacing:.5px;text-transform:none;text-shadow:none;
-  color:var(--ink);background:var(--yellow);border:2.5px solid var(--ink);border-radius:999px;box-shadow:0 3px 0 var(--ink);cursor:pointer;transition:translate .1s,box-shadow .1s,background .15s}
+  color:#fff;text-shadow:1px 1px 0 var(--ink);background:var(--ball,var(--yellow));border:2.5px solid var(--ink);border-radius:999px;box-shadow:0 3px 0 var(--ink);cursor:pointer;transition:translate .1s,box-shadow .1s,background .15s}
+/* Back and Leave wear your ball colour (owner, 2026-11-19); a pale ball gets dark words. */
+.ticket[data-light] .back{color:var(--ink);text-shadow:none}
 .back::before{content:'';width:15px;height:15px;border-radius:50%;background:var(--ink) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M14 6l-6 6 6 6' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/11px no-repeat;transition:translate .15s}
-.back:hover{background:#fff27a;translate:0 -1px;box-shadow:0 4px 0 var(--ink)}
+.back:hover{background:color-mix(in srgb,var(--ball,var(--yellow)) 82%,#fff);translate:0 -1px;box-shadow:0 4px 0 var(--ink)}
 .back:hover::before{translate:-3px 0}
 .back:active{translate:0 2px;box-shadow:0 1px 0 var(--ink)}
-.back[data-kind=leave]{background:#ffb3c9}
-.back[data-kind=leave]:hover{background:#ffc9d8}
 @media (prefers-reduced-motion:reduce){.back,.back::before,.pencil{transition:none}}
 
 /* A livelier pass (owner, 2026-11-18: "make it look cool and color"). Knobs are display.lobbyLook, set as CSS variables on the Solo

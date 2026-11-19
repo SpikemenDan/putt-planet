@@ -50,6 +50,14 @@ function useFit(text, min, onFit) {
   }, [text, min]);
   return ref;
 }
+/**
+ * The stub button's label (owner, 2026-11-19: Party's stub should look like Solo's Flight and Back): only the first word shows, so
+ * "Leave room" reads "Leave" like "Back"; the rest stays in the text for screen readers.
+ */
+function BackLabel({ text }) {
+  const [first, ...rest] = String(text).split(' ');
+  return <>{first}{rest.length > 0 && <span className={styles.hiddenText}>{' ' + rest.join(' ')}</span>}</>;
+}
 /** What each vehicle's pass calls itself. */
 export const PASS = Object.freeze({
   plane: { title: 'Plane Boarding Pass' },
@@ -226,7 +234,7 @@ export function LobbyTicket({ vehicle = 'plane', name = '', onName = null, onNam
       <div className={styles.actions}>{children}</div>
       <div className={styles.stubWrap} data-ui="ticket-stub"><div>
       <div className={styles.stub}>
-        {onBack && <button type="button" className={styles.back} onClick={onBack} data-ui={solo ? 'menu-back' : 'pass-leave'} data-kind={solo ? 'back' : 'leave'}>{backLabel}</button>}
+        {onBack && <button type="button" className={styles.back} onClick={onBack} data-ui={solo ? 'menu-back' : 'pass-leave'} data-kind={solo ? 'back' : 'leave'}><BackLabel text={backLabel} /></button>}
         {solo && !code && (
           <span className={styles.code} data-ui="solo-flight"><small>Flight</small><strong>{flightOf('', destination).flight}</strong></span>
         )}
