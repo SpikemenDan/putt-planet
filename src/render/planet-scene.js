@@ -19,7 +19,7 @@ import { MODEL_REACH, PLANE_KINDS, PLANT_KINDS, SHIP_KINDS, makeBalloon, makeBas
 import { buildAresTexture, buildLunaTexture, WORLD_TEX_H, WORLD_TEX_W } from './worlds.js';
 import { loadPlanetMap } from './planet-maps.js';
 import { createLobbyFlight } from './lobby-flight.js';
-import { routeFor, DIVES, SKETCHES } from './lobby-routes.js';
+import { routeFor, HOPS } from './lobby-routes.js';
 import { DEFAULT_DISPLAY } from '../shared/display.js';
 
 export const PLANET_RADIUS = 100;
@@ -823,20 +823,18 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
   const BLEND = 0.04; // the rocket hands over between parked and on the route over this much of the trip at each end
   const tripSettings = () => ({ ...DEFAULT_DISPLAY.trip, ...display.trip });
   const phase = (x, [a, b]) => smoother(clamp01((x - a) / Math.max(1e-6, b - a)));
-  // A diving trip (owner, 2026-11-19: the reference sketch, Gaia to Ares first) ends differently: the rocket curves in behind the
-  // planet ahead and is gone, the camera pushes in to it, and then the rocket rises over that planet's horizon into its parked spot
-  // while the camera rolls level (over the last `trip.emerge` of the trip).
-  const diving = () => DIVES.includes(space.from + '>' + space.to);
-  /** When the camera is there: the rise over the horizon takes the rest of a diving trip. */
-  const riseAt = () => diving() ? 1 - Math.min(0.45, Math.max(0.05, tripSettings().emerge ?? 0.3)) : 1;
+  // A hop (owner, 2026-11-19: "it just zooms out and zooms into the other planet and the vehicle comes in from the right", Gaia to
+  // Ares first): the rocket flies off the left of the screen, the camera pulls back to the wide view and pushes in to the planet ahead,
+  // and the rocket glides in from the right into its parked spot over the last `trip.arrive`, nose left all the way.
+  const hopping = () => HOPS.includes(space.from + '>' + space.to);
+  const HOP = { leave: 0.25, turn: 0.45, land: 0.9 }; // the rocket is off the screen by leave; the camera turns from out to in at turn, is there at land
   /** When the camera starts pushing in to the planet ahead: going home, the horizon blend waits for it. */
-  const pushAt = () => { const t = tripSettings(); return Math.max(clamp01(t.out) + 0.05, riseAt() - clamp01(t.in)); };
-  const arrival = x => phase(x, [pushAt(), riseAt()]);
-  const RISE = { roll: 0.22, behind: 0.6 }; // the camera's roll (radians) as the rocket rises; how far behind the planet's centre the dive ends (radii)
-  const trip = { ready: false, fresh: true, horizon: false, shown: true, weight: 0, pos: new THREE.Vector3(), dir: new THREE.Vector3(), curve: null, rise: null, sketched: false, from: new THREE.Vector3() };
+  const pushAt = () => { if (hopping()) return HOP.turn; const t = tripSettings(); return Math.max(clamp01(t.out) + 0.05, 1 - clamp01(t.in)); };
+  const arrival = x => phase(x, [pushAt(), hopping() ? HOP.land : 1]);
+  const trip = { ready: false, fresh: true, horizon: false, shown: true, weight: 0, pos: new THREE.Vector3(), dir: new THREE.Vector3(), curve: null, from: new THREE.Vector3() };
   const wideAt = new THREE.Vector3(), wideLook = new THREE.Vector3(), wideDir = new THREE.Vector3();
   const upLerp = new THREE.Vector3(), viewSide = new THREE.Vector3(), viewUp = new THREE.Vector3(), landPos = new THREE.Vector3(), landLook = new THREE.Vector3(), landUp = new THREE.Vector3(), lookNow = new THREE.Vector3(), armA = new THREE.Vector3(), armB = new THREE.Vector3(), wideCentre = new THREE.Vector3();
-  const nose = new THREE.Vector3(), endQuat = new THREE.Quaternion(), zAxis = new THREE.Vector3(0, 0, 1);
+  const nose = new THREE.Vector3(), endQuat = new THREE.Quaternion();
   const bodyRadius = { gaia: PLANET_RADIUS, luna: SPACE_LUNA.radius, ares: SPACE_ARES.radius };
   const bodies = ['gaia', 'luna', 'ares'].map(id => ({ id, centre: new THREE.Vector3(), radius: bodyRadius[id] }));
   const blockers = bodies; // the rocket on its route goes behind planets
@@ -913,55 +911,29 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
     if (d < 1e-3) return [];
     return routeFor(from, to, routeOverrides).map(([u, s, h]) => a.clone().addScaledVector(pairAlong, u * d).addScaledVector(pairSide, s * d).addScaledVector(pairUp, h * d));
   }
-  /**
-   * A route traced from the owner's sketch (lobby-routes.js SKETCHES) as world points: laid out on the screen of the wide view (wideView
-   * must have run), then onto the plane through both planets that faces that view, as the route editor does.
-   */
-  const sketchCam = new THREE.PerspectiveCamera();
-  function sketchPoints(from, to) {
-    const sketch = SKETCHES[from + '>' + to];
-    if (!sketch) return null;
-    const a = new THREE.Vector3(), b = new THREE.Vector3();
-    if (pairFrame(from, to, a, b) < 1e-3) return [];
-    sketchCam.copy(camera); sketchCam.fov = FOV; sketchCam.position.copy(wideAt);
-    poseOf(wideAt, wideLook, viewUp, sketchCam.quaternion);
-    sketchCam.updateProjectionMatrix(); sketchCam.updateMatrixWorld();
-    const asp = sketchCam.aspect, g = a.clone().project(sketchCam), h = b.clone().project(sketchCam);
-    g.x *= asp; h.x *= asp; // the screen in even units: the view's half height is 1
-    const dx = h.x - g.x, dy = h.y - g.y; // the loop round the planet left behind keeps the sketch proportions: its radius at least 0.17 of the line
-    const rg = Math.max(bodyRadius[from] / (a.distanceTo(wideAt) * Math.tan(FOV * Math.PI / 360)), 0.17 * Math.hypot(dx, dy));
-    const view = new THREE.Vector3(0, 0, -1).applyQuaternion(sketchCam.quaternion);
-    const normal = view.clone().addScaledVector(pairAlong, -view.dot(pairAlong));
-    if (normal.lengthSq() < 1e-8) normal.copy(view);
-    const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(normal.normalize(), a), ray = new THREE.Raycaster(), hit = new THREE.Vector3(), out = [];
-    for (const [gx, gy, u, s] of sketch) {
-      const w = smoother(clamp01((Math.hypot(gx, gy) - 1.4) / 2.5));
-      const lx = g.x + gx * rg, ly = g.y + gy * rg, fx = g.x + u * dx - s * dy, fy = g.y + u * dy + s * dx;
-      ray.setFromCamera({ x: (lx + (fx - lx) * w) / asp, y: ly + (fy - ly) * w }, sketchCam);
-      if (ray.ray.intersectPlane(plane, hit)) out.push(hit.clone());
-    }
-    return out;
-  }
-  /**
-   * The rocket's path for this trip: its parked spot (or where it is now), the route, its parked spot at the planet ahead. A diving
-   * trip's route ends behind the planet ahead (as the wide view sees it) instead, and `trip.rise` holds its rise over the horizon: in
-   * the arrival view's own frame, from out of sight below the horizon, up on the right and over into the parked spot, nose left.
-   */
-  function buildPath(parked, dive) {
-    const start = trip.fresh ? fromCameraPose(camFrom, lookFrom, upFrom, parked.p) : trip.from.clone();
-    const sketched = sketchPoints(space.from, space.to), pts = [start];
-    trip.sketched = !!sketched;
+  /** The rocket's path for this trip: its parked spot (or where it is now), the route, its parked spot at the planet ahead. */
+  function buildPath(parked) {
+    const start = trip.fresh ? fromCameraPose(camFrom, lookFrom, upFrom, parked.p) : trip.from.clone(), pts = [start];
     // Off a parked spot close to the camera, the rocket first heads away into the view (and a little along its nose), so the route
-    // turning toward the next planet never swings it across a close camera. A sketched route sets off its own way.
-    if (trip.fresh && !sketched) pts.push(fromCameraPose(camFrom, lookFrom, upFrom, armB.copy(parked.nose).multiplyScalar(0.3).add(nose.set(0, 0, -1)).multiplyScalar(2 * bodyRadius[space.from]).add(parked.p)));
-    pts.push(...(sketched ?? routePoints(space.from, space.to)));
-    if (dive) pts.push(aimAt.clone().addScaledVector(armA.subVectors(wideAt, aimAt).normalize(), -RISE.behind * bodyRadius[space.to]));
-    else pts.push(fromCameraPose(landPos, landLook, landUp, parked.p));
+    // turning toward the next planet never swings it across a close camera.
+    if (trip.fresh) pts.push(fromCameraPose(camFrom, lookFrom, upFrom, armB.copy(parked.nose).multiplyScalar(0.3).add(nose.set(0, 0, -1)).multiplyScalar(2 * bodyRadius[space.from]).add(parked.p)));
+    pts.push(...routePoints(space.from, space.to));
+    pts.push(fromCameraPose(landPos, landLook, landUp, parked.p));
     trip.curve = new THREE.CatmullRomCurve3(pts, false, 'centripetal');
     trip.curve.arcLengthDivisions = 400;
-    const d = Math.max(4, Math.abs(parked.p.z)), at = (x, y, z) => parked.p.clone().add(new THREE.Vector3(x * d, y * d, z * d));
-    trip.rise = dive ? new THREE.CatmullRomCurve3([at(1.63, -1.72, -4), at(1.04, -0.17, -2), at(0.49, 0.24, -0.83), at(0.14, 0.14, -0.25), at(0, 0, 0)], false, 'centripetal') : null;
-    if (trip.rise) trip.rise.arcLengthDivisions = 200;
+  }
+  /**
+   * A hop's rocket: held on the screen by the camera, off the left edge (speeding up) at the start, out of sight in between, and in
+   * from the right edge (easing to rest) into its parked spot at the end, always nose left.
+   */
+  function flyHop(x, parked, arrive) {
+    const p = parked.p, d = Math.max(1e-3, -p.z), span = 2.2 * Math.tan(FOV * Math.PI / 360) * (camera.aspect || 16 / 9) * d;
+    let off;
+    if (x < HOP.leave) off = -Math.pow(smoother(clamp01(x / HOP.leave)), 2) * span;
+    else if (x > 1 - arrive) off = Math.pow(1 - clamp01((x - 1 + arrive) / arrive), 3) * span;
+    else { off = -span; trip.shown = false; }
+    trip.pos.set(p.x + off, p.y, p.z).applyQuaternion(poseQuat).add(spacePos);
+    trip.dir.copy(nose);
   }
   /** A point in a camera's frame (x right, y up, -z ahead) into the world, for a camera at `pos` looking at `look`. */
   function fromCameraPose(pos, look, up, p) {
@@ -973,7 +945,7 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
    */
   function flyTrip(x) {
     if (!trip.ready && !space.waiting) { startTrip(); fromHorizon(); }
-    const t = tripSettings(), outEnd = clamp01(t.out), inAt = pushAt(), landAt = riseAt(), dive = landAt < 1;
+    const t = tripSettings(), hop = hopping(), outEnd = hop ? HOP.turn : clamp01(t.out), inAt = pushAt(), landAt = hop ? HOP.land : 1;
     bodyCentre(space.from, fromAt);
     bodyCentre(space.to, aimAt);
     for (const b of bodies) bodyCentre(b.id, b.centre);
@@ -987,26 +959,17 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
     if (zoom <= 0) { swing(fromAt, camFrom, wideAt, out, spacePos); lookNow.lerpVectors(lookFrom, wideLook, out); upLerp.lerpVectors(upFrom, viewUp, out); }
     else { swing(aimAt, wideAt, landPos, zoom, spacePos); lookNow.lerpVectors(wideLook, landLook, zoom); upLerp.lerpVectors(viewUp, landUp, zoom); }
     poseOf(spacePos, lookNow, upLerp.normalize(), poseQuat);
-    const level = dive ? 1 - phase(x, [landAt, 1]) : 0; // a diving trip arrives rolled, and rolls level as the rocket rises
-    if (level > 0) poseQuat.multiply(endQuat.setFromAxisAngle(zAxis, RISE.roll * zoom * level));
     trip.shown = true;
     if (!trip.ready) { trip.weight = 0; return; }
     const parked = flight?.parked ?? PARKED;
-    if (!trip.curve) buildPath(parked, dive);
-    const routeEnd = dive ? Math.min(landAt, inAt + 0.04) : 1; // a dive is behind the planet just as the camera starts in
     nose.copy(parked.nose).applyQuaternion(poseQuat);
-    if (dive && x >= landAt && trip.rise) {
-      // Rising over the horizon of the planet ahead, in the arrival view's own (unrolled) frame.
-      const k = phase(x, [landAt, 1]), u = clamp01(1 - (1 - k) * (1 - k) * (1 - k)); // quick out of sight, then a long glide over the top
-      poseOf(landPos, landLook, landUp, endQuat);
-      trip.rise.getPointAt(u, trip.pos).applyQuaternion(endQuat).add(landPos);
-      trip.rise.getTangentAt(Math.min(0.999, Math.max(0.001, u)), trip.dir).applyQuaternion(endQuat);
-      nose.copy(parked.nose).applyQuaternion(endQuat);
-      trip.dir.lerp(nose, phase(x, [1 - (1 - landAt) * 0.4, 1])).normalize();
-    } else {
+    if (hop) flyHop(x, parked, Math.min(0.45, Math.max(0.05, t.arrive ?? 0.3)));
+    else {
+    if (!trip.curve) buildPath(parked);
+    const routeEnd = 1;
+    {
       // Along the route at an even pace, easing off the spot and into the next one (or on behind the planet ahead).
-      // A sketched route waits for the wide view, as the sketch is drawn in it: the camera pulls back from the rocket first.
-      const u = clamp01(smoother(phase(x, [trip.sketched ? outEnd : 0, routeEnd]))); // smoother can land a hair past 1
+      const u = clamp01(smoother(phase(x, [0, routeEnd]))); // smoother can land a hair past 1
       trip.curve.getPointAt(u, trip.pos);
       trip.curve.getTangentAt(Math.min(0.999, Math.max(0.001, u)), trip.dir);
       // Leaving its parked spot it is placed on the screen while the camera pulls back: from the parked spot to where the route is, by
@@ -1020,9 +983,9 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
         trip.pos.set(sx * d, sy * d, -d).applyQuaternion(poseQuat).add(spacePos);
       }
       // The nose turns from its parked heading onto the route and back at the ends.
-      const ends = Math.min(phase(x, [0, 0.12]), dive ? 1 : 1 - phase(x, [0.88, 1]));
+      const ends = Math.min(phase(x, [0, 0.12]), 1 - phase(x, [0.88, 1]));
       trip.dir.lerp(nose, 1 - ends).normalize();
-      if (dive && x > routeEnd) trip.shown = false; // gone behind the planet while the camera pushes in
+    }
     }
     const enter = trip.fresh ? smoother(clamp01(x / BLEND)) : 1;
     trip.weight = enter * (1 - smoother(clamp01((x - 1 + BLEND) / BLEND)));

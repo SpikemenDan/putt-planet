@@ -10,21 +10,11 @@
 export const ROUTES = Object.freeze({});
 
 /**
- * Routes traced from the owner's reference sketch (2026-11-19), laid out as the wide view sees them rather than in space. Each point is
- * [gx, gy, a, s]: near the planet left behind, (gx, gy) in its radii from its centre on the screen (x right, y up); further out,
- * (a, s) along the screen line to the planet ahead (0 to 1) and to the left of it, in that line's lengths. The trip blends from one
- * to the other as the point leaves the planet behind. Gaia to Ares: off Gaia's upper left, down round its left side and under it,
- * then a long climb up and right to Ares.
+ * Trips flown as a hop (owner, 2026-11-19: "it just zooms out and zooms into the other planet and the vehicle comes in from the right"):
+ * no route, the camera pulls back to the wide view and pushes in to the planet ahead while the rocket flies off the left of the screen
+ * and back in from the right. Gaia to Ares first, for the owner's approval before the rest.
  */
-export const SKETCHES = Object.freeze({
-  'gaia>ares': [[-1.069, 0.737, -0.142, 0.175], [-1.463, 0.013, -0.243, 0.074], [-1.241, -0.786, -0.245, -0.07], [-0.457, -1.18, -0.134, -0.174], [0.405, -1.205, 0.009, -0.221], [1.198, -1.067, 0.147, -0.236], [2.005, -0.79, 0.295, -0.23], [2.803, -0.426, 0.446, -0.208], [3.551, -0.006, 0.591, -0.175], [4.239, 0.465, 0.729, -0.13], [4.903, 0.994, 0.866, -0.074]],
-});
-
-/**
- * Trips that dive behind the planet ahead and rise over its horizon (owner, 2026-11-19, from the reference sketch): the route ends
- * behind that planet instead of at the parked spot. Gaia to Ares first, for the owner's approval before the rest.
- */
-export const DIVES = Object.freeze(['gaia>ares']);
+export const HOPS = Object.freeze(['gaia>ares']);
 
 /** A gentle arc, for a pair with no drawn route. */
 export const DEFAULT_ROUTE = Object.freeze([[0.5, 0.18, 0.06]]);

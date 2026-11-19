@@ -1274,15 +1274,17 @@ function fakeClock() {
     sky.setView({ space: true, target: 'gaia' }); run(10, sizes);
     assert.ok(small >= 0.5 - 1e-6 && small < 0.9, `space.rocketFar = 2 keeps it at least half size (smallest ${small.toFixed(3)})`);
     display.space.rocketFar = 8;
-    // Gaia to Ares dives (owner, 2026-11-19, the reference sketch): along the route, gone behind Ares while the camera pushes in, then
-    // up over its horizon from the lower right into the parked spot.
-    const dive = [];
+    // Gaia to Ares hops (owner, 2026-11-19): the rocket flies off the left, is gone while the camera zooms out and in, then flies in
+    // from the right into its parked spot, nose left all the way.
+    const hop = [];
     sky.setView({ space: true, target: 'ares' });
-    run(9, () => { const { travel } = sky.space; if (travel > 0 && travel < 1) dive.push({ travel, out: sky.lobbyStats.out, screen: sky.lobbyStats.screen.slice() }); });
-    if (process.env.PP_DIVE_LOG) for (const d of dive) console.error('DIVE', d.travel.toFixed(3), d.out ? 'out' : '   ', d.screen.map(v => v.toFixed(2)).join(' '));
-    const hid = dive.findIndex(d => d.travel > 0.5 && d.out), rose = dive.slice(hid).findIndex(d => !d.out) + hid;
-    assert.ok(hid > 0 && rose > hid, `Gaia to Ares: the rocket goes behind Ares, then comes back (hidden at ${dive[hid]?.travel.toFixed(2)}, back at ${dive[rose]?.travel.toFixed(2)})`);
-    assert.ok(dive[rose].screen[0] > 0 && dive[rose].screen[1] < 0, `and rises from the lower right (${dive[rose].screen.map(v => v.toFixed(2))})`);
+    run(9, () => { const { travel } = sky.space; if (travel > 0 && travel < 1) hop.push({ travel, out: sky.lobbyStats.out, screen: sky.lobbyStats.screen.slice(), nose: sky.lobbyStats.nose[0] }); });
+    if (process.env.PP_DIVE_LOG) for (const h of hop) console.error('HOP', h.travel.toFixed(3), h.out ? 'out' : '   ', h.screen.map(v => v.toFixed(2)).join(' '));
+    const gone = hop.findIndex(h => h.out), back = hop.slice(gone).findIndex(h => !h.out) + gone;
+    assert.ok(gone > 0 && back > gone && hop[gone].travel < 0.4 && hop[back].travel > 0.5, `Gaia to Ares: the rocket leaves, then comes back (gone at ${hop[gone]?.travel.toFixed(2)}, back at ${hop[back]?.travel.toFixed(2)})`);
+    assert.ok(hop.slice(0, gone).every(h => h.screen[0] <= 0.05), 'it leaves to the left');
+    assert.ok(hop[back].screen[0] > 0.5, `and comes back in from the right (${hop[back].screen.map(v => v.toFixed(2))})`);
+    assert.ok(hop.every(h => h.out || h.nose < 0), 'nose left all the way');
     assert.ok(sky.lobbyStats.nose[0] < 0 && sky.lobbyStats.covers === 0, 'parked at Ares, nose-left');
     // The long way, Ares to Luna: blasting off it stays in the picture until it is gone, gliding, never jumping.
     sky.setView({ space: true, target: 'luna' });

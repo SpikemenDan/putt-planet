@@ -95,7 +95,7 @@ export const DISPLAY_UNITS = Object.freeze({
   'trip.wideTilt': 'degrees',
   'trip.wideMargin': 'multiplier',
   'trip.out': 'fraction of the trip',
-  'trip.emerge': 'fraction of the trip',
+  'trip.arrive': 'fraction of the trip',
   'trip.in': 'fraction of the trip',
   'menu.buttonScale': 'multiplier',
   'menu.stagger': 'seconds',
