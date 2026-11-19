@@ -3,9 +3,11 @@
  * plane or rocket that is a real object in the planet scene's world, lit by its one sun, carried along with the camera as the camera
  * flies between planets (src/render/planet-scene.js, `setView`). Parked, it sits in the lobby's free area in its calm side-on pose.
  * A trip out into space waits for the helicopter or plane to hand over to a rocket (a quick cartoon dash). Then the rocket flies a real
- * path through the world (src/render/lobby-path.js, shaped by the planet scene): one fixed, hand-shaped curve per trip, leaving along
- * its nose and arriving at its parked spot in the next view, where it stops dead (owner, 2026-11-18: "Hand-drawn paths"). The camera holds a wide view while it crosses, so it is drawn where it really is, shrunk when far
- * away and covered by a planet it passes behind; parked, it keeps circling as the planet turns under it. The plane or helicopter takes over
+ * path through the world (src/render/lobby-path.js, shaped by the planet scene): round the planet it leaves, across, and round behind
+ * the planet ahead, seen from a wide view that holds all three planets. Hidden behind that planet (`trip.shown` false) while the camera
+ * zooms in, it then slides in from the right to its parked spot and stops dead (owner, 2026-11-18). On the route it is drawn where it
+ * really is, shrunk when far away and covered by a planet it passes behind; parked, it keeps circling as the planet turns under it. The
+ * plane or helicopter takes over
  * again once it is home. Wind lines and wakes show only while it is inside a planet's air.
  *
  * Drawn in its own pass after the planets (depth cleared), so a planet never cuts through it while parked; on a trip the planets stand
@@ -112,7 +114,7 @@ export function createLobbyFlight({ THREE, display, reducedMotion = false }) {
 
   /**
    * One frame. `view` = { camera, sun (the sun's world position), width, height, ratio, dt, trip: { travelling, land, inSpace, weight,
-   * position, heading (world, along the route), blockers: [{ centre, radius }] },
+   * shown (false hides it), position, heading (world, along the route), blockers: [{ centre, radius }] },
    * airAt(position) -> boolean }.
    */
   function update(view) {
@@ -191,7 +193,7 @@ export function createLobbyFlight({ THREE, display, reducedMotion = false }) {
       const real = chaseP.length(), shown = Math.max(depth * ROUTE.near, Math.min(real, depth * far));
       chaseP.multiplyScalar(shown / Math.max(1e-6, real));
       size = 1 + (depth / shown - 1) * w; // drawn size against parked
-      chaseP.y += Math.sin(t * 1.1 + 0.5) * 0.015 * shown;
+      chaseP.y += Math.sin(t * 1.1 + 0.5) * 0.015 * depth; // a bob the size of the parked one, so far away it never lifts it out from behind a planet
       // Nose along the route; banking into the turn from how fast the heading swings round.
       noseC.copy(trip.heading).applyQuaternion(camQInv).normalize();
       const upW = v1.set(0, 1, 0).applyQuaternion(camera.quaternion);
@@ -221,6 +223,7 @@ export function createLobbyFlight({ THREE, display, reducedMotion = false }) {
     follow.position.copy(camera.position);
     follow.quaternion.copy(camera.quaternion);
     frameOf.visible = w < 0.5;
+    body.visible = !(w > 0 && trip.shown === false); // out of sight behind the planet ahead while the camera zooms in
     vScene.updateMatrixWorld(true);
 
     // Air: only inside a planet's air shell, from where the vehicle really is.
@@ -246,7 +249,7 @@ export function createLobbyFlight({ THREE, display, reducedMotion = false }) {
 
     stats.swapping = swapping || w > 0.01;
     stats.trip = trip.travelling ? (trip.land > 0 ? 'arriving' : 'travelling') : null;
-    stats.air = airLevel; stats.chase = w; stats.hidden = hidden; stats.size = size; stats.covers = occluders.filter(o => o.visible).length;
+    stats.air = airLevel; stats.chase = w; stats.hidden = hidden; stats.size = size; stats.out = !body.visible; stats.covers = occluders.filter(o => o.visible).length;
     const ahead = Math.max(1e-6, -body.position.z);
     stats.screen = [body.position.x / ahead / (tan * aspect), body.position.y / ahead / tan]; // where it is drawn, -1..1 across the view
     // Whether the rocket, as drawn, has a planet in front of its centre (what the viewer sees, not where it really is).

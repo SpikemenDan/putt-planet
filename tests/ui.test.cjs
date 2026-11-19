@@ -1264,19 +1264,23 @@ function fakeClock() {
     run(4);
     assert.equal(sky.lobbyStats.swapping, false, 'and settles within a few seconds');
     assert.ok(sky.lobbyStats.air > 0.9, "wind while in Gaia's air");
-    // A journey (owner, 2026-11-18): the camera flies to Luna and the rocket flies along with it, chasing Luna, then settles side-on.
+    // A journey (owner, 2026-11-18: "we zoom out and we see Gaia, Luna and Ares and the rocket spins around Gaia goes to Ares and then
+    // orbits and goes BEHIND and then as it's going behind it dissappear ... the camera zooms into Ares and then the rocket reappears and
+    // then slides in from the right"): the same for every planet.
     sky.setView({ space: true, target: 'luna' });
-    const seen = new Set(); let chase = 0, small = 1, big = 0, covers = 0, lost = 0;
+    const seen = new Set(); let small = 1, big = 0, covers = 0, hiddenFrames = 0, coveredBeforeHide = false, prev = null, slide = [];
     const sizes = () => { small = Math.min(small, sky.lobbyStats.size); big = Math.max(big, sky.lobbyStats.size); };
-    const lostNow = () => { const { screen, covered } = sky.lobbyStats; return covered || Math.abs(screen[0]) > 1 || Math.abs(screen[1]) > 1; };
-    run(12, () => { seen.add(sky.lobbyStats.trip); chase = Math.max(chase, sky.lobbyStats.chase); sizes(); covers = Math.max(covers, sky.lobbyStats.covers); if (sky.space.travel < 1 && lostNow()) lost++; });
-    // The planets stand in its pass as depth, but it flies a fixed path in front of them and the camera chases it (owner, 2026-11-18:
-    // "Hand-drawn paths", "follow the rocket to an extent"), so it is never covered or out of the picture on the way.
-    assert.ok(covers === 3 && lost === 0, `on the way the three planets can cover it, but it stays in sight (${lost} frames lost)`);
+    const watch = () => { const st = sky.lobbyStats, { travel } = sky.space; seen.add(st.trip); sizes(); covers = Math.max(covers, st.covers);
+      if (travel > 0 && travel < 1) { if (st.out) { hiddenFrames++; if (prev && !prev.out) coveredBeforeHide = prev.covered; } else if (hiddenFrames) slide.push(st.screen[0]); }
+      prev = { out: st.out, covered: st.covered }; };
+    run(12, watch);
+    assert.ok(covers === 3, 'on the way the three planets can cover it');
+    assert.ok(hiddenFrames > 20, `it disappears while the camera zooms in (${hiddenFrames} frames hidden)`);
+    assert.ok(coveredBeforeHide, 'behind Luna, out of sight, when it disappears');
+    assert.ok(slide.length > 5 && slide[0] > 1 && slide.every((v, i) => !i || v < slide[i - 1] + 1e-9), `then slides in from off the right (${slide[0]?.toFixed(2)} on)`);
+    assert.ok(Math.abs(slide.at(-1) - sky.lobbyStats.screen[0]) < 0.02, 'and stops dead at its parked spot');
     assert.ok(seen.has('travelling') && seen.has('arriving'), 'it travels, then arrives');
-    assert.ok(chase > 0.9, 'on the way the rocket turns to chase Luna');
     assert.equal(sky.lobbyStats.trip, null, 'arrived');
-    assert.equal(sky.lobbyStats.chase, 0, 'and back side-on');
     assert.equal(sky.lobbyStats.covers, 0, 'parked, nothing covers it');
     assert.ok(sky.lobbyStats.nose[0] < 0, 'parked nose-left, flying on along its orbit (owner, 2026-11-18)');
     assert.equal(sky.lobbyStats.vehicle, 'rocket');
@@ -1288,32 +1292,26 @@ function fakeClock() {
     sky.setView({ space: true, target: 'gaia' }); run(10, sizes);
     assert.ok(small >= 0.5 - 1e-6 && small < 0.9, `space.rocketFar = 2 keeps it at least half size (smallest ${small.toFixed(3)})`);
     display.space.rocketFar = 8;
-    // The long way, Ares to Luna (owner, 2026-11-18: "show the rocket when it goes from ares to luna a little more"): the view follows
-    // it across, so it never leaves the picture, and the picture never jumps. As the view comes in to Luna the rocket sweeps round the
-    // front of it (never behind it: owner, 2026-11-18, it "goes behind ares and stays there"), into the finished view, and stops dead
-    // there (owner, 2026-11-18: "the camera zoom and the rocket comes in the view and just suddenly stops").
+    // The long way, Ares to Luna: in the wide view it stays in the picture until it goes behind Luna, gliding, never jumping.
     sky.setView({ space: true, target: 'ares' }); run(9);
     sky.setView({ space: true, target: 'luna' });
-    let off = 0, frames = 0, jump = 0, last = null, endIn = 0, endOut = 0;
-    run(9, () => { const { screen, hidden } = sky.lobbyStats, { travel, arrive } = sky.space; if (!(travel > 0 && travel < 1) || hidden) return;
-      const out = Math.abs(screen[0]) > 1 || Math.abs(screen[1]) > 1;
-      if (arrive > 0) { if (out) endOut++; else endIn++; }
-      if (arrive > 0) { last = null; return; }
-      frames++; if (out) off++;
+    let off = 0, frames = 0, jump = 0, last = null;
+    run(9, () => { const { screen, out, covered } = sky.lobbyStats, { travel } = sky.space; if (!(travel > 0 && travel < 1) || out || covered) { last = null; return; }
+      if (travel > 0.6) return; // hidden by then, and the slide in comes from off the screen
+      frames++; if (Math.abs(screen[0]) > 1 || Math.abs(screen[1]) > 1) off++;
       if (last) jump = Math.max(jump, Math.hypot(screen[0] - last[0], screen[1] - last[1])); last = screen.slice(); });
-    assert.ok(frames > 60 && off === 0, `Ares to Luna, the rocket stays in view across (${off} of ${frames} frames out)`);
-    assert.ok(endIn >= 3 && endOut === 0, `and stays in view while the view comes in to Luna, until it stops (${endIn} frames in, ${endOut} out)`);
-    assert.ok(jump < 0.25, `and glides across it (biggest step ${jump.toFixed(3)} of the view per frame)`);
-    // Each trip's path is fixed, and the trip.* settings shape it: raising its first point lifts the camera chasing it mid-trip.
+    assert.ok(frames > 60 && off === 0, `Ares to Luna, the rocket stays in view until it goes behind Luna (${off} of ${frames} frames out)`);
+    assert.ok(jump < 0.25, `and glides (biggest step ${jump.toFixed(3)} of the view per frame)`);
+    // The same trip flies the same way every time, and the trip.* settings shape it: a steeper wide view lifts the camera mid-trip.
     const midTrip = () => { let y = null; sky.setView({ space: true, target: 'ares' }); run(9);
-      sky.setView({ space: true, target: 'luna' }); run(9, () => { if (y === null && sky.space.travel >= 0.35) y = sky.space.camera[1]; }); return y; };
+      sky.setView({ space: true, target: 'luna' }); run(9, () => { if (y === null && sky.space.travel >= 0.4) y = sky.space.camera[1]; }); return y; };
     const flat = midTrip(), again = midTrip();
-    assert.ok(Math.abs(flat - again) < 1e-6, `the same trip flies the same path every time (${flat} then ${again})`);
-    const was = display.trip.aresLuna.up1;
-    display.trip.aresLuna.up1 = 0.5;
+    assert.ok(Math.abs(flat - again) < 1e-6, `the same trip flies the same way every time (${flat} then ${again})`);
+    const was = display.trip.wideTilt;
+    display.trip.wideTilt = 75;
     const raised = midTrip();
-    display.trip.aresLuna.up1 = was;
-    assert.ok(raised - flat > 1, `trip.aresLuna.up1 lifts the path (camera height mid-trip ${flat.toFixed(1)} to ${raised.toFixed(1)})`);
+    display.trip.wideTilt = was;
+    assert.ok(raised - flat > 1, `trip.wideTilt lifts the wide view (camera height mid-trip ${flat.toFixed(1)} to ${raised.toFixed(1)})`);
     // A plane bound for space becomes a rocket for the trip; spamming planets never builds a second vehicle.
     sky.setView({ space: false, target: 'gaia' });
     sky.setLobby(lobby('plane', ['#ff4fb8']));
