@@ -1266,11 +1266,13 @@ function fakeClock() {
     assert.ok(sky.lobbyStats.air > 0.9, "wind while in Gaia's air");
     // A journey (owner, 2026-11-18): the camera flies to Luna and the rocket flies along with it, chasing Luna, then settles side-on.
     sky.setView({ space: true, target: 'luna' });
-    const seen = new Set(); let chase = 0, small = 1, big = 0, covers = 0, behind = 0;
+    const seen = new Set(); let chase = 0, small = 1, big = 0, covers = 0, lost = 0;
     const sizes = () => { small = Math.min(small, sky.lobbyStats.size); big = Math.max(big, sky.lobbyStats.size); };
-    run(12, () => { seen.add(sky.lobbyStats.trip); chase = Math.max(chase, sky.lobbyStats.chase); sizes(); covers = Math.max(covers, sky.lobbyStats.covers); if (sky.lobbyStats.hidden) behind++; });
-    // It goes behind planets for real (owner, 2026-11-18: "physically make it go behind the planets"): they stand in its pass as depth.
-    assert.ok(covers === 3 && behind > 0, `on the way the three planets cover it where they stand in front (${behind} frames behind one)`);
+    const lostNow = () => { const { screen, covered } = sky.lobbyStats; return covered || Math.abs(screen[0]) > 1 || Math.abs(screen[1]) > 1; };
+    run(12, () => { seen.add(sky.lobbyStats.trip); chase = Math.max(chase, sky.lobbyStats.chase); sizes(); covers = Math.max(covers, sky.lobbyStats.covers); if (sky.space.travel < 1 && lostNow()) lost++; });
+    // The planets stand in its pass as depth, but it flies a fixed path in front of them and the camera chases it (owner, 2026-11-18:
+    // "Hand-drawn paths", "follow the rocket to an extent"), so it is never covered or out of the picture on the way.
+    assert.ok(covers === 3 && lost === 0, `on the way the three planets can cover it, but it stays in sight (${lost} frames lost)`);
     assert.ok(seen.has('travelling') && seen.has('arriving'), 'it travels, then arrives');
     assert.ok(chase > 0.9, 'on the way the rocket turns to chase Luna');
     assert.equal(sky.lobbyStats.trip, null, 'arrived');
@@ -1295,13 +1297,23 @@ function fakeClock() {
     let off = 0, frames = 0, jump = 0, last = null, endIn = 0, endOut = 0;
     run(9, () => { const { screen, hidden } = sky.lobbyStats, { travel, arrive } = sky.space; if (!(travel > 0 && travel < 1) || hidden) return;
       const out = Math.abs(screen[0]) > 1 || Math.abs(screen[1]) > 1;
-      if (arrive >= 1) { if (out) endOut++; else endIn++; }
+      if (arrive > 0) { if (out) endOut++; else endIn++; }
       if (arrive > 0) { last = null; return; }
       frames++; if (out) off++;
       if (last) jump = Math.max(jump, Math.hypot(screen[0] - last[0], screen[1] - last[1])); last = screen.slice(); });
     assert.ok(frames > 60 && off === 0, `Ares to Luna, the rocket stays in view across (${off} of ${frames} frames out)`);
-    assert.ok(endIn >= 3 && endOut === 0, `and is in the finished view before it stops (${endIn} frames in, ${endOut} out)`);
+    assert.ok(endIn >= 3 && endOut === 0, `and stays in view while the view comes in to Luna, until it stops (${endIn} frames in, ${endOut} out)`);
     assert.ok(jump < 0.25, `and glides across it (biggest step ${jump.toFixed(3)} of the view per frame)`);
+    // Each trip's path is fixed, and the trip.* settings shape it: raising its first point lifts the camera chasing it mid-trip.
+    const midTrip = () => { let y = null; sky.setView({ space: true, target: 'ares' }); run(9);
+      sky.setView({ space: true, target: 'luna' }); run(9, () => { if (y === null && sky.space.travel >= 0.35) y = sky.space.camera[1]; }); return y; };
+    const flat = midTrip(), again = midTrip();
+    assert.ok(Math.abs(flat - again) < 1e-6, `the same trip flies the same path every time (${flat} then ${again})`);
+    const was = display.trip.aresLuna.up1;
+    display.trip.aresLuna.up1 = 0.5;
+    const raised = midTrip();
+    display.trip.aresLuna.up1 = was;
+    assert.ok(raised - flat > 1, `trip.aresLuna.up1 lifts the path (camera height mid-trip ${flat.toFixed(1)} to ${raised.toFixed(1)})`);
     // A plane bound for space becomes a rocket for the trip; spamming planets never builds a second vehicle.
     sky.setView({ space: false, target: 'gaia' });
     sky.setLobby(lobby('plane', ['#ff4fb8']));

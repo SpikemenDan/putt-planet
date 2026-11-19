@@ -3,9 +3,8 @@
  * plane or rocket that is a real object in the planet scene's world, lit by its one sun, carried along with the camera as the camera
  * flies between planets (src/render/planet-scene.js, `setView`). Parked, it sits in the lobby's free area in its calm side-on pose.
  * A trip out into space waits for the helicopter or plane to hand over to a rocket (a quick cartoon dash). Then the rocket flies a real
- * route through the world (src/render/lobby-route.js, planned by the planet scene): straight on the way its nose points, one smooth
- * curve toward the planet ahead, then sideways onto that planet's orbit, round it to where it parks (owner, 2026-11-18: "the rocket
- * flies across", "curve into orbit"). The camera holds a wide view while it crosses, so it is drawn where it really is, shrunk when far
+ * path through the world (src/render/lobby-path.js, shaped by the planet scene): one fixed, hand-shaped curve per trip, leaving along
+ * its nose and arriving at its parked spot in the next view, where it stops dead (owner, 2026-11-18: "Hand-drawn paths"). The camera holds a wide view while it crosses, so it is drawn where it really is, shrunk when far
  * away and covered by a planet it passes behind; parked, it keeps circling as the planet turns under it. The plane or helicopter takes over
  * again once it is home. Wind lines and wakes show only while it is inside a planet's air.
  *

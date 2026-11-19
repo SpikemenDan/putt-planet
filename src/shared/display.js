@@ -9,7 +9,8 @@
  * (loading screen, src/render/planet-scene.js) uses degrees, seconds, CSS px and a screen-height fraction as listed per field;
  * the `menu` group (main menu, src/ui/Landing.jsx) uses a multiplier, seconds, CSS px and degrees; the `lobby` group (the 3D lobby
  * vehicles, src/render/lobby-flight.js in the planet sky) uses a multiplier, degrees, ball diameters and seconds; the `space` group (the Solo
- * destination view in src/render/planet-scene.js) uses seconds, fractions and a multiplier. The `environment` group (VIS-E
+ * destination view in src/render/planet-scene.js) uses seconds, fractions and a multiplier; the `trip` group (the lobby rocket's
+ * fixed path between planets, src/render/lobby-path.js) uses fractions of the distance between the two planets. The `environment` group (VIS-E
  * world atmosphere, src/render/atmosphere.js) holds multipliers for the Ares and Luna scenery.
  */
 
@@ -48,6 +49,30 @@ export const DISPLAY_FIELDS = Object.freeze([
   ['space.rocketFar', 1, 30, 'Destination view: how small the lobby rocket gets far away on a trip between planets: at most this many times smaller than parked (1 keeps it parked size). It is never drawn bigger than parked.'],
   ['space.tripFollow', 0, 1, 'Destination view: how closely the view follows the lobby rocket across. Every trip leans after it by half this; on a long trip (to or from Ares) it also closes in, instead of holding back far enough to show the whole route: 0 holds back, 1 follows at about the Gaia to Luna view size.'],
   ['space.revolveSeconds', 30, 600, 'Seconds for one slow swing of the planets a few degrees around the sun and back (owner, 2026-11-17). The swing shows in space, but its clock runs only in the main menu, so the planet menu holds them still (owner, 2026-11-18).'],
+  ['trip.gaiaLuna.out1', -0.6, 0.6, 'Planet menu trip, Gaia to Luna: the lobby rocket flies one fixed curve (owner, 2026-11-18: hand-drawn paths); first point (a third of the way): how far it bows toward the camera, as a fraction of the distance between the planets (negative bows away, behind).'],
+  ['trip.gaiaLuna.up1', -0.6, 0.6, 'Planet menu trip, Gaia to Luna: the lobby rocket flies one fixed curve (owner, 2026-11-18: hand-drawn paths); first point: how far it rises, as a fraction of the distance between the planets (negative dips).'],
+  ['trip.gaiaLuna.out2', -0.6, 0.6, 'Planet menu trip, Gaia to Luna: the lobby rocket flies one fixed curve (owner, 2026-11-18: hand-drawn paths); second point (two thirds of the way): how far it bows toward the camera, as a fraction of the distance between the planets.'],
+  ['trip.gaiaLuna.up2', -0.6, 0.6, 'Planet menu trip, Gaia to Luna: the lobby rocket flies one fixed curve (owner, 2026-11-18: hand-drawn paths); second point: how far it rises, as a fraction of the distance between the planets.'],
+  ['trip.lunaGaia.out1', -0.6, 0.6, 'Planet menu trip, Luna to Gaia: the lobby rocket flies one fixed curve (owner, 2026-11-18: hand-drawn paths); first point (a third of the way): how far it bows toward the camera, as a fraction of the distance between the planets (negative bows away, behind).'],
+  ['trip.lunaGaia.up1', -0.6, 0.6, 'Planet menu trip, Luna to Gaia: the lobby rocket flies one fixed curve (owner, 2026-11-18: hand-drawn paths); first point: how far it rises, as a fraction of the distance between the planets (negative dips).'],
+  ['trip.lunaGaia.out2', -0.6, 0.6, 'Planet menu trip, Luna to Gaia: the lobby rocket flies one fixed curve (owner, 2026-11-18: hand-drawn paths); second point (two thirds of the way): how far it bows toward the camera, as a fraction of the distance between the planets.'],
+  ['trip.lunaGaia.up2', -0.6, 0.6, 'Planet menu trip, Luna to Gaia: the lobby rocket flies one fixed curve (owner, 2026-11-18: hand-drawn paths); second point: how far it rises, as a fraction of the distance between the planets.'],
+  ['trip.gaiaAres.out1', -0.6, 0.6, 'Planet menu trip, Gaia to Ares: the lobby rocket flies one fixed curve (owner, 2026-11-18: hand-drawn paths); first point (a third of the way): how far it bows toward the camera, as a fraction of the distance between the planets (negative bows away, behind).'],
+  ['trip.gaiaAres.up1', -0.6, 0.6, 'Planet menu trip, Gaia to Ares: the lobby rocket flies one fixed curve (owner, 2026-11-18: hand-drawn paths); first point: how far it rises, as a fraction of the distance between the planets (negative dips).'],
+  ['trip.gaiaAres.out2', -0.6, 0.6, 'Planet menu trip, Gaia to Ares: the lobby rocket flies one fixed curve (owner, 2026-11-18: hand-drawn paths); second point (two thirds of the way): how far it bows toward the camera, as a fraction of the distance between the planets.'],
+  ['trip.gaiaAres.up2', -0.6, 0.6, 'Planet menu trip, Gaia to Ares: the lobby rocket flies one fixed curve (owner, 2026-11-18: hand-drawn paths); second point: how far it rises, as a fraction of the distance between the planets.'],
+  ['trip.aresGaia.out1', -0.6, 0.6, 'Planet menu trip, Ares to Gaia: the lobby rocket flies one fixed curve (owner, 2026-11-18: hand-drawn paths); first point (a third of the way): how far it bows toward the camera, as a fraction of the distance between the planets (negative bows away, behind).'],
+  ['trip.aresGaia.up1', -0.6, 0.6, 'Planet menu trip, Ares to Gaia: the lobby rocket flies one fixed curve (owner, 2026-11-18: hand-drawn paths); first point: how far it rises, as a fraction of the distance between the planets (negative dips).'],
+  ['trip.aresGaia.out2', -0.6, 0.6, 'Planet menu trip, Ares to Gaia: the lobby rocket flies one fixed curve (owner, 2026-11-18: hand-drawn paths); second point (two thirds of the way): how far it bows toward the camera, as a fraction of the distance between the planets.'],
+  ['trip.aresGaia.up2', -0.6, 0.6, 'Planet menu trip, Ares to Gaia: the lobby rocket flies one fixed curve (owner, 2026-11-18: hand-drawn paths); second point: how far it rises, as a fraction of the distance between the planets.'],
+  ['trip.lunaAres.out1', -0.6, 0.6, 'Planet menu trip, Luna to Ares: the lobby rocket flies one fixed curve (owner, 2026-11-18: hand-drawn paths); first point (a third of the way): how far it bows toward the camera, as a fraction of the distance between the planets (negative bows away, behind).'],
+  ['trip.lunaAres.up1', -0.6, 0.6, 'Planet menu trip, Luna to Ares: the lobby rocket flies one fixed curve (owner, 2026-11-18: hand-drawn paths); first point: how far it rises, as a fraction of the distance between the planets (negative dips).'],
+  ['trip.lunaAres.out2', -0.6, 0.6, 'Planet menu trip, Luna to Ares: the lobby rocket flies one fixed curve (owner, 2026-11-18: hand-drawn paths); second point (two thirds of the way): how far it bows toward the camera, as a fraction of the distance between the planets.'],
+  ['trip.lunaAres.up2', -0.6, 0.6, 'Planet menu trip, Luna to Ares: the lobby rocket flies one fixed curve (owner, 2026-11-18: hand-drawn paths); second point: how far it rises, as a fraction of the distance between the planets.'],
+  ['trip.aresLuna.out1', -0.6, 0.6, 'Planet menu trip, Ares to Luna: the lobby rocket flies one fixed curve (owner, 2026-11-18: hand-drawn paths); first point (a third of the way): how far it bows toward the camera, as a fraction of the distance between the planets (negative bows away, behind).'],
+  ['trip.aresLuna.up1', -0.6, 0.6, 'Planet menu trip, Ares to Luna: the lobby rocket flies one fixed curve (owner, 2026-11-18: hand-drawn paths); first point: how far it rises, as a fraction of the distance between the planets (negative dips).'],
+  ['trip.aresLuna.out2', -0.6, 0.6, 'Planet menu trip, Ares to Luna: the lobby rocket flies one fixed curve (owner, 2026-11-18: hand-drawn paths); second point (two thirds of the way): how far it bows toward the camera, as a fraction of the distance between the planets.'],
+  ['trip.aresLuna.up2', -0.6, 0.6, 'Planet menu trip, Ares to Luna: the lobby rocket flies one fixed curve (owner, 2026-11-18: hand-drawn paths); second point: how far it rises, as a fraction of the distance between the planets.'],
   ['menu.buttonScale', 0.7, 1.5, 'Main menu: size of the Solo, Party, Custom and Settings buttons as a multiplier.'],
   ['menu.stagger', 0, 0.3, 'Main menu: delay between each button dropping in, in seconds (0 brings them in together).'],
   ['menu.bob', 0, 8, 'Main menu: how far the big buttons bob up and down while idle, in CSS px (0 holds them still). Off under reduced motion.'],
@@ -71,6 +96,7 @@ export const DEFAULT_DISPLAY = {
   aim: { arrowMaxLength: 100, arrowShaftHalfWidth: 2.6, arrowHeadHalfWidth: 7, arrowHeadLength: 14, arrowOpacity: 0.92 },
   loading: { spinSpeed: 4, axisTilt: 12, horizonHeight: 0.48, cameraAltitude: 0.4, cloudCover: 0.6, cloudDrift: 1.4, finishTime: 0.8, atmosphere: 0.75, atmosphereHeight: 0.62, citySize: 1, lunaSize: 2, backgroundDim: 0.72, outlineWidth: 1.6, planes: 3, boats: 9, satellites: 2, paintedMaps: 1, ballPulse: 1.6, ballBounce: 3 },
   space: { orbitSeconds: 120, travelSeconds: 4.5, nebula: 0.6, distance: 1, revolveSeconds: 180, orbitSpin: 0, rocketFar: 8, tripFollow: 0.8 },
+  trip: { gaiaLuna: { out1: 0.15, up1: 0.05, out2: 0.1, up2: 0.03 }, lunaGaia: { out1: 0.15, up1: 0.05, out2: 0.1, up2: 0.03 }, gaiaAres: { out1: 0.15, up1: 0.2, out2: 0.1, up2: 0.03 }, aresGaia: { out1: 0.15, up1: 0.05, out2: 0.1, up2: 0.03 }, lunaAres: { out1: 0.15, up1: 0.05, out2: 0.1, up2: 0.03 }, aresLuna: { out1: 0.15, up1: 0.05, out2: 0.1, up2: 0.03 } },
   menu: { buttonScale: 1, stagger: 0.07, bob: 2, tilt: 1.5, shineSeconds: 5, cardTint: 0.22 },
   lobby: { zoom: 1, sway: 4, bob: 0.08, spinSeconds: 0.4 },
   environment: { aresWind: 1, aresWindDensity: 1, lunaDust: 1, lunaDustDensity: 1, lunaSolar: 1 },
