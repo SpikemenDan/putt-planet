@@ -1023,7 +1023,13 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
       if (!inSpace) target = 'gaia'; // the horizon is Gaia's: leaving space always flies home first
       space.goal = inSpace ? 1 : 0;
       space.nearGoal = near ? 1 : 0;
-      if (target !== space.to) {
+      if (target !== space.to && hop.hold >= 0 && space.travel === 0) {
+        // Re-aimed while the camera still waits for the vehicle to leave (the lobby sends Ares to Luna as home to Gaia, then on to
+        // Luna, in one go): the same hop, from where the camera still is (owner, 2026-11-19: Ares to Luna hops like every trip).
+        space.to = target;
+        if (!hopping()) { space.travel = 1; hop.hold = -1; hop.tail = Infinity; } // back to where it is: nothing to fly
+        else space.near = space.nearGoal;
+      } else if (target !== space.to) {
         if (space.t > 0 && space.travel < 1) { // redirected mid-flight: leave from right here
           snap.on = true; snap.pos.copy(spacePos); snap.look.set(0, 0, -1000).applyQuaternion(poseQuat).add(spacePos); snap.up.set(0, 1, 0).applyQuaternion(poseQuat); snap.fov = FOV + (camera.fov - FOV) / Math.max(0.05, ease(space.t));
         } else snap.on = false;

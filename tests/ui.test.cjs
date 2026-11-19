@@ -1314,16 +1314,18 @@ function fakeClock() {
     const where = { horizon: { space: false }, gaia: { space: true, target: 'gaia' }, luna: { space: true, target: 'luna' }, ares: { space: true, target: 'ares' } };
     const ride = p => lobby(p === 'horizon' ? 'helicopter' : 'minirocket', ['#ff4fb8', null, '#3e8ef7', null, null, null, null, null]);
     const pairs = [['gaia', 'luna'], ['luna', 'gaia'], ['ares', 'luna'], ['luna', 'ares'], ['gaia', 'ares'], ['ares', 'gaia'], ['horizon', 'luna'], ['luna', 'horizon'], ['ares', 'horizon']];
-    for (const [a, b] of pairs) {
+    for (const viaHome of [false, true]) for (const [a, b] of pairs) {
       sky.setView(where[a]); sky.setLobby(ride(a)); run(14);
       assert.equal(sky.lobbyStats.hop, null, `${a}: parked before the trip`);
-      sky.setLobby(ride(b)); sky.setView(where[b]);
+      sky.setLobby(ride(b));
+      if (viaHome) sky.setView({ space: false, target: 'gaia', near: false }); // as the lobby does: its last view is undone (home), then the new one set, at once
+      sky.setView(where[b]);
       const trip = []; run(14, () => { const { travel } = sky.space, { hop, nose } = sky.lobbyStats; trip.push({ travel, hop, nose: nose[0] }); });
       const out = trip.findIndex(h => h.hop < -1), go = trip.findIndex(h => h.travel > 0 && h.travel < 1), back = trip.findIndex(h => h.hop > 0.9);
-      assert.ok(out >= 0 && (go < 0 || out < go), `${a} to ${b}: the vehicle leaves off the left before the camera moves`);
-      assert.ok(back > out && trip[back].travel >= 1, `${a} to ${b}: it flies in from the right once the camera has arrived`);
-      assert.ok(trip.every(h => h.nose < 0), `${a} to ${b}: nose left all the way`);
-      assert.equal(sky.lobbyStats.hop, null, `${a} to ${b}: parked at the end`);
+      assert.ok(out >= 0 && (go < 0 || out < go), `${a} to ${b}${viaHome ? ' (via the lobby)' : ''}: the vehicle leaves off the left before the camera moves`);
+      assert.ok(back > out && trip[back].travel >= 1, `${a} to ${b}${viaHome ? ' (via the lobby)' : ''}: it flies in from the right once the camera has arrived`);
+      assert.ok(trip.every(h => h.nose < 0), `${a} to ${b}${viaHome ? ' (via the lobby)' : ''}: nose left all the way`);
+      assert.equal(sky.lobbyStats.hop, null, `${a} to ${b}${viaHome ? ' (via the lobby)' : ''}: parked at the end`);
     }
     sky.setLobby(lobby('rocket', ['#ff4fb8', null, '#3e8ef7', null, null, null, null, null])); run(2);
     // A plane bound for space becomes a rocket for the trip; spamming planets never builds a second vehicle.
