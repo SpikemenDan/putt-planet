@@ -51,7 +51,6 @@ export function RoomLobby({ hidden }) {
   };
   const destination = lobby?.destination ?? 'gaia';
   const vehicle = lobbyVehicleFor({ solo: !party, destination });
-  const seat = roster.findIndex(p => p.you) + 1;
   const { flight } = flightOf(lobby?.code ?? '', destination);
   const planet = WORLDS.find(w => w.id === destination)?.name ?? 'Gaia';
   // The sky behind follows the destination (useLobbySky): Gaia's air for the plane, Ares's or Luna's sky for the rocket.
@@ -82,7 +81,7 @@ export function RoomLobby({ hidden }) {
         <LobbyTicket vehicle={vehicle} name={nameDraft ?? me?.name ?? ''} onName={setNameDraft} onNameDone={commitName} color={lobby?.myColor ?? null} taken={lobby?.takenColors} hidden={hidden || !lobby}
           onPick={c => send(UiCommands.SET_COLOR, { color: c })} destination={destination}
           code={party ? lobby.code : ''} onCopy={() => send(UiCommands.INVITE)}
-          flight={flight} seat={seat > 0 ? seat : 1} onBack={() => send(UiCommands.LEAVE)} backLabel="Leave room">
+          onBack={() => send(UiCommands.LEAVE)} backLabel="Leave room">
           {lobby?.showStart && <button type="button" className={styles.go} onClick={start} data-ui="start-game">Start Game</button>}
         </LobbyTicket>
       </div>

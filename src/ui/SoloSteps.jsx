@@ -5,7 +5,7 @@ import { lobbyVehicleFor } from '../render/lobby-models.js';
 import { WORLDS } from '../shared/worlds.js';
 import { UiCommands } from './commands.js';
 import { useUiContext, useView } from './context.js';
-import { flightOf, LobbyTicket } from './LobbyTicket.jsx';
+import { LobbyTicket } from './LobbyTicket.jsx';
 import { LobbyVehicle } from './LobbyVehicle.jsx';
 import solo from './SoloLobby.module.css';
 import { ModePicker } from './ModePicker.jsx';
@@ -82,7 +82,6 @@ export function SoloSteps({ name, onName, colorField, connecting, send, onExit, 
   useEffect(() => { overlay?.setAttribute('data-space', ''); return () => overlay?.removeAttribute('data-space'); }, [overlay]);
   useLobbySky(stage, true, world, body);
   const vehicle = lobbyVehicleFor({ solo: true, destination: world }); // the helicopter over Gaia, the Solo rocket to Luna and Ares
-  const { flight } = flightOf('', world);
   // The helicopter is framed between the planet picker on the left, the pass on the right and the mode bar below.
   const insets = () => {
     const view = body.current?.ownerDocument.defaultView;
@@ -102,8 +101,7 @@ export function SoloSteps({ name, onName, colorField, connecting, send, onExit, 
         <PlanetPicker value={world} onPick={setWorld} />
       </div>
       <div className={solo.pass}>
-        <LobbyTicket vehicle={vehicle} solo name={name} onName={onName} color={color} onPick={c => send(UiCommands.SET_COLOR, { color: c })} destination={world}
-          flight={flight} seat={1} onBack={onExit}>
+        <LobbyTicket vehicle={vehicle} solo name={name} onName={onName} color={color} onPick={c => send(UiCommands.SET_COLOR, { color: c })} destination={world} onBack={onExit}>
           <button type="button" className={solo.go} disabled={connecting} onClick={() => send(UiCommands.PLAY_SOLO, { name, mode, world })} data-ui="solo-play">Play Solo</button>
         </LobbyTicket>
       </div>

@@ -337,10 +337,9 @@ function fakeClock() {
     assert.equal(ticket.querySelector('[data-ui=ticket-destination]').textContent, 'Gaia');
     // The planet is picked in the lobby's planet picker, so the Solo pass only shows it (owner, 2026-11-18).
     assert.equal(ticket.querySelector('[data-ui=destination-pick]'), null, 'no planet picker on the Solo pass');
-    assert.deepEqual([...ticket.querySelectorAll('dt')].map(d => d.textContent), ['Flight', 'Helipad', 'Seat'], 'flight, helipad and seat only');
-    assert.equal(ticket.querySelector('dd').textContent, 'PP 4242', 'easter egg: Solo to Gaia flies GAIA on a phone keypad');
-    assert.equal(ticket.querySelector('[data-gate]').dataset.gate, 'lily', 'the helicopter lifts off from a lily pad');
-    assert.match(ticket.querySelector('[data-gate]').textContent, /^Lily Pad [1-9]$/);
+    // A simpler pass (owner, 2026-11-18): no flight details, barcode, seal or stamp.
+    assert.equal(ticket.querySelector('dl, [data-ui=barcode]'), null, 'no flight details or barcode on the pass');
+    assert.equal(ticket.querySelector('[data-ui=ticket-title]').textContent, 'Helicopter Boarding Pass');
     const bar = stage.querySelector('[data-ui=solo-modes] [data-ui=mode-picker]');
     assert.deepEqual([...bar.querySelectorAll('[data-mode]')].map(b => b.dataset.mode), ['standard', 'tournament_3', 'tournament_5', 'tournament_7', 'practice', 'putt_practice', 'pong'], 'the mode bar has every Solo mode');
     assert.equal(bar.querySelector('[aria-checked=true]').dataset.mode, 'standard', 'Casual to start');
@@ -1046,8 +1045,7 @@ function fakeClock() {
       assert.equal(t.commands.length, 0, 'leaving the field again without typing sends nothing');
     }
     assert.equal(lobby.querySelector('[data-ui=party-code] strong').textContent, 'ABCD');
-    assert.equal(lobby.querySelector('[data-ui=lobby-ticket] [data-ui=barcode]').dataset.value, 'ABCD', 'the barcode is the party code');
-    assert.equal(lobby.querySelector('[data-ui=lobby-ticket] dd').textContent, 'AB 23', 'easter egg: the flight is the code, airline AB, then C and D on a phone keypad');
+    assert.ok(lobby.querySelector('[data-ui=lobby-ticket] [data-ui=party-code]'), 'the party code is on the pass stub');
     const tile = v => lobby.querySelector(`[data-ui=mode-picker] [data-mode=${v}]`);
     const chosen = () => lobby.querySelector('[data-ui=mode-picker] [aria-checked=true]')?.dataset.mode ?? null;
     const leading = () => lobby.querySelector('[data-ui=mode-picker] [data-mode][data-leading]')?.dataset.mode;
@@ -1148,7 +1146,6 @@ function fakeClock() {
     assert.ok(planets?.hasAttribute('data-voting'), 'the shared planet picker, voting');
     const worlds = [...planets.querySelectorAll('[data-ui=destination-pick] button')];
     assert.deepEqual(worlds.map(b => b.dataset.world), ['gaia', 'luna', 'ares'], 'everyone votes for the destination in the planet picker');
-    assert.equal(ticket.querySelector('[data-gate]').textContent, 'Cloud 9', 'the plane boards at Cloud 9');
     t.commands.length = 0;
     await click(worlds[2]);
     assert.deepEqual(t.commands, [{ type: 'session', event: { type: 'LOBBY_VOTE', mode: null, world: 'ares' } }]);
@@ -1167,8 +1164,6 @@ function fakeClock() {
     assert.equal(ticket.querySelector('[data-ui=ticket-destination]').textContent, 'Ares');
     assert.equal(ticket.querySelector('[data-ui=ticket-title]').textContent, 'Rocket Boarding Pass');
     assert.equal(ticket.querySelector('[data-ui=ticket-code]').textContent, 'ARS');
-    assert.match(ticket.querySelector('[data-gate]').textContent, /^Canyon [1-9]$/, 'the rocket to Ares launches from a canyon');
-    assert.equal(ticket.querySelector('dt:nth-of-type(1)') && [...ticket.querySelectorAll('dt')][1].textContent, 'Launch pad');
     assert.equal(lobby.querySelector('[data-ui=lobby-vehicle]').dataset.vehicle, 'rocket');
     const stageEl = t.within('[data-ui=planet-stage]');
     assert.ok(stageEl?.hasAttribute('data-low'), 'the rocket flies over the planet: the sky puts it low');
@@ -1182,7 +1177,6 @@ function fakeClock() {
     assert.equal(t.session.getSnapshot().lobbyVotes.host.world, 'ares', 'an unknown world is refused');
     await t.send({ type: 'LOBBY_VOTE', playerId: 'host', mode: null, world: 'luna' });
     assert.equal(t.session.getSnapshot().destination, 'luna', 'two votes for Luna');
-    assert.match(ticket.querySelector('[data-gate]').textContent, /^Crater [1-9]$/, 'to Luna: a crater');
     assert.equal(sc.vehicle, 'rocket');
     await t.send({ type: 'LOBBY_VOTE', playerId: 'host', mode: null, world: 'gaia' });
     assert.equal(t.session.getSnapshot().destination, 'gaia', 'a tie again: the host');
@@ -1192,24 +1186,6 @@ function fakeClock() {
     const guest = await setup({ localId: 'g1', isHost: false });
     assert.ok(guest.within('[data-ui=destination-pick]'), 'guests vote for the destination too');
     await guest.teardown();
-  });
-
-  await scenario('pass barcode (owner, 2026-11-17): the bars are a real Code 39 barcode of the party code', async () => {
-    const { code39 } = await import('../src/ui/code39.js');
-    const { bars, width, text } = code39('upcpw5za');
-    assert.equal(text, 'UPCPW5ZA', 'letters are upper-cased');
-    // Decode the bars back: every character is 5 bars and 4 gaps, 3 of the 9 wide, then a narrow gap.
-    const elements = [];
-    bars.forEach(([x, w], i) => { elements.push(w); const next = bars[i + 1]; if (next) elements.push(next[0] - x - w); });
-    const chars = [];
-    for (let i = 0; i < elements.length; i += 10) chars.push(elements.slice(i, i + 9).map(w => (w > 1.5 ? '1' : '0')).join(''));
-    assert.ok(chars.every(c => c.split('').filter(b => b === '1').length === 3), 'three wide elements per character');
-    assert.equal(chars[0], '010010100', 'starts with *');
-    assert.equal(chars.at(-1), '010010100', 'ends with *');
-    assert.equal(chars.length, 10, 'start, eight characters, stop');
-    assert.equal(width, 10 * 13.5 + 9, 'ten characters of 13.5 units with narrow gaps');
-    assert.equal(new Set(chars.slice(1, -1)).size, 7, 'U, P, C, W, 5, Z, A: seven different patterns (P twice)');
-    assert.equal(code39('a*b!').text, 'AB', 'characters Code 39 cannot encode are dropped');
   });
 
   await scenario('lobby seats (owner, 2026-11-17): seat numbers follow the order players joined, the server\'s join order when it sends one', async () => {
@@ -1273,21 +1249,18 @@ function fakeClock() {
     run(4);
     assert.equal(sky.lobbyStats.swapping, false, 'and settles within a few seconds');
     assert.ok(sky.lobbyStats.air > 0.9, "wind while in Gaia's air");
-    // A journey is a hyperjump (owner, 2026-11-18: "redesign ... the plane orbitting thing to something that looks clean and cool"): the
-    // rocket blasts off into the distance and is gone, warp streaks rush past while the camera flies, and it swoops in from the right.
+    // A journey flies a drawn route (owner, 2026-11-18: "how can i make the path myself for the rocket"): the camera pulls back to
+    // a wide view, the rocket stays in the picture and moves along its route, and the camera pushes in to the planet ahead.
     sky.setView({ space: true, target: 'luna' });
-    const seen = new Set(); let small = 1, big = 0, hiddenFrames = 0, warpMax = 0, warpHidden = 0, slide = [];
+    const seen = new Set(); let small = 1, big = 0, shownFrames = 0, path = [];
     const sizes = () => { small = Math.min(small, sky.lobbyStats.size); big = Math.max(big, sky.lobbyStats.size); };
-    const watch = () => { const st = sky.lobbyStats, { travel, warp } = sky.space; seen.add(st.trip); sizes(); warpMax = Math.max(warpMax, warp);
-      if (travel > 0 && travel < 1) { if (st.out) { hiddenFrames++; warpHidden = Math.max(warpHidden, warp); } else if (hiddenFrames) slide.push(st.screen[0]); } };
+    const watch = () => { const st = sky.lobbyStats, { travel } = sky.space; seen.add(st.trip); sizes();
+      if (travel > 0.2 && travel < 0.8 && !st.out) { shownFrames++; path.push(st.screen.slice()); } };
     run(12, watch);
-    assert.ok(hiddenFrames > 20, `it is gone while the camera flies (${hiddenFrames} frames hidden)`);
-    assert.ok(warpHidden > 0.5, `warp streaks rush past meanwhile (brightest ${warpHidden.toFixed(2)})`);
-    assert.equal(sky.space.warp, 0, 'and stop once it is there');
-    const low = Math.min(...slide), parkedX = sky.lobbyStats.screen[0];
-    assert.ok(slide.length > 5 && slide[0] > 1, `then swoops in from off the right (${slide[0]?.toFixed(2)} on)`);
-    assert.ok(low > parkedX - 0.15 && slide.slice(0, slide.indexOf(low) + 1).every((v, i, a) => !i || v < a[i - 1] + 1e-9), `braking a little past its spot (${low.toFixed(3)} against ${parkedX.toFixed(3)})`);
-    assert.ok(Math.abs(slide.at(-1) - parkedX) < 0.02, 'and settles at its parked spot');
+    assert.equal('warp' in sky.space, false, 'no hyperjump any more');
+    assert.ok(shownFrames > 20, `the rocket stays in the picture mid-trip (${shownFrames} frames)`);
+    const moved = Math.hypot(path.at(-1)[0] - path[0][0], path.at(-1)[1] - path[0][1]);
+    assert.ok(moved > 0.1, `and moves along its route (${moved.toFixed(3)} of the view)`);
     assert.ok(seen.has('travelling') && seen.has('arriving'), 'it travels, then arrives');
     assert.equal(sky.lobbyStats.trip, null, 'arrived');
     assert.equal(sky.lobbyStats.covers, 0, 'parked, nothing covers it');
@@ -1301,13 +1274,22 @@ function fakeClock() {
     sky.setView({ space: true, target: 'gaia' }); run(10, sizes);
     assert.ok(small >= 0.5 - 1e-6 && small < 0.9, `space.rocketFar = 2 keeps it at least half size (smallest ${small.toFixed(3)})`);
     display.space.rocketFar = 8;
+    // Gaia to Ares dives (owner, 2026-11-19, the reference sketch): along the route, gone behind Ares while the camera pushes in, then
+    // up over its horizon from the lower right into the parked spot.
+    const dive = [];
+    sky.setView({ space: true, target: 'ares' });
+    run(9, () => { const { travel } = sky.space; if (travel > 0 && travel < 1) dive.push({ travel, out: sky.lobbyStats.out, screen: sky.lobbyStats.screen.slice() }); });
+    if (process.env.PP_DIVE_LOG) for (const d of dive) console.error('DIVE', d.travel.toFixed(3), d.out ? 'out' : '   ', d.screen.map(v => v.toFixed(2)).join(' '));
+    const hid = dive.findIndex(d => d.travel > 0.5 && d.out), rose = dive.slice(hid).findIndex(d => !d.out) + hid;
+    assert.ok(hid > 0 && rose > hid, `Gaia to Ares: the rocket goes behind Ares, then comes back (hidden at ${dive[hid]?.travel.toFixed(2)}, back at ${dive[rose]?.travel.toFixed(2)})`);
+    assert.ok(dive[rose].screen[0] > 0 && dive[rose].screen[1] < 0, `and rises from the lower right (${dive[rose].screen.map(v => v.toFixed(2))})`);
+    assert.ok(sky.lobbyStats.nose[0] < 0 && sky.lobbyStats.covers === 0, 'parked at Ares, nose-left');
     // The long way, Ares to Luna: blasting off it stays in the picture until it is gone, gliding, never jumping.
-    sky.setView({ space: true, target: 'ares' }); run(9);
     sky.setView({ space: true, target: 'luna' });
     let off = 0, frames = 0, jump = 0, last = null;
     run(9, () => { const { screen, out } = sky.lobbyStats, { travel } = sky.space; if (!(travel > 0 && travel < 1) || out) { last = null; return; }
       if (travel > 0.6) return; // gone by then, and the swoop in comes from off the screen
-      frames++; if (Math.abs(screen[0]) > 1 || Math.abs(screen[1]) > 1) off++;
+      frames++; if (Math.abs(screen[0]) > 1 || Math.abs(screen[1]) > 1) off++; if (process.env.PP_DIVE_LOG) console.error("AL", travel.toFixed(3), screen.map(v => v.toFixed(2)).join(" "));
       if (last) jump = Math.max(jump, Math.hypot(screen[0] - last[0], screen[1] - last[1])); last = screen.slice(); });
     assert.ok(frames > 30 && off === 0, `Ares to Luna, the rocket stays in view until it is gone (${off} of ${frames} frames out)`);
     assert.ok(jump < 0.25, `and glides (biggest step ${jump.toFixed(3)} of the view per frame)`);

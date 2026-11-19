@@ -17,7 +17,7 @@ async function run() {
 
   // Spec: every field has a description, a sane range and a default inside it; no field duplicates a physics number.
   assert.ok(DISPLAY_FIELDS.every(f => f.length === 4 && f[1] < f[2] && f[3].length > 0));
-  assert.equal(DISPLAY_FIELDS.length, 57); // three Solo lobby look fields (lobbyLook: owner, 2026-11-18), seven planet menu trip fields (trip.wideTurn to trip.warp: owner, 2026-11-18, the hyperjump), plus 27 (with loading.paintedMaps and loading.backgroundDim) plus seven VIS-M4 space fields (revolveSeconds: owner, 2026-11-17; orbitSpin and rocketFar: owner, 2026-11-18), five VIS-E environment fields, four VIS-M3 lobby fields, two loading-ball and two Solo-look fields
+  assert.equal(DISPLAY_FIELDS.length, 56); // three Solo lobby look fields (lobbyLook: owner, 2026-11-18), six planet menu trip fields (trip.wideTurn to trip.in: owner, 2026-11-18, the drawn route), plus 27 (with loading.paintedMaps and loading.backgroundDim) plus seven VIS-M4 space fields (revolveSeconds: owner, 2026-11-17; orbitSpin and rocketFar: owner, 2026-11-18), five VIS-E environment fields, four VIS-M3 lobby fields, two loading-ball and two Solo-look fields
   assert.equal(TUNING.ball.radius, 5, 'physical radius stays in TUNING');
   assert.equal('radius' in DISPLAY.ball, false);
 

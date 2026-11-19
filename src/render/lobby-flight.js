@@ -3,9 +3,9 @@
  * plane or rocket that is a real object in the planet scene's world, lit by its one sun, carried along with the camera as the camera
  * flies between planets (src/render/planet-scene.js, `setView`). Parked, it sits in the lobby's free area in its calm side-on pose.
  * Changing vehicle is a cartoon poof: the old one squashes away in a puff of cloud and the new one pops out of it. A trip out into
- * space waits for the helicopter or plane to poof into a rocket. Then the planet scene stages the hyperjump (owner, 2026-11-18): the
- * rocket winds up, blasts off into the distance, is gone (`trip.shown` false) while the camera flies to the planet ahead, and swoops in
- * from the right to its parked spot; it is drawn where the scene puts it, shrunk when far away. Parked, it keeps circling as the planet
+ * space waits for the helicopter or plane to poof into a rocket. Then the planet scene flies it along the owner's drawn route (owner,
+ * 2026-11-18) from its parked spot to its parked spot at the planet ahead while the camera pulls back to a wide view and pushes in
+ * again; it is drawn where the scene puts it, shrunk when far away. Parked, it keeps circling as the planet
  * turns under it. The plane or helicopter takes over again once it is home. Wind lines and wakes show only while it is inside a planet's air.
  *
  * Drawn in its own pass after the planets (depth cleared), so a planet never cuts through it while parked; on a trip the planets stand
