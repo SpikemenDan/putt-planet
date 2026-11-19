@@ -56,6 +56,16 @@ export const seatOf = index => index < 0 ? '--' : (Math.floor(index / 2) + 1) + 
 /** Boarding (owner, 2026-11-19): "Awaiting" until Start or Play is pressed, then the 5 s countdown as 00:05 … 00:01, then "Now". */
 export const boardingText = seconds => seconds === null || seconds === undefined ? 'Awaiting' : seconds > 0 ? '00:' + String(seconds).padStart(2, '0') : 'Now';
 
+/**
+ * The boarding countdown as a split-flap board (owner, 2026-11-19): each digit is a small tile, and a tile whose digit changes
+ * remounts (its key is position and digit), so it flips down into place on the tick; the colon stays put.
+ */
+function Clock({ text }) {
+  return [...text].map((ch, i) => ch === ':'
+    ? <span key={i} className={styles.colon}>:</span>
+    : <span key={i + ch} className={styles.tile} style={{ '--i': i }}>{ch}</span>);
+}
+
 /** The pass's fields under the route: seat, mode and boarding time. */
 function Fields({ seat, mode, boarding }) {
   const state = boarding === null || boarding === undefined ? 'awaiting' : boarding > 0 ? 'counting' : 'now';
@@ -63,7 +73,7 @@ function Fields({ seat, mode, boarding }) {
     <dl className={styles.fields} data-ui="ticket-fields">
       <div><dt>Seat</dt><dd data-ui="ticket-seat">{seat}</dd></div>
       <div className={styles.modeField}><dt>Mode</dt><dd data-ui="ticket-mode">{mode}</dd></div>
-      <div className={styles.boarding}><dt>Boarding</dt><dd data-ui="ticket-boarding" data-state={state} aria-live="polite">{boardingText(boarding)}</dd></div>
+      <div className={styles.boarding}><dt>Boarding</dt><dd data-ui="ticket-boarding" data-state={state} aria-live="polite">{state === 'counting' ? <Clock text={boardingText(boarding)} /> : boardingText(boarding)}</dd></div>
     </dl>
   );
 }

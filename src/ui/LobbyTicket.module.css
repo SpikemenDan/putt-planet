@@ -115,6 +115,13 @@
 .boarding dd[data-state=awaiting]::before{content:'';display:inline-block;width:7px;height:7px;margin:0 5px 2px 0;border-radius:50%;background:var(--ball,var(--pink));animation:await 1.6s ease-in-out infinite}
 .boarding dd[data-state=counting],.boarding dd[data-state=now]{color:var(--ink)}
 @keyframes await{50%{opacity:.25}}
+/* The countdown's split-flap tiles: black digits on pale card with a hairline split, flipping down on each tick. */
+.boarding dd[data-state=counting]{display:inline-flex;align-items:center;gap:2px;perspective:220px}
+.tile{display:inline-block;min-width:.72em;padding:1px 2px 0;text-align:center;color:var(--ink);border:2px solid var(--ink);border-radius:5px;transform-origin:50% 0;
+  background:linear-gradient(#fff 0 calc(50% - 1px),var(--ink) calc(50% - 1px) calc(50% + .5px),#efe9d6 calc(50% + .5px));
+  box-shadow:0 2px 0 var(--ink);animation:flipTick .38s cubic-bezier(.3,1.45,.55,1) calc(var(--i) * 35ms) both}
+.colon{padding:0 1px;color:var(--ink)}
+@keyframes flipTick{from{transform:rotateX(-95deg);filter:brightness(.7)}to{transform:none;filter:none}}
 /* A quick shine across the header when the ball colour changes. */
 .sheen{position:absolute;inset:0;pointer-events:none;background:linear-gradient(105deg,transparent 30%,rgb(255 255 255 / .55) 48%,transparent 66%);translate:-100% 0;animation:sheen .45s ease-out forwards}
 @keyframes sheen{to{translate:100% 0}}
@@ -142,7 +149,7 @@
 @keyframes jolt{30%{translate:0 -4px}65%{translate:0 1px}}
 @media (prefers-reduced-motion:reduce){
   .ticket{transform:none;transition:none}
-  .sheen,.boarding dd::before{animation:none}
+  .sheen,.boarding dd::before,.tile{animation:none}
   .sheen{display:none}
   .stubWrap{transition:none}
   .ticket[data-torn] .stub{animation:none;visibility:hidden}
