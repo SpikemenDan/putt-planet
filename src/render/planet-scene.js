@@ -811,11 +811,12 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
    * camera moving after the helicopter goes off screen and dont bring the rocket in js move to mars and reveal the rocket"): the camera
    * holds still (`hop.hold`) while the lobby vehicle, as it is, flies off the left of the screen, and waits `space.hopWait` more
    * seconds; then it flies the usual journey, pulling back a little on the way (`space.hopZoom`); once it has zoomed in it waits
-   * `space.hopDelay` seconds (`hop.tail` counts from the zoom-in) and the rocket is revealed in its parked spot, nose left, popping
-   * out of a puff of cloud (lobby-flight.js). A redirected flight is never a hop.
+   * `space.hopDelay` seconds (`hop.tail` counts from the zoom-in) and the vehicle flies in from the right edge to its parked spot
+   * over `space.hopSlide` seconds, nose left (owner, 2026-11-19: "dont make it puff into existence make it from the right to the
+   * center and vice versa for all the planets and directions"; lobby-flight.js). Every trip between planets, either way, is a hop;
+   * a redirected flight never is.
    */
-  const HOPS = Object.freeze(['gaia>ares']);
-  const hopping = () => !snap.on && HOPS.includes(space.from + '>' + space.to);
+  const hopping = () => !snap.on && space.from !== space.to;
   const HOP_HOLD_MAX = 3; // seconds: the camera never waits longer than this for the rocket to leave (a stalled or missing vehicle)
   // hold: seconds the camera has held still (-1: not holding); gone: when the vehicle was off screen (-1: not yet); tail: seconds since the zoom-in
   const hop = { hold: -1, gone: -1, tail: Infinity };
@@ -1029,7 +1030,7 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
         space.from = space.to;
         space.to = target;
         space.travel = space.t > 0 || inSpace ? 0 : 1;
-        const hops = space.travel < 1 && hopping() && !reducedMotion;
+        const hops = space.travel < 1 && hopping() && !reducedMotion && !!flight?.active; // with no vehicle showing there is nothing to wait for
         hop.hold = hops ? 0 : -1; hop.gone = -1; hop.tail = hops ? 0 : Infinity;
         // The trip carries the camera from the closeness it had to the one asked for, so the view it arrives at holds still once there.
         space.nearFrom = space.near;

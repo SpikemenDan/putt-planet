@@ -92,6 +92,7 @@ export const DISPLAY_UNITS = Object.freeze({
   'space.hopZoom': 'fraction of the camera distance',
   'space.hopDelay': 'seconds',
   'space.hopWait': 'seconds',
+  'space.hopSlide': 'seconds',
   'menu.buttonScale': 'multiplier',
   'menu.stagger': 'seconds',
   'menu.bob': 'CSS px',
