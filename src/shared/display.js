@@ -10,8 +10,7 @@
  * the `menu` group (main menu, src/ui/Landing.jsx) uses a multiplier, seconds, CSS px and degrees; the `lobby` group (the 3D lobby
  * vehicles, src/render/lobby-flight.js in the planet sky) uses a multiplier, degrees, ball diameters and seconds; the `lobbyLook` group (the Solo lobby's pass and Play button,
  * src/ui/SoloSteps.jsx, as CSS variables) uses a multiplier and seconds; the `space` group (the Solo
- * destination view in src/render/planet-scene.js) uses seconds, fractions and a multiplier; the `trip` group (the lobby rocket's
- * trip between planets, src/render/planet-scene.js and lobby-routes.js) uses degrees, a multiplier and fractions of the trip. The `environment` group (VIS-E
+ * destination view in src/render/planet-scene.js) uses seconds, fractions and a multiplier. The `environment` group (VIS-E
  * world atmosphere, src/render/atmosphere.js) holds multipliers for the Ares and Luna scenery.
  */
 
@@ -42,19 +41,13 @@ export const DISPLAY_FIELDS = Object.freeze([
   ['loading.paintedMaps', 0, 1, 'Loading screen and destination view: surfaces of Gaia, Ares and Luna. 1 shows the painted maps (src/render/planet-maps.js), 0 the older procedural surfaces (rounded to on or off).'],
   ['loading.ballPulse', 0.6, 4, 'Loading screen: seconds for the glow to run once across the three progress balls (lower is faster). Off under reduced motion.'],
   ['loading.ballBounce', 0, 10, 'Loading screen: how far each progress ball lifts while it glows, in CSS px (0 keeps them still).'],
-  ['space.orbitSeconds', 20, 600, 'Seconds Luna takes to orbit Gaia once (slow by default). It moves only in the main menu; the planet menu holds the planets still (owner, 2026-11-18).'],
-  ['space.travelSeconds', 0.4, 8, 'Destination view: seconds a trip between Gaia and Luna takes: the camera pulls back to a wide view of all three planets, the rocket flies its route, and the camera pushes in to the planet ahead; the trips to and from Ares take 1.25 times as long.'],
+  ['space.orbitSeconds', 20, 600, 'Destination view: seconds Luna takes to orbit Gaia once (slow by default).'],
+  ['space.travelSeconds', 0.4, 8, 'Destination view: seconds the journey between Gaia and Luna takes, the camera riding behind the lobby vehicle and swinging round into the view of the planet as it arrives, in one continuous move; the long trips to and from Ares take 1.6 times as long.'],
   ['space.nebula', 0, 1, 'Destination view: brightness of the coloured nebula clouds behind the planets (0 hides them).'],
   ['space.distance', 0.6, 2, 'Destination view: how far the camera stands from the planet it shows, as a multiplier (higher shows more space around it).'],
-  ['space.orbitSpin', 0, 20, 'Destination view: how fast Luna or Ares turns under the parked lobby rocket, so it keeps circling in orbit, in degrees per second (0 holds it still, the default: owner, 2026-11-18, nothing but the rocket moves in the planet menu). Off under reduced motion.'],
-  ['space.rocketFar', 1, 30, 'Destination view: how small the lobby rocket gets far away on a trip between planets: at most this many times smaller than parked (1 keeps it parked size). It is never drawn bigger than parked.'],
-  ['trip.wideTurn', -180, 180, 'Planet menu trip (owner, 2026-11-18: the camera pulls back to a wide view of all three planets, the rocket flies the drawn route to the planet ahead, and the camera pushes in): turns the wide view about the up, from the usual view of the planets.'],
-  ['trip.wideTilt', 0, 85, 'Planet menu trip (owner, 2026-11-18: the camera pulls back to a wide view of all three planets, the rocket flies the drawn route to the planet ahead, and the camera pushes in): how far the wide view looks down on the planets (0 side on, higher looks down from above).'],
-  ['trip.wideMargin', 1, 2, 'Planet menu trip (owner, 2026-11-18: the camera pulls back to a wide view of all three planets, the rocket flies the drawn route to the planet ahead, and the camera pushes in): room to spare round the planets in the wide view (1 fits them edge to edge in the uncovered part of the screen).'],
-  ['trip.out', 0.05, 0.45, 'Planet menu trip (owner, 2026-11-18: the camera pulls back to a wide view of all three planets, the rocket flies the drawn route to the planet ahead, and the camera pushes in): how long the camera takes to pull back to the wide view at the start of the trip.'],
-  ['trip.arrive', 0.05, 0.45, 'Planet menu trip (owner, 2026-11-18: the camera pulls back to a wide view of all three planets and pushes in to the planet ahead): on a hop (Gaia to Ares for now, owner 2026-11-19), how long the rocket takes to fly in from the right edge of the screen into its parked spot as the camera settles at the planet ahead. Nose left all the way.'],
-  ['trip.in', 0.05, 0.45, 'Planet menu trip (owner, 2026-11-18: the camera pulls back to a wide view of all three planets, the rocket flies the drawn route to the planet ahead, and the camera pushes in): how long the camera takes to push in to the planet ahead at the end of the trip.'],
-  ['space.revolveSeconds', 30, 600, 'Seconds for one slow swing of the planets a few degrees around the sun and back (owner, 2026-11-17). The swing shows in space, but its clock runs only in the main menu, so the planet menu holds them still (owner, 2026-11-18).'],
+  ['space.hopZoom', 0, 1.5, 'Destination view: on a hop (owner, 2026-11-19: Gaia to Ares for now), how far the camera pulls back on the way, as a fraction of its distance (0 flies straight in; much less than a view of all three planets).'],
+  ['space.hopArrive', 0.1, 0.6, 'Destination view: on a hop (owner, 2026-11-19: Gaia to Ares for now), the part of the trip the lobby rocket takes to slide in from the right edge of the screen to its parked spot, nose left. It zips off the left edge as the trip starts.'],
+  ['space.revolveSeconds', 30, 600, 'Destination view: seconds for one slow swing of the planets a few degrees around the sun and back (owner, 2026-11-17).'],
   ['menu.buttonScale', 0.7, 1.5, 'Main menu: size of the Solo, Party, Custom and Settings buttons as a multiplier.'],
   ['menu.stagger', 0, 0.3, 'Main menu: delay between each button dropping in, in seconds (0 brings them in together).'],
   ['menu.bob', 0, 8, 'Main menu: how far the big buttons bob up and down while idle, in CSS px (0 holds them still). Off under reduced motion.'],
@@ -80,8 +73,7 @@ export const DEFAULT_DISPLAY = {
   ball: { visualScale: 1 },
   aim: { arrowMaxLength: 100, arrowShaftHalfWidth: 2.6, arrowHeadHalfWidth: 7, arrowHeadLength: 14, arrowOpacity: 0.92 },
   loading: { spinSpeed: 4, axisTilt: 12, horizonHeight: 0.48, cameraAltitude: 0.4, cloudCover: 0.6, cloudDrift: 1.4, finishTime: 0.8, atmosphere: 0.75, atmosphereHeight: 0.62, citySize: 1, lunaSize: 2, backgroundDim: 0.72, outlineWidth: 1.6, planes: 3, boats: 9, satellites: 2, paintedMaps: 1, ballPulse: 1.6, ballBounce: 3 },
-  space: { orbitSeconds: 120, travelSeconds: 6, nebula: 0.6, distance: 1, revolveSeconds: 180, orbitSpin: 0, rocketFar: 8 },
-  trip: { wideTurn: 0, wideTilt: 40, wideMargin: 1.15, out: 0.22, 'in': 0.25, arrive: 0.3 },
+  space: { orbitSeconds: 120, travelSeconds: 4.5, nebula: 0.6, distance: 1, revolveSeconds: 180, hopZoom: 0.35, hopArrive: 0.35 },
   menu: { buttonScale: 1, stagger: 0.07, bob: 2, tilt: 1.5, shineSeconds: 5, cardTint: 0.22 },
   lobby: { zoom: 1, sway: 4, bob: 0.08, spinSeconds: 0.4 },
   lobbyLook: { glow: 1, flipSeconds: 0.5, stripeSeconds: 1.2 },

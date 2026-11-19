@@ -187,17 +187,11 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
       live.space.distance = 2;
       assert.ok(fromGaia(run(0.1)) > fromGaia(base) * 1.6, 'space.distance moves the camera further out');
       reset(); run(0.1);
-      // The planets hold still while the planet menu shows and move on in the main menu (owner, 2026-11-18), so their pace is
-      // measured there, coming back out to space after.
-      const home = () => { scene.setView({ space: false, target: 'gaia' }); for (let i = 0; i < 600 && scene.space.t > 0; i++) scene.step(1 / 30); };
       const orbitDelta = () => { const a = scene.space.orbit; return (run(2).orbit - a + 1) % 1; };
-      assert.equal(orbitDelta(), 0, 'Luna holds still while the planet menu shows');
-      home();
       const slowOrbit = orbitDelta();
-      assert.ok(slowOrbit > 0, 'Luna moves on in the main menu');
       live.space.orbitSeconds = 20;
       assert.ok(orbitDelta() > slowOrbit * 4, 'space.orbitSeconds sets how fast Luna orbits');
-      reset(); fly('gaia', 4);
+      reset();
       live.space.travelSeconds = 0.5;
       assert.equal(fly('luna', 0.6).travel, 1, 'a short travelSeconds finishes the flight sooner');
       reset(); fly('gaia', 4);
@@ -223,14 +217,9 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
       }
       const fastest = Math.max(...steps);
       assert.ok(done !== null && fastest > 1, 'the camera flies to Luna within the trip time');
-      // A jolt is a sudden change in how fast the camera speeds up or slows down, so that is what is measured, up to the arrival:
-      // there the camera, chasing the rocket, stops dead with it (owner, 2026-11-18: "the rocket comes in the view and just suddenly
-      // stops"), so that last frame is the one place its speed may drop at once.
-      const accel = steps.slice(1, done).map((v, i) => v - steps[i]);
-      const kick = Math.max(...accel.slice(1).map((v, i) => Math.abs(v - accel[i])));
-      assert.ok(kick < fastest * 0.05, `the camera's speed changes gradually on the way, with no jolt (largest change ${kick.toFixed(3)} of ${fastest.toFixed(3)})`);
-      assert.ok(steps[done - 1] < fastest * 0.2, 'it arrives at a gentle pace, not a rush');
-      assert.ok(Math.max(...steps.slice(done + 1)) < fastest * 0.01, 'it stops dead as the trip ends and then holds still: no loop after');
+      const kick = Math.max(...steps.slice(1).map((v, i) => Math.abs(v - steps[i])));
+      assert.ok(kick < fastest * 0.08, `the camera's speed changes gradually, with no jolt (largest change ${kick.toFixed(3)} of ${fastest.toFixed(3)})`);
+      assert.ok(steps[done] < fastest * 0.01 && Math.max(...steps.slice(done + 1)) < fastest * 0.01, 'it slows to a stop as the trip ends and then holds still: no loop after');
       assert.equal(scene.space.arrive, 1, 'and the turn into the view has finished with it');
       reset();
       assert.ok(run(0.1).nebula > 0, 'the nebula shows in space');
@@ -238,14 +227,9 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
       assert.equal(run(0.1).nebula, 0, 'space.nebula sets the nebula brightness');
       reset();
       const sunMove = () => { const a = run(0.1).sun; const b = run(3).sun; return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]); };
-      assert.equal(sunMove(), 0, 'the planets hold still around the sun while the planet menu shows');
-      // The swing shows only in space, but its clock runs only in the main menu: time there and the planets have swung on, and a
-      // stay of exactly one swing (`space.revolveSeconds`) brings them back where they were.
-      const swingAway = seconds => { const a = run(0.1).sun; home(); run(seconds); const b = fly('gaia', 4).sun; return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]); };
-      const swung = swingAway(30);
-      assert.ok(swung > 1, 'the planets swing on in the main menu');
+      const slowSwing = sunMove();
       live.space.revolveSeconds = 30;
-      assert.ok(swingAway(30) < swung * 0.05, 'space.revolveSeconds sets how long one swing around the sun takes');
+      assert.ok(sunMove() > slowSwing * 3, 'space.revolveSeconds sets how fast the planets swing around the sun');
       reset(); fly('gaia', 4);
       const farAres = fly('ares', 8);
       scene.setView({ space: true, target: 'ares', near: true });
@@ -263,10 +247,9 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
     // loading.finishTime, ballPulse and ballBounce are checked in tests/ui.test.cjs, where the screen really closes after the first
     // and the progress balls carry the other two as CSS variables, and so is the menu group
     // (VIS-M2), where each value lands on its own CSS variable on the real main menu, and the lobby group, on the lobby vehicle scene,
-    // and the trip group (one fixed path per planet menu trip), where the lobby rocket flies it, and the lobbyLook group, where each
-    // value lands on its own CSS variable on the real Solo lobby.
+    // and space.hopZoom and space.hopArrive, where the lobby rocket hops from Gaia to Ares, and the lobbyLook group, where each value lands on its own CSS variable on the real Solo lobby.
     // The table covers every DISPLAY setting, so a new setting cannot be added without a reach check.
-    assert.deepEqual([...Object.keys(expectations), 'ball.visualScale', ...['spinSpeed', 'axisTilt', 'horizonHeight', 'cameraAltitude', 'cloudCover', 'cloudDrift', 'finishTime', 'atmosphere', 'atmosphereHeight', 'citySize', 'lunaSize', 'backgroundDim', 'outlineWidth', 'planes', 'boats', 'satellites', 'paintedMaps', 'ballPulse', 'ballBounce'].map(k => 'loading.' + k), ...['orbitSeconds', 'travelSeconds', 'nebula', 'distance', 'revolveSeconds', 'orbitSpin', 'rocketFar'].map(k => 'space.' + k), ...['buttonScale', 'stagger', 'bob', 'tilt', 'shineSeconds', 'cardTint'].map(k => 'menu.' + k), ...['zoom', 'sway', 'bob', 'spinSeconds'].map(k => 'lobby.' + k), ...['glow', 'flipSeconds', 'stripeSeconds'].map(k => 'lobbyLook.' + k), ...['aresWind', 'aresWindDensity', 'lunaDust', 'lunaDustDensity', 'lunaSolar'].map(k => 'environment.' + k), ...['wideTurn', 'wideTilt', 'wideMargin', 'out', 'arrive', 'in'].map(k => 'trip.' + k)].sort(), DISPLAY_FIELDS.map(f => f[0]).sort());
+    assert.deepEqual([...Object.keys(expectations), 'ball.visualScale', ...['spinSpeed', 'axisTilt', 'horizonHeight', 'cameraAltitude', 'cloudCover', 'cloudDrift', 'finishTime', 'atmosphere', 'atmosphereHeight', 'citySize', 'lunaSize', 'backgroundDim', 'outlineWidth', 'planes', 'boats', 'satellites', 'paintedMaps', 'ballPulse', 'ballBounce'].map(k => 'loading.' + k), ...['orbitSeconds', 'travelSeconds', 'nebula', 'distance', 'revolveSeconds'].map(k => 'space.' + k), ...['buttonScale', 'stagger', 'bob', 'tilt', 'shineSeconds', 'cardTint'].map(k => 'menu.' + k), ...['zoom', 'sway', 'bob', 'spinSeconds'].map(k => 'lobby.' + k), ...['hopZoom', 'hopArrive'].map(k => 'space.' + k), ...['glow', 'flipSeconds', 'stripeSeconds'].map(k => 'lobbyLook.' + k), ...['aresWind', 'aresWindDensity', 'lunaDust', 'lunaDustDensity', 'lunaSolar'].map(k => 'environment.' + k)].sort(), DISPLAY_FIELDS.map(f => f[0]).sort());
   });
 
   // ---- TUNING probes: [name, setting, value, code printing one number, expected default, expected with the override]
