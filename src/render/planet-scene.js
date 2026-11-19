@@ -805,9 +805,10 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
   /**
    * The trip (owner, 2026-11-18: "the rocket flies across", like a map, then "curves into orbit"): the camera pulls back to a wide view
    * that holds both planets and the rocket's whole route (`out`, over the first part of the trip), holds still while the rocket flies
-   * across, then follows it in to the planet's usual view (`land`, the last part). Each part starts and ends at rest.
+   * across (on a long trip, `long` and up, it follows the rocket instead), then follows it in to the planet's usual view (`land`, the
+   * last part). Each part starts and ends at rest, and the rocket is kept in the picture (within `edge` of the way to its edge).
    */
-  const TRIP = { out: [0, 0.3], land: [0.46, 1], blendIn: 0.08, blendOut: 0.12, lift: 0.45, margin: 1.15 };
+  const TRIP = { out: [0, 0.3], land: [0.46, 1], blendIn: 0.08, blendOut: 0.12, lift: 0.45, margin: 1.15, long: 600, lead: 0.2, edge: 0.7 };
   const phase = (x, [a, b]) => smoother(clamp01((x - a) / (b - a)));
   const arrival = x => phase(x, TRIP.land);
   // The rocket's route (lobby-route.js): planned afresh each frame (Luna moves), from where the rocket was when the trip set off.
@@ -815,11 +816,20 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
   const trip = { ready: false, fresh: true, side: 0, weight: 0, start: new THREE.Vector3(), startDir: new THREE.Vector3(), pos: new THREE.Vector3(), dir: new THREE.Vector3(), endPos: new THREE.Vector3(), endQ: new THREE.Quaternion() };
   const tripEnd = new THREE.Vector3(), tripEndDir = new THREE.Vector3(), wideAt = new THREE.Vector3(), wideMid = new THREE.Vector3(), wideDir = new THREE.Vector3();
   const landPos = new THREE.Vector3(), landLook = new THREE.Vector3(), landUp = new THREE.Vector3(), lookNow = new THREE.Vector3(), armA = new THREE.Vector3(), armB = new THREE.Vector3(), routePoint = new THREE.Vector3();
-  const blockers = [{ id: 'gaia', centre: new THREE.Vector3(), radius: PLANET_RADIUS }, { id: 'luna', centre: new THREE.Vector3(), radius: SPACE_LUNA.radius }, { id: 'ares', centre: new THREE.Vector3(), radius: SPACE_ARES.radius }];
+  const bodyRadius = { gaia: PLANET_RADIUS, luna: SPACE_LUNA.radius, ares: SPACE_ARES.radius };
+  const blockers = ['gaia', 'luna', 'ares'].map(id => ({ id, centre: new THREE.Vector3(), radius: bodyRadius[id] }));
   const PARKED = { p: new THREE.Vector3(0, 0, -12), nose: new THREE.Vector3(-1, 0, 0.24).normalize() };
   // The planet the rocket last arrived at turns slowly under it (`space.orbitSpin`), so parked it keeps circling, never stopped dead.
   const spinAxis = new THREE.Vector3(0, 1, 0);
   let spinBody = null, spinLevel = 0;
+  /** From `a` to `b` round `pivot` by `k` (0..1): turning steadily, the distance changing by an even ratio. Into `out`. */
+  function swing(pivot, a, b, k, out) {
+    armA.subVectors(a, pivot); armB.subVectors(b, pivot);
+    const dA = Math.max(1e-3, armA.length()), dB = Math.max(1e-3, armB.length());
+    armA.divideScalar(dA).lerp(armB.divideScalar(dB), k);
+    if (armA.lengthSq() < 1e-8) armA.copy(armB);
+    return out.copy(pivot).addScaledVector(armA.normalize(), dA * Math.pow(dB / dA, k));
+  }
   const poseOf = (pos, look, up, out) => out.setFromRotationMatrix(lookAtMatrix.lookAt(pos, look, up));
   /** Where the trip starts: the rocket's place and heading now, in the world (from the parked pose, or mid-route on a change of plan). */
   function startTrip() {
@@ -857,28 +867,47 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
     } else trip.weight = 0;
     // The wide view: square to the line between the planets, a little above, far enough back to hold them and the whole route.
     wideMid.addVectors(fromAt, aimAt).multiplyScalar(0.5);
-    const radiusOf = id => (id === 'gaia' ? PLANET_RADIUS : id === 'luna' ? SPACE_LUNA.radius : SPACE_ARES.radius);
-    let half = Math.max(fromAt.distanceTo(wideMid) + radiusOf(space.from), aimAt.distanceTo(wideMid) + radiusOf(space.to));
+    let half = Math.max(fromAt.distanceTo(wideMid) + bodyRadius[space.from], aimAt.distanceTo(wideMid) + bodyRadius[space.to]);
     if (trip.ready) for (let i = 0; i <= 8; i++) half = Math.max(half, route.at(i / 8, routePoint).distanceTo(wideMid) + 10);
     wideDir.subVectors(aimAt, fromAt).cross(yAxis);
     if (wideDir.lengthSq() < 1e-6) wideDir.set(1, 0, 0);
     wideDir.normalize();
     if (!trip.side) trip.side = wideDir.dot(armA.subVectors(camFrom, wideMid).add(armB.subVectors(camTo, wideMid))) >= 0 ? 1 : -1;
     wideDir.multiplyScalar(trip.side).addScaledVector(yAxis, TRIP.lift).normalize();
+    // A long trip (Ares to Luna or home) would hold the view so far back that the rocket is a speck for seconds: instead the view
+    // follows it across at about the Gaia to Luna view's size (owner, 2026-11-18: "show the rocket when it goes from ares to luna a
+    // little more"), looking a little ahead of it, toward where it is going. `space.tripFollow` sets how closely.
+    const follow = trip.ready ? clamp01(half / TRIP.long - 1) * (spaceSettings().tripFollow ?? 0.8) : 0;
+    if (follow > 0) {
+      wideMid.lerp(routePoint.copy(trip.pos).lerp(aimAt, TRIP.lead), follow);
+      half *= Math.pow(TRIP.long / half, follow);
+    }
     const tanV = Math.tan(FOV * Math.PI / 360), aspect = camera.aspect || 16 / 9;
     wideAt.copy(wideMid).addScaledVector(wideDir, half * TRIP.margin / Math.min(tanV * aspect, tanV * 1.5));
-    // Out to the wide view, then in to the planet: closing in, the distance shrinks steadily, so the planet grows at an even pace.
+    // Out to the wide view round the planet it leaves, then in round the planet ahead: the distance changes by an even ratio, so a
+    // planet shrinks or grows at an even pace and the rocket, near the camera at first, never whips out of the picture.
     const out = phase(x, TRIP.out), land = arrival(x);
-    spacePos.lerpVectors(camFrom, wideAt, out);
+    swing(fromAt, camFrom, wideAt, out, spacePos);
     lookNow.lerpVectors(lookFrom, wideMid, out);
     upNow.lerpVectors(upFrom, yAxis, out);
     if (land > 0) {
-      armA.subVectors(wideAt, aimAt); armB.subVectors(landPos, aimAt);
-      const dA = Math.max(1e-3, armA.length()), dB = Math.max(1e-3, armB.length());
-      armA.divideScalar(dA).lerp(armB.divideScalar(dB), land).normalize();
-      spacePos.copy(aimAt).addScaledVector(armA, dA * Math.pow(dB / dA, land));
+      swing(aimAt, wideAt, landPos, land, spacePos);
       lookNow.lerp(landLook, land);
       upNow.lerp(landUp, land);
+    }
+    // Keep the rocket in the picture: once it is past part of the way to the edge, the view turns after it, gently, never letting it
+    // slip out of sight.
+    if (trip.weight > 0) {
+      armA.subVectors(lookNow, spacePos);
+      const dist = Math.max(1e-3, armA.length()), knee = Math.atan(tanV) * TRIP.edge * 0.5;
+      armA.divideScalar(dist);
+      armB.subVectors(trip.pos, spacePos).normalize();
+      const angle = Math.acos(Math.max(-1, Math.min(1, armA.dot(armB))));
+      if (angle > knee) {
+        const turn = (angle - knee - knee * Math.tanh((angle - knee) / knee)) * trip.weight;
+        armB.crossVectors(armA, armB);
+        if (armB.lengthSq() > 1e-12) lookNow.copy(spacePos).addScaledVector(armA.applyAxisAngle(armB.normalize(), turn), dist);
+      }
     }
     if (upNow.lengthSq() < 1e-6) upNow.copy(landUp);
     upNow.normalize();

@@ -237,6 +237,8 @@ export function createLobbyFlight({ THREE, display, reducedMotion = false }) {
     stats.swapping = swapping || w > 0.01;
     stats.trip = trip.travelling ? (trip.land > 0 ? 'arriving' : 'travelling') : null;
     stats.air = airLevel; stats.chase = w; stats.hidden = hidden; stats.size = size;
+    const ahead = Math.max(1e-6, -body.position.z);
+    stats.screen = [body.position.x / ahead / (tan * aspect), body.position.y / ahead / tan]; // where it is drawn, -1..1 across the view
     const seen = v2.set(1, 0, 0).applyQuaternion(body.quaternion);
     stats.nose = [seen.x, seen.y, seen.z];
     stats.frames = ++frames;

@@ -41,6 +41,7 @@ Units: world units (ball radius 5) and multipliers. Opacity is 0..1. The shaft h
 | `space.distance` | 1 | 0.6 to 2 | Destination view: camera distance from the planet it shows, multiplier. |
 | `space.orbitSpin` | 4 | 0 to 20 | Destination view: how fast Luna or Ares turns under the parked lobby rocket, so it keeps circling in orbit, in degrees per second (0 holds it still). Off under reduced motion. |
 | `space.rocketFar` | 8 | 1 to 30 | Destination view: how small the lobby rocket gets far away on a trip between planets: at most this many times smaller than parked (1 keeps it parked size). It is never drawn bigger than parked. |
+| `space.tripFollow` | 0.8 | 0 to 1 | Destination view: on a long trip (to or from Ares) how closely the view follows the lobby rocket across instead of holding back far enough to show the whole route: 0 holds back, 1 follows at about the Gaia to Luna view size. |
 | `space.revolveSeconds` | 180 | 30 to 600 | Destination view: seconds for one slow swing of Gaia and Ares a few degrees around the sun and back. |
 | `menu.buttonScale` | 1 | 0.7 to 1.5 | Main menu: size of the Solo, Party, Custom and Settings buttons, multiplier. |
 | `menu.stagger` | 0.07 | 0 to 0.3 | Main menu: seconds between each button dropping in (0 brings them in together). |

@@ -91,6 +91,7 @@ export const DISPLAY_UNITS = Object.freeze({
   'space.revolveSeconds': 'seconds',
   'space.orbitSpin': 'degrees per second',
   'space.rocketFar': 'multiplier',
+  'space.tripFollow': 'fraction',
   'menu.buttonScale': 'multiplier',
   'menu.stagger': 'seconds',
   'menu.bob': 'CSS px',
