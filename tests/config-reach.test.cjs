@@ -187,11 +187,6 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
       live.space.distance = 2;
       assert.ok(fromGaia(run(0.1)) > fromGaia(base) * 1.6, 'space.distance moves the camera further out');
       reset(); run(0.1);
-      const orbitDelta = () => { const a = scene.space.orbit; return (run(2).orbit - a + 1) % 1; };
-      const slowOrbit = orbitDelta();
-      live.space.orbitSeconds = 20;
-      assert.ok(orbitDelta() > slowOrbit * 4, 'space.orbitSeconds sets how fast Luna orbits');
-      reset();
       live.space.travelSeconds = 0.5;
       assert.equal(fly('luna', 0.6).travel, 1, 'a short travelSeconds finishes the flight sooner');
       reset(); fly('gaia', 4);
@@ -249,7 +244,7 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
     // (VIS-M2), where each value lands on its own CSS variable on the real main menu, and the lobby group, on the lobby vehicle scene,
     // and space.hopZoom, space.hopWait, space.hopDelay and space.hopSlide, where the lobby vehicle hops between planets, and the lobbyLook group, where each value lands on its own CSS variable on the real Solo lobby.
     // The table covers every DISPLAY setting, so a new setting cannot be added without a reach check.
-    assert.deepEqual([...Object.keys(expectations), 'ball.visualScale', ...['spinSpeed', 'axisTilt', 'horizonHeight', 'cameraAltitude', 'cloudCover', 'cloudDrift', 'finishTime', 'atmosphere', 'atmosphereHeight', 'citySize', 'lunaSize', 'backgroundDim', 'outlineWidth', 'planes', 'boats', 'satellites', 'paintedMaps', 'ballPulse', 'ballBounce'].map(k => 'loading.' + k), ...['orbitSeconds', 'travelSeconds', 'nebula', 'distance', 'revolveSeconds'].map(k => 'space.' + k), ...['buttonScale', 'stagger', 'bob', 'tilt', 'shineSeconds', 'cardTint'].map(k => 'menu.' + k), ...['zoom', 'sway', 'bob', 'spinSeconds'].map(k => 'lobby.' + k), ...['hopZoom', 'hopWait', 'hopDelay', 'hopSlide'].map(k => 'space.' + k), ...['glow', 'flipSeconds', 'stripeSeconds'].map(k => 'lobbyLook.' + k), ...['aresWind', 'aresWindDensity', 'lunaDust', 'lunaDustDensity', 'lunaSolar'].map(k => 'environment.' + k)].sort(), DISPLAY_FIELDS.map(f => f[0]).sort());
+    assert.deepEqual([...Object.keys(expectations), 'ball.visualScale', ...['spinSpeed', 'axisTilt', 'horizonHeight', 'cameraAltitude', 'cloudCover', 'cloudDrift', 'finishTime', 'atmosphere', 'atmosphereHeight', 'citySize', 'lunaSize', 'backgroundDim', 'outlineWidth', 'planes', 'boats', 'satellites', 'paintedMaps', 'ballPulse', 'ballBounce'].map(k => 'loading.' + k), ...['travelSeconds', 'nebula', 'distance', 'revolveSeconds'].map(k => 'space.' + k), ...['buttonScale', 'stagger', 'bob', 'tilt', 'shineSeconds', 'cardTint'].map(k => 'menu.' + k), ...['zoom', 'sway', 'bob', 'spinSeconds'].map(k => 'lobby.' + k), ...['hopZoom', 'hopWait', 'hopDelay', 'hopSlide'].map(k => 'space.' + k), ...['glow', 'flipSeconds', 'stripeSeconds'].map(k => 'lobbyLook.' + k), ...['aresWind', 'aresWindDensity', 'lunaDust', 'lunaDustDensity', 'lunaSolar'].map(k => 'environment.' + k)].sort(), DISPLAY_FIELDS.map(f => f[0]).sort());
   });
 
   // ---- TUNING probes: [name, setting, value, code printing one number, expected default, expected with the override]

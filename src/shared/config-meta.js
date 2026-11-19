@@ -84,7 +84,6 @@ export const DISPLAY_UNITS = Object.freeze({
   'loading.paintedMaps': 'switch, 0 (procedural) or 1 (painted)',
   'loading.ballPulse': 'seconds',
   'loading.ballBounce': 'CSS px',
-  'space.orbitSeconds': 'seconds',
   'space.travelSeconds': 'seconds',
   'space.nebula': 'fraction, 0 to 1',
   'space.distance': 'multiplier',

@@ -1320,10 +1320,11 @@ function fakeClock() {
       sky.setLobby(ride(b));
       if (viaHome) sky.setView({ space: false, target: 'gaia', near: false }); // as the lobby does: its last view is undone (home), then the new one set, at once
       sky.setView(where[b]);
-      const trip = []; run(14, () => { const { travel } = sky.space, { hop, nose } = sky.lobbyStats; trip.push({ travel, hop, nose: nose[0] }); });
+      const trip = []; run(14, () => { const { travel, luna: moon } = sky.space, { hop, nose } = sky.lobbyStats; trip.push({ travel, hop, nose: nose[0], moon: moon.join() }); });
       const out = trip.findIndex(h => h.hop < -1), go = trip.findIndex(h => h.travel > 0 && h.travel < 1), back = trip.findIndex(h => h.hop > 0.9);
       assert.ok(out >= 0 && (go < 0 || out < go), `${a} to ${b}${viaHome ? ' (via the lobby)' : ''}: the vehicle leaves off the left before the camera moves`);
       assert.ok(back > out && trip[back].travel >= 1, `${a} to ${b}${viaHome ? ' (via the lobby)' : ''}: it flies in from the right once the camera has arrived`);
+      assert.ok(trip.every(h => h.moon === trip[0].moon), `${a} to ${b}: one fixed Luna, it never moves (owner, 2026-11-19)`);
       assert.ok(trip.every(h => h.nose < 0), `${a} to ${b}${viaHome ? ' (via the lobby)' : ''}: nose left all the way`);
       assert.equal(sky.lobbyStats.hop, null, `${a} to ${b}${viaHome ? ' (via the lobby)' : ''}: parked at the end`);
     }

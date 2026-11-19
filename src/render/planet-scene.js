@@ -453,7 +453,7 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
   // ---- The destination view (VIS-M4): the camera pulls back from the horizon into space, where Gaia hangs with Luna slowly orbiting it (framed on Gaia alone: Luna shows only when its orbit brings it into view)
   // and Ares stands far off. Sizes and distances are staged for the view, not real. `setView` picks the planet; the camera flies between
   // them, and the long trips to and from Ares widen the lens and then zoom in. Reads the live `display.space` settings.
-  const spaceSettings = () => display.space ?? { orbitSeconds: 120, travelSeconds: 3.2, nebula: 0.6, distance: 1, revolveSeconds: 180 };
+  const spaceSettings = () => display.space ?? { travelSeconds: 3.2, nebula: 0.6, distance: 1, revolveSeconds: 180 };
   // The little solar system (owner, 2026-11-17): the sun shines from where the light comes from, Gaia orbits it, and Ares orbits further
   // out, behind Gaia as seen from the sun and a little to the side, so from Ares the sun and Gaia both show in the sky beyond it. In
   // space everything revolves slightly and softly: a few degrees back and forth around the sun (`space.revolveSeconds`). Gaia stays the
@@ -476,7 +476,7 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
   const SPACE_FRAME = { gaia: 700, luna: 240, ares: 400 }; // camera distance from each planet's centre, before `space.distance`: each about 7 radii, so every planet fills the view alike
   const SPACE_VIEW_DIR = new THREE.Vector3(0.42, 0.16, 1).normalize(); // seen a little from the right and above: the sun lights the near side
   const SPACE_BACKDROP = 0x03050f; // the darkest tone of the page's own backdrop, so the fade in is seamless
-  const space = { goal: 0, t: 0, from: 'gaia', to: 'gaia', travel: 1, orbit: 0.96, near: 0, nearGoal: 0, nearFrom: 0 };
+  const space = { goal: 0, t: 0, from: 'gaia', to: 'gaia', travel: 1, near: 0, nearGoal: 0, nearFrom: 0 };
   // A change of planet mid-flight (owner, 2026-11-17: smoother switching) starts from where the camera is, not from the planet it left:
   // `snap` holds that pose, and the new flight leaves it already moving.
   const snap = { on: false, pos: new THREE.Vector3(), look: new THREE.Vector3(), up: new THREE.Vector3(), fov: FOV };
@@ -534,11 +534,13 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
   scene.add(aresAir);
   const nearUp = new THREE.Vector3(), nearAhead = new THREE.Vector3();
   const home = { luna: { position: new THREE.Vector3(), scale: 1 } };
-  function lunaSpacePosition(phase, out) {
-    const a = phase * Math.PI * 2;
-    return out.set(Math.cos(a) * SPACE_LUNA.orbit, -Math.sin(a) * SPACE_LUNA.orbit * Math.sin(SPACE_LUNA.lean), Math.sin(a) * SPACE_LUNA.orbit * Math.cos(SPACE_LUNA.lean)); // the near side of the orbit passes below Gaia
-  }
-  const bodyCentre = (id, out) => id === 'luna' ? lunaSpacePosition(space.orbit, out) : id === 'ares' ? out.copy(aresNow) : out.set(0, 0, 0);
+  // One fixed Luna (owner, 2026-11-19: Luna never moves on the trips to and from Gaia): Luna stays at one point in space,
+  // SPACE_LUNA.orbit from Gaia's centre, straight out along the line from the horizon camera to where the horizon view shows it.
+  // From the horizon it sits in its approved spot at its approved size; going out into space only moves the camera and lets it grow
+  // to its space size in place, so it never slides across the sky. `lunaFixed` and `lunaHorizonScale` are set with the framing.
+  const lunaFixed = new THREE.Vector3(0, 0, -SPACE_LUNA.orbit);
+  let lunaHorizonScale = SPACE_LUNA.radius;
+  const bodyCentre = (id, out) => id === 'luna' ? out.copy(lunaFixed) : id === 'ares' ? out.copy(aresNow) : out.set(0, 0, 0);
   const ease = x => x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
   const longTrip = () => space.from === 'ares' || space.to === 'ares';
   // Extra space for the whole frame: stars below the horizon line (hidden by the planet in the horizon view) and soft nebula clouds.
@@ -675,6 +677,12 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
     place(luna, 0.86, 0.5, LUNA_RADIUS * s.lunaSize);
     place(ares, -0.6, 0.8, ARES_SHARE * ARES_DISTANCE * t * 1.4); // smaller than before (owner, 2026-11-18): a background world, not a rival to Gaia
     home.luna.position.copy(luna.mesh.position); home.luna.scale = luna.mesh.scale.x;
+    { // the fixed Luna: where the line from the horizon camera to that spot reaches SPACE_LUNA.orbit from Gaia's centre
+      const c = camera.position, d = new THREE.Vector3().subVectors(home.luna.position, c), far = d.length(); d.divideScalar(far);
+      const b = c.dot(d), along = -b + Math.sqrt(Math.max(0, b * b - c.lengthSq() + SPACE_LUNA.orbit ** 2));
+      lunaFixed.copy(c).addScaledVector(d, along);
+      lunaHorizonScale = home.luna.scale * along / far; // the same size on screen from the horizon
+    }
     stats.lunaPixels = LUNA_RADIUS * s.lunaSize / (LUNA_DISTANCE * t) * h;
     stats.limb = 1 - 2 * s.horizonHeight;
   }
@@ -830,9 +838,8 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
     revolve(clock, k);
     sunBody.visible = k > 0.001;
     if (sunBody.visible) { sunBody.position.copy(sunNow); sunBody.userData.rays.rotation.z = reducedMotion ? 0 : clock * 0.12; }
-    lunaSpacePosition(space.orbit, tmpA);
-    luna.mesh.position.lerpVectors(home.luna.position, tmpA, k);
-    luna.mesh.scale.setScalar(home.luna.scale + (SPACE_LUNA.radius - home.luna.scale) * k);
+    luna.mesh.position.copy(lunaFixed); // one fixed Luna: it never moves, only grows to its space size
+    luna.mesh.scale.setScalar(lunaHorizonScale + (SPACE_LUNA.radius - lunaHorizonScale) * k);
     // Ares stays put (owner, 2026-11-17): one planet at its place in the little solar system, behind Gaia from the sun, so from the
     // horizon it is out of sight below the limb, and going out into space only moves the camera. (The preview gallery's close look
     // still uses the stand-in placed in the sky.)
@@ -977,7 +984,6 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
       }
       else if (space.travel < 1) space.travel = Math.min(1, space.travel + dt / (sp.travelSeconds * (longTrip() ? 1.6 : 1)));
       else if (hop.tail < hopLength()) hop.tail += dt;
-      if (space.t > 0) space.orbit = (space.orbit + dt / sp.orbitSeconds) % 1;
       space.near = Math.max(0, Math.min(1, space.near + Math.sign(space.nearGoal - space.near) * dt / (sp.travelSeconds * 1.2)));
     }
     draw();
@@ -1056,7 +1062,7 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
       return p.z < -1e-3 ? { x: p.x / -p.z, y: p.y / -p.z } : null;
     },
     /** Destination view state, for checks: blend into space (0..1), the planet shown, trip progress, Luna's orbit phase, lens and camera. */
-    get space() { return { t: space.t, goal: space.goal, near: space.near, nearGoal: space.nearGoal, air: aresAir.visible ? aresAir.material.uniforms.fade.value : 0, from: space.from, to: space.to, travel: space.travel, arrive: space.travel < 1 ? journey(space.travel, snap.on).land : 1, orbit: space.orbit, fov: camera.fov, camera: camera.position.toArray(), luna: luna.mesh.position.toArray(), ares: ares.mesh.position.toArray(), aresRadius: ares.mesh.scale.x, sun: sunBody.visible ? sunBody.position.toArray() : null, light: sun.toArray(), nebula: nebulae[0]?.opacity ?? 0 }; },
+    get space() { return { t: space.t, goal: space.goal, near: space.near, nearGoal: space.nearGoal, air: aresAir.visible ? aresAir.material.uniforms.fade.value : 0, from: space.from, to: space.to, travel: space.travel, arrive: space.travel < 1 ? journey(space.travel, snap.on).land : 1, fov: camera.fov, camera: camera.position.toArray(), luna: luna.mesh.position.toArray(), ares: ares.mesh.position.toArray(), aresRadius: ares.mesh.scale.x, sun: sunBody.visible ? sunBody.position.toArray() : null, light: sun.toArray(), nebula: nebulae[0]?.opacity ?? 0 }; },
     /** How many planes, ships and satellites the current settings show. */
     get traffic() { const s = settings(); return { planes: count(s.planes, MAX_PLANES), boats: Math.min(count(s.boats, MAX_BOATS), ships.length), satellites: count(s.satellites, MAX_SATELLITES) }; },
     /** What the last frame used, for checks. */

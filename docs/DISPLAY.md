@@ -35,7 +35,6 @@ Units: world units (ball radius 5) and multipliers. Opacity is 0..1. The shaft h
 | `loading.paintedMaps` | 1 | 0 to 1 | Loading screen and destination view: 1 shows the owner's painted surface maps of Gaia, Ares and Luna (`src/render/planet-maps.js`), 0 the older procedural surfaces (rounded to on or off). Until a map has loaded, or on a page opened from file://, the procedural surface shows. |
 | `loading.ballPulse` | 1.6 | 0.6 to 4 | Loading screen: seconds for the glow to run once across the three progress balls. Off under reduced motion. |
 | `loading.ballBounce` | 3 | 0 to 10 | Loading screen: CSS px each progress ball lifts while it glows (0 keeps them still). |
-| `space.orbitSeconds` | 120 | 20 to 600 | Destination view (Solo → Where to?): seconds Luna takes to orbit Gaia once. |
 | `space.travelSeconds` | 4.5 | 0.4 to 8 | Destination view: seconds the journey between Gaia and Luna takes, the camera riding behind the lobby vehicle and swinging round into the view of the planet as it arrives, in one continuous move; the long trips to and from Ares take 1.6 times as long. |
 | `space.nebula` | 0.6 | 0 to 1 | Destination view: brightness of the nebula clouds behind the planets (0 hides them). |
 | `space.distance` | 1 | 0.6 to 2 | Destination view: camera distance from the planet it shows, multiplier. |
