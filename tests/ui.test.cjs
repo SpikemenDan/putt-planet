@@ -1287,14 +1287,20 @@ function fakeClock() {
     assert.ok(small >= 0.5 - 1e-6 && small < 0.9, `space.rocketFar = 2 keeps it at least half size (smallest ${small.toFixed(3)})`);
     display.space.rocketFar = 8;
     // The long way, Ares to Luna (owner, 2026-11-18: "show the rocket when it goes from ares to luna a little more"): the view follows
-    // it across, so it never leaves the picture, and the picture never jumps.
+    // it across, so it never leaves the picture, and the picture never jumps. As the view comes in to Luna the rocket goes round it
+    // (out of the picture, behind the planet), then comes into the finished view and stops dead there (owner, 2026-11-18: "the camera
+    // zoom and the rocket comes in the view and just suddenly stops").
     sky.setView({ space: true, target: 'ares' }); run(9);
     sky.setView({ space: true, target: 'luna' });
-    let off = 0, frames = 0, jump = 0, last = null;
-    run(9, () => { const { screen, hidden } = sky.lobbyStats; if (!(sky.space.travel > 0 && sky.space.travel < 1) || hidden) return;
-      frames++; if (Math.abs(screen[0]) > 1 || Math.abs(screen[1]) > 1) off++;
+    let off = 0, frames = 0, jump = 0, last = null, endIn = 0, endOut = 0;
+    run(9, () => { const { screen, hidden } = sky.lobbyStats, { travel, arrive } = sky.space; if (!(travel > 0 && travel < 1) || hidden) return;
+      const out = Math.abs(screen[0]) > 1 || Math.abs(screen[1]) > 1;
+      if (arrive >= 1) { if (out) endOut++; else endIn++; }
+      if (arrive > 0) { last = null; return; }
+      frames++; if (out) off++;
       if (last) jump = Math.max(jump, Math.hypot(screen[0] - last[0], screen[1] - last[1])); last = screen.slice(); });
-    assert.ok(frames > 60 && off === 0, `Ares to Luna, the rocket stays in view (${off} of ${frames} frames out)`);
+    assert.ok(frames > 60 && off === 0, `Ares to Luna, the rocket stays in view across (${off} of ${frames} frames out)`);
+    assert.ok(endIn >= 3 && endOut === 0, `and is in the finished view before it stops (${endIn} frames in, ${endOut} out)`);
     assert.ok(jump < 0.25, `and glides across it (biggest step ${jump.toFixed(3)} of the view per frame)`);
     // A plane bound for space becomes a rocket for the trip; spamming planets never builds a second vehicle.
     sky.setView({ space: false, target: 'gaia' });
