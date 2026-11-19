@@ -1,14 +1,15 @@
 import { WORLDS } from '../shared/worlds.js';
 import { NAME_LIMIT } from './commands.js';
 import { ColorBadge } from './BadgePicker.jsx';
+import { colorHex } from '../shared/colors.js';
 import styles from './LobbyTicket.module.css';
 
 const CODES = Object.freeze({ gaia: 'GAI', luna: 'LUN', ares: 'ARS' });
 
 /**
- * The destination code as a split-flap board (owner, 2026-11-18: a livelier pass): each letter is its own flap, keyed by the
- * destination, so a new planet flips the letters in one after another (`--look-flip` sets how long each takes). The text stays the
- * plain code for screen readers and tests.
+ * The destination code (owner, 2026-11-18; no boxes, owner 2026-11-19): three letters in the planet's colour (Gaia green, Luna purple,
+ * Ares red), keyed by the destination so a new planet flips them in one after another (`--look-flip` sets how long each takes). The
+ * text stays the plain code for screen readers and tests.
  */
 function Flaps({ text, world }) {
   return [...text].map((ch, i) => <span key={world + i} className={styles.flap} style={{ '--i': i }}>{ch}</span>);
@@ -56,14 +57,39 @@ function PassengerName({ name, onName, onNameDone }) {
 }
 
 /**
+ * The passenger list on the pass (owner, 2026-11-19: "put the passenger list on the ticket", replacing the separate manifest card):
+ * everyone aboard with their ball and name (the host wears a star, your own name is pink), two to a row, and how many seats are still open. Names render as React
+ * text only, cut to NAME_LIMIT.
+ */
+function Passengers({ list, seats }) {
+  const open = Math.max(0, seats - list.length);
+  return (
+    <section className={styles.manifest} aria-label="Passenger manifest" data-ui="lobby-manifest">
+      <small>Passengers · {list.length}/{seats}</small>
+      <ol className={styles.aboard}>
+        {list.map(p => (
+          <li key={p.id} data-you={p.you || undefined} style={{ '--ball': colorHex(p.color) }}>
+            <span className={styles.ball} aria-hidden="true" />
+            <span className={styles.who2}>{String(p.name).slice(0, NAME_LIMIT)}</span>
+            {p.host && <span className={styles.host} title="Host"><span className={styles.hiddenText}>Host</span></span>}
+            {p.you && <span className={styles.hiddenText}>You</span>}
+          </li>
+        ))}
+      </ol>
+      {open > 0 && <p className={styles.openSeats} data-ui="open-seats">{open === 1 ? '1 seat open' : open + ' seats open'}</p>}
+    </section>
+  );
+}
+
+/**
  * The lobby ticket (owner, 2026-11-16; simpler, owner 2026-11-18: "make the ticket simpler it looks like too much"): a bright boarding
  * pass on the right of the Solo and party lobbies with the vehicle's pass title, the passenger with their colour badge (click it to
  * change colour) and name (`onName`: click it to edit), the route in airport-style codes, the lobby's buttons (`children`: Play or
  * Start Game) and, on the stub, Back (`onBack`) and the party code (`code`, with a copy-invite icon: `onCopy`) or, Solo, its flight number in the same place (owner, 2026-11-19: Solo's pass matches the party's). The route shows the
  * destination only: both lobbies pick the planet on their planet picker (PlanetPicker.jsx). Names render as React text only, cut to
- * NAME_LIMIT.
+ * NAME_LIMIT. A party passes `passengers` (and `seats`) to list everyone aboard under your name.
  */
-export function LobbyTicket({ vehicle = 'plane', name = '', onName = null, onNameDone = null, color = null, taken = {}, onPick, solo = false, destination = 'gaia', code = '', onCopy = null, onBack = null, backLabel = 'Back', hidden = false, children }) {
+export function LobbyTicket({ vehicle = 'plane', name = '', onName = null, onNameDone = null, color = null, taken = {}, onPick, solo = false, destination = 'gaia', code = '', onCopy = null, onBack = null, backLabel = 'Back', hidden = false, passengers = null, seats = 8, children }) {
   const planet = WORLDS.find(w => w.id === destination)?.name ?? 'Gaia';
   const pass = PASS[vehicle] ?? PASS.plane;
   return (
@@ -79,9 +105,10 @@ export function LobbyTicket({ vehicle = 'plane', name = '', onName = null, onNam
           <PassengerName name={name} onName={onName} onNameDone={onNameDone} />
         </div>
       </div>
+      {passengers && <Passengers list={passengers} seats={seats} />}
       <div className={styles.route}>
         <div><b>HOM</b><small>Home</small></div>
-        <span className={styles.path} aria-hidden="true" />
+        <span className={styles.path} aria-hidden="true"><span className={styles.dots} /><svg className={styles.arrow} viewBox="0 0 16 16"><path d="M5 3l6 5-6 5" /></svg></span>
         <div className={styles.to}><b data-ui="ticket-code"><Flaps text={CODES[destination] ?? 'GAI'} world={destination} /></b><small data-ui="ticket-destination">{planet}</small></div>
       </div>
       <div className={styles.actions}>{children}</div>

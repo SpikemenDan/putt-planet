@@ -224,7 +224,7 @@ function fakeClock() {
     await act(async () => { await new Promise(r => setTimeout(r, 40)); });
     assert.equal(soloLook.getPropertyValue('--look-glow'), '0.5', 'and follows the live display object');
     assert.equal($('[data-ui=solo-flight]')?.textContent, 'FlightPP 4242', 'the Solo stub carries its flight where a party shows its code');
-    assert.equal($('[data-ui=ticket-code]').textContent, 'GAI', 'the split-flap code still reads as the plain code');
+    assert.equal($('[data-ui=ticket-code]').textContent, 'GAI', 'the destination code reads as the plain code');
     assert.ok(!button('Create party'), 'and not the party one');
     await t.teardown();
     const invited = await setup({ mountProps: { initialView: 'party' }, inRoom: false });
@@ -1153,10 +1153,10 @@ function fakeClock() {
     assert.match(tags()[1].style.transform, /translate\(160\.0px, 186\.0px\) translate\(-50%, 0\)/, 'seat 2: the tag hangs in the lane below the vehicle');
     const lines = [...lobby.querySelectorAll('[data-ui=lobby-vehicle] svg path')];
     assert.equal(lines[0].getAttribute('d'), 'M100.0 76.0 L100.0 107.0', 'a leader line joins each tag to its ball');
-    const manifest = [...lobby.querySelectorAll('[data-ui=lobby-manifest] li')];
-    assert.equal(manifest.length, 8, 'the manifest lists every seat');
-    assert.deepEqual(manifest.slice(0, 3).map(li => li.textContent), ['01AnaHostYou', '02Bartholomew-', '03Open seat'], 'who is aboard, the host and me, then open seats');
     const ticket = lobby.querySelector('[data-ui=lobby-ticket]');
+    const manifest = [...ticket.querySelectorAll('[data-ui=lobby-manifest] li')];
+    assert.deepEqual(manifest.map(li => li.textContent), ['AnaHostYou', 'Bartholomew-'], 'the pass lists who is aboard, the host and me (owner, 2026-11-19)');
+    assert.equal(ticket.querySelector('[data-ui=open-seats]').textContent, '6 seats open', 'and how many seats are open');
     assert.equal(ticket.querySelector('[data-ui=destination-pick]'), null, 'the pass only shows the destination (owner, 2026-11-18)');
     const planets = lobby.querySelector('[data-ui=planet-picker]');
     assert.ok(planets?.hasAttribute('data-voting'), 'the shared planet picker, voting');

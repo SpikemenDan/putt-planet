@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { GameModes } from '../shared/session.js';
-import { WORLDS } from '../shared/worlds.js';
 import { lobbyVehicleFor } from '../render/lobby-models.js';
 import { MODE_OPTIONS, sanitizeName, UiCommands } from './commands.js';
 import { useCommands, useUiContext, useView } from './context.js';
-import { LobbyManifest } from './LobbyManifest.jsx';
-import { flightOf, LobbyTicket } from './LobbyTicket.jsx';
+import { LobbyTicket } from './LobbyTicket.jsx';
 import { LobbyVehicle, VEHICLE_SEATS } from './LobbyVehicle.jsx';
 import { ModePicker } from './ModePicker.jsx';
 import { PlanetPicker, useLobbySky } from './PlanetPicker.jsx';
@@ -15,8 +13,8 @@ import styles from './RoomLobby.module.css';
 /**
  * Party lobby (VIS-M3 #175; vehicles, ticket and manifest, owner 2026-11-16), full screen over the planet sky: everyone's ball rides
  * one 3D vehicle, the plane through Gaia's air or the rocket in space for Ares and Luna, with name tags alternating above and below.
- * On the left, the passenger manifest (no title board; the start countdown shows above the mode bar); on the right, your boarding pass (your name and colour badge,
- * the destination, the host's Start Game, the party code and Leave room on the stub); along the bottom, one bar of colourful mode tiles.
+ * On the left, the planet picker (no title board; the start countdown shows above the mode bar); on the right, your boarding pass (your name and colour badge,
+ * everyone aboard (the passenger list moved onto the pass, owner 2026-11-19), the destination, the host's Start Game, the party code and Leave room on the stub); along the bottom, one bar of colourful mode tiles.
  * In a party everyone votes for the mode (the tiles) and the planet (the planet picker on the left, owner 2026-11-17, 2026-11-18): each voter's ball sits in the
  * corner of their choice, and Start Game plays the leading mode. Players arrive with a free colour and change it from the badge on their pass.
  * The planet preview is your own (owner, 2026-11-19): the sky, vehicle, ticket and manifest follow your vote (the room's planet until you
@@ -71,8 +69,6 @@ export function RoomLobby({ hidden }) {
   useEffect(() => setPick(null), [echoed]); // the room has my vote now
   const destination = lobby?.launch === 'landing' ? lobby.leadingWorld : (voting && (pick ?? lobby?.myVote?.world)) || (lobby?.destination ?? 'gaia');
   const vehicle = lobbyVehicleFor({ solo: !party, destination });
-  const { flight } = flightOf(lobby?.code ?? '', destination);
-  const planet = WORLDS.find(w => w.id === destination)?.name ?? 'Gaia';
   // The sky behind follows the destination (useLobbySky): Gaia's air for the plane, Ares's or Luna's sky for the rocket.
   const shown = !hidden && !!lobby;
   const left = useRef(null), right = useRef(null), dock = useRef(null);
@@ -95,11 +91,11 @@ export function RoomLobby({ hidden }) {
         </div>
         <PlanetPicker value={destination} voters={voting || lobby?.launch ? lobby.votes.world : null} leading={party ? lobby.leadingWorld : destination}
           onPick={voting ? votePlanet : lobby?.canPickDestination ? world => session({ type: 'SET_DESTINATION', world }) : null} />
-        <LobbyManifest passengers={roster} seats={VEHICLE_SEATS[vehicle] ?? 8} flight={flight} destination={planet} />
       </div>
       <div ref={right} className={styles.right}>
         <LobbyTicket vehicle={vehicle} name={nameDraft ?? me?.name ?? ''} onName={setNameDraft} onNameDone={commitName} color={lobby?.myColor ?? null} taken={lobby?.takenColors} hidden={hidden || !lobby}
           onPick={c => send(UiCommands.SET_COLOR, { color: c })} destination={destination}
+          passengers={roster} seats={VEHICLE_SEATS[vehicle] ?? 8}
           code={party ? lobby.code : ''} onCopy={() => send(UiCommands.INVITE)}
           onBack={() => send(UiCommands.LEAVE)} backLabel="Leave room">
           {lobby?.showStart && <button type="button" className={styles.go} onClick={start} data-ui="start-game">Start Game</button>}
