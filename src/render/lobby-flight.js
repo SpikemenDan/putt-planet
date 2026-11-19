@@ -2,18 +2,16 @@
  * The lobby vehicle flying in the planet scene (owner, 2026-11-18: "make the rocket's movements actually natural"): one helicopter,
  * plane or rocket that is a real object in the planet scene's world, lit by its one sun, carried along with the camera as the camera
  * flies between planets (src/render/planet-scene.js, `setView`). Parked, it sits in the lobby's free area in its calm side-on pose.
- * A trip out into space waits for the helicopter or plane to hand over to a rocket (a quick cartoon dash). Then the rocket flies a real
- * path through the world (src/render/lobby-path.js, shaped by the planet scene): round the planet it leaves, across, and round behind
- * the planet ahead, seen from a wide view that holds all three planets. Hidden behind that planet (`trip.shown` false) while the camera
- * zooms in, it then slides in from the right to its parked spot and stops dead (owner, 2026-11-18). On the route it is drawn where it
- * really is, shrunk when far away and covered by a planet it passes behind; parked, it keeps circling as the planet turns under it. The
- * plane or helicopter takes over
- * again once it is home. Wind lines and wakes show only while it is inside a planet's air.
+ * Changing vehicle is a cartoon poof: the old one squashes away in a puff of cloud and the new one pops out of it. A trip out into
+ * space waits for the helicopter or plane to poof into a rocket. Then the planet scene stages the hyperjump (owner, 2026-11-18): the
+ * rocket winds up, blasts off into the distance, is gone (`trip.shown` false) while the camera flies to the planet ahead, and swoops in
+ * from the right to its parked spot; it is drawn where the scene puts it, shrunk when far away. Parked, it keeps circling as the planet
+ * turns under it. The plane or helicopter takes over again once it is home. Wind lines and wakes show only while it is inside a planet's air.
  *
  * Drawn in its own pass after the planets (depth cleared), so a planet never cuts through it while parked; on a trip the planets stand
  * in that pass as depth only, so it goes behind them. It uses the main camera's pose.
  */
-import { createCraftKit, isRocket, BALL_RADIUS, SWAP, DASH, easeIn, easeOut, easeOutBack } from './lobby-craft.js';
+import { createCraftKit, isRocket, BALL_RADIUS, SWAP, DASH, easeIn, easeOutBack } from './lobby-craft.js';
 import { sizeInk } from './outline.js';
 
 /**
@@ -81,18 +79,42 @@ export function createLobbyFlight({ THREE, display, reducedMotion = false }) {
   const euler = new THREE.Euler(), basis = new THREE.Matrix4(), forward = new THREE.Vector3(0, 0, -1);
   const parkedP = new THREE.Vector3(), chaseP = new THREE.Vector3(), worldInv = new THREE.Matrix4();
 
+  // The poof's cloud: a handful of soft white balls that billow out from the vehicle and fade.
+  const puffLook = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, depthWrite: false });
+  const puffShape = new THREE.IcosahedronGeometry(1, 2);
+  const PUFFS = 9;
+  const puffs = Array.from({ length: PUFFS }, (_, k) => {
+    const a = k / PUFFS * Math.PI * 2 + (k % 2) * 0.4;
+    const mesh = new THREE.Mesh(puffShape, puffLook.clone());
+    mesh.visible = false; mesh.renderOrder = 5;
+    body.add(mesh);
+    return { mesh, dir: new THREE.Vector3(Math.cos(a), Math.sin(a) * 0.7, ((k * 7) % 5 - 2) * 0.18), size: 0.55 + ((k * 5) % 4) * 0.15 };
+  });
+  let puffAt = -1, puffHalf = 1;
+  /** One frame of the cloud, `p` 0..1 through it: the balls burst out fast, grow, then thin away. */
+  const stepPuff = p => {
+    const on = p >= 0 && p < 1;
+    for (const { mesh, dir, size } of puffs) {
+      mesh.visible = on;
+      if (!on) continue;
+      const out = 1 - Math.pow(1 - p, 3), r = puffHalf * (0.25 + 0.75 * out);
+      mesh.position.copy(dir).multiplyScalar(r);
+      mesh.scale.setScalar(puffHalf * size * (0.35 + 0.55 * Math.sin(Math.min(1, p * 1.4) * Math.PI / 2)) * (1 - 0.4 * p));
+      mesh.material.opacity = 0.95 * (1 - p * p);
+    }
+  };
   const setCraft = (kind, glide, timing = SWAP) => {
     swap = timing;
-    if (glide && craft) { kit.disposeCraft(leaving?.craft); leaving = { craft, start: null }; } else kit.disposeCraft(craft);
+    if (glide && craft) { kit.disposeCraft(leaving?.craft); leaving = { craft, start: null }; puffAt = null; puffHalf = Math.max(craft.model.half.x, craft.model.half.y) * 0.9; } else kit.disposeCraft(craft);
     arriveAt = glide ? null : -1; // a glide starts on the next frame, from its clock
     craft = kit.makeCraft(kind, colors);
-    craft.holder.visible = !glide; // a gliding arrival shows once its slide begins
+    craft.holder.visible = !glide; // a poofed arrival shows once it starts to pop out
     body.add(craft.holder);
     stats.vehicle = kind;
     stats.passengers = craft.balls.length;
   };
   const clear = () => {
-    kit.disposeCraft(leaving?.craft); leaving = null;
+    kit.disposeCraft(leaving?.craft); leaving = null; puffAt = -1; stepPuff(-1);
     kit.disposeCraft(craft); craft = null;
     stats.vehicle = null; stats.passengers = 0;
   };
@@ -130,22 +152,25 @@ export function createLobbyFlight({ THREE, display, reducedMotion = false }) {
     const want = rideFor(lobby.vehicle, trip);
     if (!craft) setCraft(want, false);
     else if (want !== craft.kind && !leaving && arriveAt === -1) setCraft(want, !still, trip.travelling || trip.inSpace ? DASH : SWAP);
-    if (still && leaving) { kit.disposeCraft(leaving.craft); leaving = null; arriveAt = -1; craft.holder.visible = true; }
-    // The swap: the old vehicle speeds off ahead, the new one glides in from behind once the old one has started to go.
+    if (still && leaving) { kit.disposeCraft(leaving.craft); leaving = null; arriveAt = -1; puffAt = -1; craft.holder.visible = true; craft.holder.scale.set(1, 1, 1); }
+    // The poof: the old vehicle squashes flat and wide, then shrinks to nothing in a puff of cloud; the new one pops out of the puff,
+    // overshooting and wobbling, taller then wider, as it settles.
+    if (puffAt === null) puffAt = clock;
     if (leaving) {
       if (leaving.start === null) leaving.start = clock;
-      const p = (clock - leaving.start) / swap.out;
-      leaving.craft.holder.position.x = easeIn(Math.min(1, p)) * swap.reach;
+      const p = clamp01((clock - leaving.start) / swap.out), s = 1 - easeIn(p), squash = Math.sin(Math.min(1, p * 1.6) * Math.PI / 2);
+      leaving.craft.holder.scale.set(s * (1 + 0.45 * squash), s * (1 - 0.4 * squash), s * (1 + 0.45 * squash));
       if (p >= 1) { kit.disposeCraft(leaving.craft); leaving = null; }
     }
-    if (arriveAt === null) arriveAt = clock + (leaving ? swap.gap : 0);
+    if (arriveAt === null) arriveAt = clock + swap.out * 0.6 + swap.gap;
     if (craft && arriveAt > 0) {
-      const p = (clock - arriveAt) / swap.in;
+      const p = (clock - arriveAt) / swap.in, u = clamp01(p), g = easeOutBack(u), wob = Math.sin(u * Math.PI * 2.5) * (1 - u) * 0.18;
       craft.holder.visible = p >= 0;
-      craft.holder.position.x = -(1 - (swap === DASH ? easeOutBack : easeOut)(clamp01(p))) * swap.reach;
-      if (p >= 1) { craft.holder.position.x = 0; arriveAt = -1; }
+      craft.holder.scale.set(Math.max(1e-3, g * (1 - wob)), Math.max(1e-3, g * (1 + wob)), Math.max(1e-3, g * (1 - wob)));
+      if (p >= 1) { craft.holder.scale.set(1, 1, 1); arriveAt = -1; }
     }
-    const swapping = !!leaving || arriveAt !== -1;
+    if (puffAt >= 0) { const p = (clock - puffAt) / swap.puff; stepPuff(p); if (p >= 1) puffAt = -1; } else stepPuff(-1);
+    const swapping = !!leaving || arriveAt !== -1 || puffAt >= 0;
 
     // Panels can grow (a picker opens, a player joins): keep the framing current, a few times a second.
     if (lobby.insets && (still || clock - lastInsets > 0.4 || lastInsets < 0)) {
@@ -317,7 +342,7 @@ export function createLobbyFlight({ THREE, display, reducedMotion = false }) {
      */
     holds(goingOut) {
       if (!lobby || !craft || reducedMotion) return false;
-      if (leaving || arriveAt !== -1) return true;
+      if (leaving || arriveAt !== -1 || puffAt >= 0) return true;
       return !!goingOut && rideFor(lobby.vehicle, { inSpace: true }) !== craft.kind;
     },
     /** Draws the vehicle over what is already drawn, keeping the colour and clearing only depth. */
@@ -329,6 +354,6 @@ export function createLobbyFlight({ THREE, display, reducedMotion = false }) {
       renderer.render(vScene, vCamera);
       renderer.autoClear = auto;
     },
-    dispose() { clear(); kit.dispose(); occluderShape.dispose(); occluderLook.dispose(); lobby = null; },
+    dispose() { clear(); kit.dispose(); puffShape.dispose(); for (const { mesh } of puffs) mesh.material.dispose(); puffLook.dispose(); occluderShape.dispose(); occluderLook.dispose(); lobby = null; },
   };
 }

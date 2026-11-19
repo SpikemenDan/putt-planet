@@ -42,7 +42,6 @@ export function useLobbyLook(ref, display) {
       el.style.setProperty('--look-glow', String(look.glow));
       el.style.setProperty('--look-flip', (look.flipSeconds > 0 ? look.flipSeconds : 0.001) + 's');
       el.style.setProperty('--look-stripe', secs(look.stripeSeconds));
-      el.style.setProperty('--look-orb', secs(look.orbSeconds));
     };
     apply();
     const view = el.ownerDocument.defaultView;

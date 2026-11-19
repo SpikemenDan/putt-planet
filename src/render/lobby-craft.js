@@ -9,10 +9,13 @@ import { createInkMaterial, createInkUniforms, smoothHullGeometry } from './outl
 
 export { BALL_RADIUS, isRocket };
 
-/** Seconds and reach (vehicle units) of a vehicle change: the old one speeds off ahead, the new one glides in from behind. */
-export const SWAP = Object.freeze({ out: 0.9, in: 1.3, gap: 0.25, reach: 46 });
-/** The quicker cartoon dash used when a trip changes the vehicle (owner, 2026-11-18). */
-export const DASH = Object.freeze({ out: 0.32, in: 0.6, gap: 0.06, reach: 46 });
+/**
+ * Seconds of a vehicle change, a cartoon poof (owner, 2026-11-18: "redesign the vehicle switch"): the old one squashes away to nothing
+ * (`out`) in a puff of cloud (`puff`), and after `gap` the new one pops out of the puff with a springy overshoot (`in`).
+ */
+export const SWAP = Object.freeze({ out: 0.3, in: 0.5, gap: 0.1, puff: 0.75 });
+/** The quicker poof used when a trip changes the vehicle. */
+export const DASH = Object.freeze({ out: 0.22, in: 0.4, gap: 0.05, puff: 0.6 });
 
 export const easeOutBack = x => 1 + 2.2 * Math.pow(x - 1, 3) + 1.2 * Math.pow(x - 1, 2);
 export const easeIn = x => x * x * x;

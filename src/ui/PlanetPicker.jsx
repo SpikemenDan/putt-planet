@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { WORLD_GRAVITY, WORLDS } from '../shared/worlds.js';
+import { WORLDS } from '../shared/worlds.js';
 import { OFFWORLD_REGIONS } from '../shared/world-regions.js';
 import { Voters } from './ModePicker.jsx';
 import styles from './PlanetPicker.module.css';
@@ -10,29 +10,6 @@ export const PLAYABLE_WORLDS = Object.freeze(['gaia', ...Object.keys(OFFWORLD_RE
 /** Arrow order (owner, 2026-11-12): left goes Gaia → Luna → Ares → Gaia, right goes back the other way. */
 export const WORLD_ORDER = Object.freeze(['gaia', 'luna', 'ares']);
 export const WORLD_BLURB = Object.freeze({ gaia: 'Home: six regions of courses', luna: 'Low gravity: long, floaty putts', ares: 'Lighter gravity: red canyons and highlands' });
-/** Each planet's feel in a few words, under its gravity meter (owner, 2026-11-18: a livelier planet card). */
-export const WORLD_VIBE = Object.freeze({ gaia: 'Breezy greens', luna: 'Moon bounces', ares: 'Dust and canyons' });
-
-/** A world's gravity as a share of Gaia's, for the planet card's meter. */
-export const gravityShare = id => (WORLD_GRAVITY[id] ?? WORLD_GRAVITY.gaia) / WORLD_GRAVITY.gaia;
-
-/**
- * The planet card's window (owner, 2026-11-18): the chosen planet as a drawn globe in a little patch of space, its surface turning
- * (`--look-orb`), a golf ball circling it and stars twinkling behind. Keyed by world, so a new planet pops in. Decorative only.
- */
-function PlanetWindow({ world }) {
-  return (
-    <div className={styles.window} aria-hidden="true">
-      <span className={styles.stars} />
-      <span key={world} className={styles.globe} data-world={world}>
-        <span className={styles.surface} />
-        <span className={styles.shade} />
-      </span>
-      <span className={styles.orbit} />
-      <span className={styles.track}><span className={styles.ball} /></span>
-    </div>
-  );
-}
 
 /** The next planet from `id` in the arrow's direction, skipping planets that cannot be picked. */
 export function nextWorld(id, dir, open = PLAYABLE_WORLDS) {
@@ -63,15 +40,8 @@ export function PlanetPicker({ value = 'gaia', onPick = null, open = PLAYABLE_WO
     <section className={styles.card} data-ui="planet-picker" data-world={value} data-voting={voters ? '' : undefined} onKeyDown={onKeyDown} aria-label="Destination">
       <div className={styles.head}>
         {onPick && <button type="button" className={styles.arrow} onClick={() => turn('left')} aria-label="Previous planet" data-ui="world-left">&lsaquo;</button>}
-        <div className={styles.name} aria-live="polite"><small>Destination</small><b key={shown.id} data-ui="planet-name">{shown.name}</b><span>{WORLD_BLURB[shown.id]}</span></div>
+        <div className={styles.name} aria-live="polite"><small>Destination</small><b data-ui="planet-name">{shown.name}</b><span>{WORLD_BLURB[shown.id]}</span></div>
         {onPick && <button type="button" className={styles.arrow} onClick={() => turn('right')} aria-label="Next planet" data-ui="world-right">&rsaquo;</button>}
-      </div>
-      <PlanetWindow world={shown.id} />
-      <div className={styles.stats} data-ui="planet-gravity">
-        <small>Gravity</small>
-        <span className={styles.meter} aria-hidden="true"><span style={{ '--g': gravityShare(shown.id) }} /></span>
-        <b>{Math.round(gravityShare(shown.id) * 100)}%</b>
-        <em>{WORLD_VIBE[shown.id]}</em>
       </div>
       <div className={styles.chips} role="radiogroup" aria-label="Planet" data-ui="destination-pick">
         {WORLD_ORDER.map(id => {
