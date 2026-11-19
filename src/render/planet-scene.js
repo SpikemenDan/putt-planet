@@ -830,7 +830,8 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
   const unlaunch = t => { const a = TRIP.launch, n = 1 - a / 2; return t * n < a / 2 ? Math.sqrt(t * n * 2 * a) : t * n + a / 2; };
   // The rocket's route (lobby-route.js): planned afresh each frame (Luna moves), from where the rocket was when the trip set off.
   const route = createLobbyRoute(THREE);
-  const trip = { ready: false, fresh: true, side: 0, weight: 0, start: new THREE.Vector3(), startDir: new THREE.Vector3(), pos: new THREE.Vector3(), dir: new THREE.Vector3(), endPos: new THREE.Vector3(), endQ: new THREE.Quaternion() };
+  const trip = { ready: false, fresh: true, side: 0, weight: 0, start: new THREE.Vector3(), startDir: new THREE.Vector3(), pos: new THREE.Vector3(), dir: new THREE.Vector3(), endPos: new THREE.Vector3(), endQ: new THREE.Quaternion(), eyes: null };
+  trip.eyes = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
   const endInv = new THREE.Quaternion(), viewPoint = new THREE.Vector3();
   /** Whether a point is in the picture from the trip's end pose, inside the part no lobby panel covers. */
   const inEndView = p => {
@@ -886,7 +887,7 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
       const parked = flight?.parked ?? PARKED;
       tripEnd.copy(parked.p).applyQuaternion(trip.endQ).add(trip.endPos);
       tripEndDir.copy(parked.nose).applyQuaternion(trip.endQ);
-      route.plan({ start: trip.start, startDir: trip.startDir, from: trip.fresh ? fromAt : null, centre: aimAt, end: tripEnd, endDir: tripEndDir, blockers, eye: landPos, ground: bodyRadius[space.to], inView: inEndView });
+      route.plan({ start: trip.start, startDir: trip.startDir, from: trip.fresh ? fromAt : null, centre: aimAt, end: tripEnd, endDir: tripEndDir, blockers, eye: landPos, ground: bodyRadius[space.to], inView: inEndView, eyes: trip.eyes });
       route.at(route.timed(trip.fresh ? launch(x) : x), trip.pos, trip.dir);
       landRange[1] = Math.min(1, Math.max(0.5, trip.fresh ? unlaunch(route.inSight) : route.inSight));
       landRange[0] = Math.max(TRIP.out[1], Math.min((trip.fresh ? unlaunch(route.arrives) : route.arrives) - 0.1, landRange[1] - 0.3));
@@ -908,14 +909,15 @@ export function createPlanetScene({ THREE, canvas, display, random, planet: preb
     // Every trip, the view leans after the rocket some way (owner, 2026-11-18: "follow the rocket to an extent").
     const tripFollow = spaceSettings().tripFollow ?? 0.8, long = trip.ready ? clamp01(half / TRIP.long - 1) * tripFollow : 0;
     const follow = trip.ready ? Math.max(long, tripFollow * 0.5) : 0;
-    if (follow > 0) { // after where the rocket is across, evened out in time so its bursts of speed never jolt the camera
-      const t0 = trip.fresh ? unlaunch(route.leaves) : route.leaves, t1 = trip.fresh ? unlaunch(route.arrives) : route.arrives;
-      routePoint.lerpVectors(fromAt, aimAt, smoother(clamp01((x - t0) / Math.max(1e-3, t1 - t0))));
+    if (follow > 0) { // after how far across the rocket is (its speed builds and falls evenly, so the camera never jolts)
+      routePoint.lerpVectors(fromAt, aimAt, route.crossAt(trip.fresh ? launch(x) : x));
       wideMid.lerp(routePoint.lerp(aimAt, TRIP.lead), follow);
     }
     if (long > 0) half *= Math.pow(TRIP.long / half, long);
     const tanV = Math.tan(FOV * Math.PI / 360), aspect = camera.aspect || 16 / 9;
     wideAt.copy(wideMid).addScaledVector(wideDir, half * TRIP.margin / Math.min(tanV * aspect, tanV * 1.5));
+    // The route keeps out from behind the planet ahead as seen from here (last frame's wide view) and from the finished view.
+    if (trip.ready) { trip.eyes[0].copy(landPos); trip.eyes[1].copy(wideAt); trip.eyes[2].lerpVectors(landPos, wideAt, 0.5); }
     // Out to the wide view round the planet it leaves, then in round the planet ahead: the distance changes by an even ratio, so a
     // planet shrinks or grows at an even pace and the rocket, near the camera at first, never whips out of the picture.
     const out = phase(x, TRIP.out), land = arrival(x);

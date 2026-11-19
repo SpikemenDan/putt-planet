@@ -1287,9 +1287,9 @@ function fakeClock() {
     assert.ok(small >= 0.5 - 1e-6 && small < 0.9, `space.rocketFar = 2 keeps it at least half size (smallest ${small.toFixed(3)})`);
     display.space.rocketFar = 8;
     // The long way, Ares to Luna (owner, 2026-11-18: "show the rocket when it goes from ares to luna a little more"): the view follows
-    // it across, so it never leaves the picture, and the picture never jumps. As the view comes in to Luna the rocket goes round it
-    // (out of the picture, behind the planet), then comes into the finished view and stops dead there (owner, 2026-11-18: "the camera
-    // zoom and the rocket comes in the view and just suddenly stops").
+    // it across, so it never leaves the picture, and the picture never jumps. As the view comes in to Luna the rocket sweeps round the
+    // front of it (never behind it: owner, 2026-11-18, it "goes behind ares and stays there"), into the finished view, and stops dead
+    // there (owner, 2026-11-18: "the camera zoom and the rocket comes in the view and just suddenly stops").
     sky.setView({ space: true, target: 'ares' }); run(9);
     sky.setView({ space: true, target: 'luna' });
     let off = 0, frames = 0, jump = 0, last = null, endIn = 0, endOut = 0;
