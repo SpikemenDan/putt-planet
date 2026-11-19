@@ -19,7 +19,7 @@ import { sizeInk } from './outline.js';
 const TURN = Math.PI + 0.24;
 const CENTRE_PULL = 0.55; // 1 centres the vehicle in the free area between the panels, 0 on the screen
 const LOBBY_EYE = [0.1, 0.32, 1]; // where the parked pose is seen from, per unit of distance: a little right and above
-const HOP_LEAVE = 0.8; // seconds a hopping rocket takes to zip off the left of the screen, once any vehicle change is done
+const HOP_LEAVE = 0.8; // seconds a hopping vehicle takes to zip off the left of the screen, once any vehicle change is done
 const CHASE = { depth: 0.95, drop: 0.16, side: 0.35, turn: 3, bank: 0.55, maxBank: 0.7, spring: 7, rise: 0.9 };
 
 const clamp01 = v => Math.max(0, Math.min(1, v));
@@ -50,7 +50,7 @@ export function createLobbyFlight({ THREE, display, reducedMotion = false }) {
   const lobbyViewInverse = lobbyView.clone().invert();
 
   let lobby = null, colors = [], craft = null, leaving = null, swap = SWAP, arriveAt = -1, frameHalf = null, frames = 0;
-  let hopFrom = -1, hopOff = 0;
+  let hopFrom = -1, hopOff = 0, hopAway = false; // hopAway: off the left edge, waiting to be revealed
   let w = 0, wv = 0, chaseIn = 0, bank = 0, airLevel = 1, lastInsets = -1, clock = 0;
   const insets = { left: 0, right: 0, top: 0, bottom: 0 };
   const stats = { vehicle: null, passengers: 0, swapping: false, trip: null, air: 0, chase: 0, frames: 0, hop: null, nose: [-1, 0, 0] };
@@ -95,6 +95,7 @@ export function createLobbyFlight({ THREE, display, reducedMotion = false }) {
     stats.passengers = craft.balls.length;
   };
   const clear = () => {
+    hopAway = false; hopFrom = -1;
     kit.disposeCraft(leaving?.craft); leaving = null; puffAt = -1; stepPuff(-1);
     kit.disposeCraft(craft); craft = null;
     stats.vehicle = null; stats.passengers = 0;
@@ -129,7 +130,15 @@ export function createLobbyFlight({ THREE, display, reducedMotion = false }) {
     // Which vehicle: the one asked for, or the rocket while out in space.
     const want = rideFor(lobby.vehicle, trip);
     if (!craft) setCraft(want, false);
-    else if (want !== craft.kind && !leaving && arriveAt === -1) setCraft(want, !still, trip.travelling || trip.inSpace ? DASH : SWAP);
+    // A hop (planet-scene.js, HOPS): the vehicle leaves as it is, changes while out of sight, and is revealed in its spot at the end,
+    // popping out of a puff of cloud.
+    if (!trip.hop && hopAway) {
+      hopAway = false; hopFrom = -1;
+      if (want !== craft.kind) setCraft(want, false);
+      if (!still) { swap = SWAP; craft.holder.visible = false; arriveAt = clock; puffAt = null; puffHalf = Math.max(craft.model.half.x, craft.model.half.y) * 0.9; }
+    }
+    if (trip.hop && !hopAway) { /* leaving: no change on screen */ }
+    else if (want !== craft.kind && !leaving && arriveAt === -1) setCraft(want, !still && !hopAway, trip.travelling || trip.inSpace ? DASH : SWAP);
     if (still && leaving) { kit.disposeCraft(leaving.craft); leaving = null; arriveAt = -1; puffAt = -1; craft.holder.visible = true; craft.holder.scale.set(1, 1, 1); }
     // The poof: the old vehicle squashes flat and wide, then shrinks to nothing in a puff of cloud; the new one pops out of the puff,
     // overshooting and wobbling, taller then wider, as it settles.
@@ -191,8 +200,8 @@ export function createLobbyFlight({ THREE, display, reducedMotion = false }) {
       w = clamp01(w + wv * dt);
     }
     if (w < 1e-4 && target === 0) { w = 0; wv = 0; }
-    // A hop (planet-scene.js, HOPS): no chase. The rocket keeps its parked pose, nose left, and slides along the screen: off the left
-    // edge (speeding up) as the trip starts, out of sight while the camera flies, and in from the right edge (easing to rest) at the end.
+    // A hop (planet-scene.js, HOPS): no chase. The vehicle keeps its parked pose, nose left, and slides off the left edge (speeding up)
+    // while the camera holds still, then stays out of sight until it is revealed.
     const hop = trip.hop;
     if (hop) { w = 0; wv = 0; chaseIn = 0; } else hopFrom = -1;
     // Chasing: ahead of the camera and a little below, nose turned toward the planet it is bound for, banking into the turns.
@@ -220,12 +229,10 @@ export function createLobbyFlight({ THREE, display, reducedMotion = false }) {
     hopOff = 0;
     if (hop) {
       const span = 2 * depth * tan * aspect * 1.15; // a little over the screen's width at the parked distance: fully off either edge
-      if (hop.arrive > 0) hopOff = Math.pow(1 - hop.arrive, 3) * span;
-      else {
-        if (hopFrom < 0 && !swapping) hopFrom = clock;
-        const q = hopFrom < 0 ? 0 : reducedMotion ? 1 : clamp01((clock - hopFrom) / HOP_LEAVE);
-        hopOff = -q * q * q * span;
-      }
+      if (hopFrom < 0 && !swapping) hopFrom = clock;
+      const q = hopAway ? 1 : hopFrom < 0 ? 0 : reducedMotion ? 1 : clamp01((clock - hopFrom) / HOP_LEAVE);
+      if (q >= 1) hopAway = true;
+      hopOff = -q * q * q * span;
       body.position.x += hopOff;
       hopOff /= span / 1.15; // in screen widths, for the stats
     }
