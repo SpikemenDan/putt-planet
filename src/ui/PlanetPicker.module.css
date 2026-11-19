@@ -24,5 +24,9 @@
 .chip:disabled:not([aria-checked=true]){opacity:.55}
 .chip[aria-checked=true]{background:var(--c);color:#fff;text-shadow:1px 1px 0 var(--ink);translate:0 3px;box-shadow:0 0 0 var(--ink)}
 .chip[aria-checked=true]::before{border-color:#fff}
-.card[data-voting] .chip[data-leading]{outline:3px dashed var(--c);outline-offset:2px}
-@media (prefers-reduced-motion:reduce){.arrow,.chip{transition:none}}
+/* The leading planet while voting (owner, 2026-11-19: better than dashed lines): a soft ring in the planet's colour, standing a little off
+   the chip and gently breathing. */
+.card[data-voting] .chip[data-leading]::after{content:'';position:absolute;inset:-7px;border:3px solid var(--c);border-radius:999px;pointer-events:none;
+  box-shadow:0 0 12px 1px color-mix(in srgb,var(--c) 60%,transparent);animation:lead 1.8s ease-in-out infinite}
+@keyframes lead{50%{opacity:.5;scale:1.03}}
+@media (prefers-reduced-motion:reduce){.arrow,.chip{transition:none}.card[data-voting] .chip[data-leading]::after{animation:none}}

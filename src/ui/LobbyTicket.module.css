@@ -58,9 +58,9 @@
 .stub::after{right:-16px;clip-path:inset(0 50% 0 0)}
 /* The party code, like a booking reference, with a small copy-invite icon. */
 /* The label sits over the code (owner, 2026-11-19: the code and Leave room looked "chopped"), so code and Leave share one row. */
-.code{order:-1;display:grid;grid-template-columns:auto auto;align-items:center;justify-content:start;gap:3px 6px;min-width:0}
+.code{order:-1;display:grid;grid-template-columns:auto auto;align-items:center;justify-content:start;gap:0 6px;min-width:0}
 .code small{grid-column:1/-1;white-space:nowrap;font:900 10px/1 var(--font);letter-spacing:.5px;text-transform:none;color:var(--mut)}
-.code strong{display:block;padding-top:2px;font:400 17px/1 var(--font);letter-spacing:1.5px;color:var(--ink);user-select:all;white-space:nowrap}
+.code strong{display:block;font:400 17px/1 var(--font);letter-spacing:1.5px;color:var(--ink);user-select:all;white-space:nowrap}
 .copy{flex:none;width:22px;height:22px;margin:0;padding:0;border:2px solid var(--ink);border-radius:7px;background:#fff center/14px no-repeat;cursor:pointer;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23141029' stroke-width='2.6' stroke-linejoin='round'%3E%3Crect x='8' y='8' width='12' height='12' rx='3'/%3E%3Cpath d='M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2'/%3E%3C/svg%3E");transition:background-color .15s,scale .1s}
 .copy:hover{background-color:var(--yellow)}
@@ -68,7 +68,8 @@
 .hiddenText{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 /* Back (Solo) or Leave room (party), in the stub's bottom-right corner: a round-cornered comic tag with an arrow. */
 /* Smaller (owner, 2026-11-19), so the stub reads as a real ticket stub with the flight number or code in front. */
-.back{flex:none;display:inline-flex;align-items:center;gap:4px;margin:0 0 0 auto;padding:3px 9px 3px 4px;font:900 11px var(--font);letter-spacing:.5px;text-transform:none;text-shadow:none;
+/* Leave room lines up with the code itself, not the label above it (owner, 2026-11-19). */
+.back{flex:none;align-self:flex-end;display:inline-flex;align-items:center;gap:4px;margin:0 0 0 auto;padding:3px 9px 3px 4px;font:900 11px var(--font);letter-spacing:.5px;text-transform:none;text-shadow:none;
   color:var(--ink);background:var(--yellow);border:2.5px solid var(--ink);border-radius:999px;box-shadow:0 3px 0 var(--ink);cursor:pointer;transition:translate .1s,box-shadow .1s,background .15s}
 .back::before{content:'';width:15px;height:15px;border-radius:50%;background:var(--ink) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M14 6l-6 6 6 6' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/11px no-repeat;transition:translate .15s}
 .back:hover{background:#fff27a;translate:0 -1px;box-shadow:0 4px 0 var(--ink)}
