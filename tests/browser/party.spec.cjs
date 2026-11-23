@@ -71,8 +71,9 @@ test('party flow: Create shows the code afterwards, Join by code, plane lobby wi
     await ben.page.keyboard.press('Escape');
     await expect(benPicker).toHaveCount(0);
     await expect(benBadge).toBeFocused();
-    // A click outside the picker closes it: here on the passenger manifest (the lobby's heading is screen-reader-only text).
-    await ana.ui('lobby-manifest').click({ position: { x: 24, y: 24 } });
+    // A click outside the picker closes it: here on the "Party code" label on the stub, which the open picker
+    // never covers (it now spans the passenger manifest) and which does nothing itself.
+    await ana.ui('party-code').locator('small').click();
     await expect(anaPicker).toHaveCount(0);
 
     // The plane lobby (owner, 2026-11-16: a 3D plane for Gaia): both balls in their colours for both players; Putt Pong is offered with exactly two.
