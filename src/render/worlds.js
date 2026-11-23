@@ -1,5 +1,6 @@
 /**
- * Surface maps of Ares and Luna for the loading-screen sky (VIS-M1), drawn as real spheres by planet-scene.js so a later planet menu can
+ * Procedural surface maps of Ares and Luna for the loading-screen sky (VIS-M1; the owner's painted maps in planet-maps.js replace them
+ * while `loading.paintedMaps` is on), drawn as real spheres by planet-scene.js so a later planet menu can
  * fly to them. Original art: invented terrain, not maps of Mars or the Moon.
  *
  * Ares is rugged and rust-coloured with dark basalt plains, a long canyon, big volcanoes, craters and polar ice, with green valleys and

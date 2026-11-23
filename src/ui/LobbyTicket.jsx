@@ -1,32 +1,70 @@
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { GameModes } from '../shared/session.js';
 import { WORLDS } from '../shared/worlds.js';
 import { NAME_LIMIT } from './commands.js';
-import { Barcode } from './Barcode.jsx';
 import { ColorBadge } from './BadgePicker.jsx';
-import { Voters } from './ModePicker.jsx';
+import { colorHex } from '../shared/colors.js';
 import styles from './LobbyTicket.module.css';
 
-/** The planets a ticket can name, in the destination carousel's order, with airport-style codes. */
-export const TICKET_WORLDS = Object.freeze(['gaia', 'luna', 'ares']);
+/** True for a pale ball colour (Yellow, Lime, White), which takes dark words on the pass header instead of white. */
+const isLight = hex => {
+  const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255).map(c => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.5;
+};
+
 const CODES = Object.freeze({ gaia: 'GAI', luna: 'LUN', ares: 'ARS' });
-/** What each vehicle's pass calls itself and where it boards, as on a real pass: a gate, a helipad or a launch pad. */
-export const PASS = Object.freeze({
-  plane: { title: 'Plane Boarding Pass', gate: 'Gate' },
-  helicopter: { title: 'Helicopter Boarding Pass', gate: 'Helipad' },
-  rocket: { title: 'Rocket Boarding Pass', gate: 'Launch pad' },
-});
 
 /**
- * Themed gates (owner, 2026-11-17): the party plane boards at Cloud 9, rockets launch from a Luna crater or an Ares canyon (numbered
- * from the flight, so a party keeps its pad), and the Solo helicopter lifts off from a lily pad on Gaia's lakes (owner, 2026-11-17).
+ * The destination code (owner, 2026-11-18; no boxes, owner 2026-11-19): three letters in the planet's colour (Gaia green, Luna purple,
+ * Ares red), keyed by the destination so a new planet flips them in one after another (`--look-flip` sets how long each takes). The
+ * text stays the plain code for screen readers and tests.
  */
-export function gateFor(vehicle, destination, flight = '') {
-  const n = 1 + (Number(String(flight).replace(/\D/g, '')) || 0) % 9;
-  if (vehicle === 'helicopter') return { kind: 'lily', text: 'Lily Pad ' + n };
-  if (vehicle === 'rocket') {
-    return destination === 'luna' ? { kind: 'crater', text: 'Crater ' + n } : { kind: 'canyon', text: 'Canyon ' + n };
-  }
-  return { kind: 'cloud', text: 'Cloud 9' };
+function Flaps({ text, world }) {
+  return [...text].map((ch, i) => <span key={world + i} className={styles.flap} style={{ '--i': i }}>{ch}</span>);
 }
+/**
+ * Shrinks a name's font until the whole name shows (owner, 2026-11-19: twelve-character names fit, never cut off or "..."). The CSS
+ * size is the largest; it steps down a pixel at a time to `min`. Returns false if it still does not fit at `min`. Measures the real
+ * DOM, so it re-runs when the text changes and when the element resizes; jsdom (no layout) leaves the CSS size alone.
+ */
+function fitText(el, min) {
+  el.style.fontSize = '';
+  const view = el.ownerDocument?.defaultView;
+  if (!view?.getComputedStyle) return true;
+  let size = parseFloat(view.getComputedStyle(el).fontSize) || 0;
+  while (size > min && el.scrollWidth > el.clientWidth + 1) el.style.fontSize = --size + 'px';
+  return el.scrollWidth <= el.clientWidth + 1;
+}
+function useFit(text, min, onFit) {
+  const ref = useRef(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    const run = () => { const ok = fitText(el, min); onFit?.(el, ok); };
+    run();
+    if (typeof ResizeObserver !== 'function') return undefined;
+    let width = el.parentElement?.clientWidth;
+    const ro = new ResizeObserver(() => { const w = el.parentElement?.clientWidth; if (w !== width) { width = w; run(); } });
+    ro.observe(el.parentElement ?? el);
+    return () => ro.disconnect();
+  }, [text, min]);
+  return ref;
+}
+/**
+ * The stub button's label (owner, 2026-11-19: Party's stub should look like Solo's Flight and Back): only the first word shows, so
+ * "Leave room" reads "Leave" like "Back"; the rest stays in the text for screen readers.
+ */
+function BackLabel({ text }) {
+  const [first, ...rest] = String(text).split(' ');
+  return <>{first}{rest.length > 0 && <span className={styles.hiddenText}>{' ' + rest.join(' ')}</span>}</>;
+}
+/** What each vehicle's pass calls itself. */
+export const PASS = Object.freeze({
+  plane: { title: 'Plane Boarding Pass' },
+  helicopter: { title: 'Helicopter Boarding Pass' },
+  rocket: { title: 'Rocket Boarding Pass' },
+  minirocket: { title: 'Rocket Boarding Pass' }, // the Solo rocket to Luna and Ares
+});
 
 const KEYPAD = { a: 2, b: 2, c: 2, d: 3, e: 3, f: 3, g: 4, h: 4, i: 4, j: 5, k: 5, l: 5, m: 6, n: 6, o: 6, p: 7, q: 7, r: 7, s: 7, t: 8, u: 8, v: 8, w: 9, x: 9, y: 9, z: 9 };
 /** Each letter or digit as typed on a phone keypad (A–C → 2 … W–Z → 9). */
@@ -43,6 +81,55 @@ export function flightOf(code = '', world = 'gaia') {
   return { flight: 'PP ' + (keypad(world).slice(0, 4) || '1000') };
 }
 
+/** The mode as the pass prints it (owner, 2026-11-19); Solo calls Standard "Casual". */
+const MODE_NAME = Object.freeze({
+  [GameModes.STANDARD]: 'Standard', [GameModes.PONG]: 'Putt Pong', [GameModes.TOURNAMENT_3]: 'Tournament 3', [GameModes.TOURNAMENT_5]: 'Tournament 5',
+  [GameModes.TOURNAMENT_7]: 'Tournament 7', [GameModes.PRACTICE]: 'Practice Map', [GameModes.PUTT_PRACTICE]: 'Practice Putt',
+});
+export const modeName = (mode, solo = false) => solo && mode === GameModes.STANDARD ? 'Casual' : MODE_NAME[mode] ?? 'Standard';
+/** Seats run two to a row, airline style: the first passenger sits in 1A, the second in 1B, the third in 2A. */
+export const seatOf = index => index < 0 ? '--' : (Math.floor(index / 2) + 1) + 'AB'[index % 2];
+/** Boarding (owner, 2026-11-19): "Awaiting" until Start or Play is pressed, then the 5 s countdown as 00:05 … 00:01, then "Now". */
+export const boardingText = seconds => seconds === null || seconds === undefined ? 'Awaiting' : seconds > 0 ? '00:' + String(seconds).padStart(2, '0') : 'Now';
+
+/**
+ * The boarding countdown (owner, 2026-11-19: split-flap, then "simpler"): plain black digits like the destination code, and a digit
+ * that changes remounts (its key is position and digit), so it flips down into place on the tick; the colon stays put.
+ */
+function Clock({ text }) {
+  return [...text].map((ch, i) => ch === ':'
+    ? <span key={i} className={styles.colon}>:</span>
+    : <span key={i + ch} className={styles.tile} style={{ '--i': i }}>{ch}</span>);
+}
+
+/** The pass's fields under the route: seat, mode and boarding time. */
+function Fields({ seat, mode, boarding }) {
+  const state = boarding === null || boarding === undefined ? 'awaiting' : boarding > 0 ? 'counting' : 'now';
+  return (
+    <dl className={styles.fields} data-ui="ticket-fields">
+      <div><dt>Seat</dt><dd data-ui="ticket-seat">{seat}</dd></div>
+      <div className={styles.modeField}><dt>Mode</dt><dd data-ui="ticket-mode">{mode}</dd></div>
+      <div className={styles.boarding}><dt>Boarding</dt><dd data-ui="ticket-boarding" data-state={state} aria-live="polite">{state === 'counting' ? <Clock text={boardingText(boarding)} /> : boardingText(boarding)}</dd></div>
+    </dl>
+  );
+}
+
+/** A quick shine across the header when the ball colour changes (owner, 2026-11-19: "very minimalistic and quick"); not on first show. */
+function useSheen(ball) {
+  const first = useRef(ball), [sheen, setSheen] = useState(0);
+  useEffect(() => { if (ball !== first.current) { first.current = ball; setSheen(n => n + 1); } }, [ball]);
+  return sheen;
+}
+
+/** The pass leans a little toward a mouse pointer (owner, 2026-11-19); off with reduced motion (CSS) and for touch. */
+const lean = e => {
+  if (e.pointerType !== 'mouse') return;
+  const el = e.currentTarget, r = el.getBoundingClientRect();
+  el.style.setProperty('--tx', ((e.clientX - r.left) / r.width - 0.5).toFixed(3));
+  el.style.setProperty('--ty', ((e.clientY - r.top) / r.height - 0.5).toFixed(3));
+};
+const unlean = e => { e.currentTarget.style.removeProperty('--tx'); e.currentTarget.style.removeProperty('--ty'); };
+
 /**
  * The passenger's name on the pass. With `onName` it is edited right there, like the colour badge beside it: the name is a field that
  * reads as printed text until you click it. `onNameDone` runs when editing ends (Enter, Escape or clicking away): a party sends the
@@ -51,10 +138,11 @@ export function flightOf(code = '', world = 'gaia') {
  */
 function PassengerName({ name, onName, onNameDone }) {
   const shown = String(name).trim().slice(0, NAME_LIMIT) || 'Player';
-  if (!onName) return <strong className={styles.name} data-ui="ticket-name">{shown}</strong>;
+  const fit = useFit(onName ? name : shown, 15);
+  if (!onName) return <strong ref={fit} className={styles.name} data-ui="ticket-name">{shown}</strong>;
   return (
     <label className={styles.nameEdit} data-ui="ticket-name-edit" data-empty={String(name).trim() ? undefined : ''}>
-      <input className={styles.name} data-ui="ticket-name" aria-label="Your name" maxLength={NAME_LIMIT} autoComplete="off" spellCheck={false}
+      <input ref={fit} className={styles.name} data-ui="ticket-name" aria-label="Your name" maxLength={NAME_LIMIT} autoComplete="off" spellCheck={false}
         placeholder="NAME" value={name} onChange={e => onName(e.target.value)} onBlur={() => onNameDone?.()}
         onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); e.currentTarget.blur(); } }} />
       <svg className={styles.pencil} viewBox="0 0 24 24" aria-hidden="true"><path className={styles.pencilBody} d="M15.2 3.6l5.2 5.2L9.6 19.6l-5.2-5.2z" /><path className={styles.pencilTip} d="M4.4 14.4l5.2 5.2-6.6 1.4z" /><path className={styles.pencilEnd} d="M15.2 3.6l1.6-1.6a1.6 1.6 0 0 1 2.3 0l2.9 2.9a1.6 1.6 0 0 1 0 2.3l-1.6 1.6z" /></svg>
@@ -63,24 +151,69 @@ function PassengerName({ name, onName, onNameDone }) {
 }
 
 /**
- * The lobby ticket (owner, 2026-11-16, 2026-11-17): a bright boarding pass on the right of the Solo and party lobbies, laid out like a
- * real one: the vehicle's pass title, the passenger with their colour badge (click it to change colour: the same picker and palette
- * everywhere) and name (`onName`: click it to edit), the route in airport-style codes, then flight, gate and seat, then
- * the lobby's buttons (`children`: Play or Start Game) and, on the stub, a real Code 39 barcode of the party code (the flight on a
- * Solo pass) with the code printed under it like a booking reference
- * (`code`, with a copy-invite icon: `onCopy`) and Back (`onBack`). In a party everyone
- * votes for the destination on the pass (`onDestination`, `worldVoters`: each voter's ball sits on their planet; `myWorld` is checked);
- * the route shows the planet the vote leads with. Solo picks its planet the same way, without votes; `openWorlds` lists the
- * planets that can be picked (the rest show greyed out, coming soon). Names render as React text only, cut to NAME_LIMIT.
+ * The passenger list on the pass (owner, 2026-11-19: "put the passenger list on the ticket", replacing the separate manifest card):
+ * everyone aboard with their ball and name in black (owner, 2026-11-19; the host wears a star), two to a row. The seats show as a row of pips
+ * by the heading (owner, 2026-11-19: instead of "7 seats open"): one per seat, filled with its passenger's ball or left open. Names render as React
+ * text only, cut to NAME_LIMIT.
  */
-export function LobbyTicket({ vehicle = 'plane', name = '', onName = null, onNameDone = null, color = null, taken = {}, onPick, solo = false, destination = 'gaia', onDestination = null, openWorlds = TICKET_WORLDS, worldVoters = null, myWorld = null, code = '', onCopy = null, flight = 'PP 1000', seat = 1, onBack = null, backLabel = 'Back', hidden = false, children }) {
+/** One passenger: the name shrinks to fit its half of the row; a name too long even then takes the whole row. */
+function Aboard({ p }) {
+  const text = String(p.name).slice(0, NAME_LIMIT);
+  const fit = useFit(text, 12, (el, ok) => {
+    const li = el.closest('li');
+    if (ok || li.hasAttribute('data-wide')) return;
+    li.setAttribute('data-wide', '');
+    fitText(el, 12);
+  });
+  return (
+    <li data-you={p.you || undefined} style={{ '--ball': colorHex(p.color) }}>
+      <span className={styles.ball} aria-hidden="true" />
+      <span ref={fit} className={styles.who2}>{text}</span>
+      {p.host && <span className={styles.host} title="Host"><span className={styles.hiddenText}>Host</span></span>}
+      {p.you && <span className={styles.hiddenText}>You</span>}
+    </li>
+  );
+}
+
+function Passengers({ list, seats }) {
+  const open = Math.max(0, seats - list.length);
+  return (
+    <section className={styles.manifest} aria-label="Passenger manifest" data-ui="lobby-manifest">
+      <div className={styles.manifestHead}>
+        <small>Passengers</small>
+        <span className={styles.seats} role="img" data-ui="open-seats" data-open={open} aria-label={list.length + ' of ' + seats + ' seats taken, ' + open + ' open'}>
+          {Array.from({ length: Math.max(seats, list.length) }, (_, i) => list[i]
+            ? <span key={i} className={styles.seat} data-taken="" style={{ '--ball': colorHex(list[i].color) }} />
+            : <span key={i} className={styles.seat} />)}
+        </span>
+      </div>
+      <ol className={styles.aboard}>
+        {list.map(p => <Aboard key={p.id} p={p} />)}
+      </ol>
+    </section>
+  );
+}
+
+/**
+ * The lobby ticket (owner, 2026-11-16; simpler, owner 2026-11-18: "make the ticket simpler it looks like too much"): a bright boarding
+ * pass on the right of the Solo and party lobbies with the vehicle's pass title, the passenger with their colour badge (click it to
+ * change colour) and name (`onName`: click it to edit), the route in airport-style codes, the lobby's buttons (`children`: Play or
+ * Start Game) and, on the stub, Back (`onBack`) and the party code (`code`, with a copy-invite icon: `onCopy`) or, Solo, its flight number in the same place (owner, 2026-11-19: Solo's pass matches the party's). The route shows the
+ * destination only: both lobbies pick the planet on their planet picker (PlanetPicker.jsx). Names render as React text only, cut to
+ * NAME_LIMIT. A party passes `passengers` (and `seats`) to list everyone aboard under your name.
+ */
+export function LobbyTicket({ vehicle = 'plane', name = '', onName = null, onNameDone = null, color = null, taken = {}, onPick, solo = false, destination = 'gaia', code = '', onCopy = null, onBack = null, backLabel = 'Back', hidden = false, passengers = null, seats = 8, seat = '1A', mode = GameModes.STANDARD, boarding = null, children }) {
   const planet = WORLDS.find(w => w.id === destination)?.name ?? 'Gaia';
   const pass = PASS[vehicle] ?? PASS.plane;
-  const gateMark = gateFor(vehicle, destination, flight);
-  const fields = [['Flight', flight], [pass.gate, gateMark.text], ['Seat', String(seat).padStart(2, '0')]];
+  const ball = colorHex(color ?? 0);
+  const sheen = useSheen(ball);
+  // Boarding has begun: the stub tears off along the dashed line (owner, 2026-11-19).
+  const torn = boarding !== null && boarding !== undefined;
   return (
-    <aside className={styles.ticket} data-ui="lobby-ticket" data-world={destination} data-vehicle={vehicle} aria-label={pass.title}>
+    <aside className={styles.ticket} data-ui="lobby-ticket" data-world={destination} data-vehicle={vehicle} data-light={isLight(ball) || undefined} data-torn={torn || undefined}
+      style={{ '--ball': ball }} aria-label={pass.title} onPointerMove={lean} onPointerLeave={unlean}>
       <header className={styles.head}>
+        {sheen > 0 && <span key={sheen} className={styles.sheen} aria-hidden="true" />}
         <span className={styles.brand}>Putt Planet Air</span>
         <span className={styles.title} data-ui="ticket-title">{pass.title}</span>
       </header>
@@ -91,29 +224,20 @@ export function LobbyTicket({ vehicle = 'plane', name = '', onName = null, onNam
           <PassengerName name={name} onName={onName} onNameDone={onNameDone} />
         </div>
       </div>
+      {passengers && <Passengers list={passengers} seats={seats} />}
       <div className={styles.route}>
         <div><b>HOM</b><small>Home</small></div>
-        <span className={styles.path} aria-hidden="true" />
-        <div className={styles.to}><b data-ui="ticket-code">{CODES[destination] ?? 'GAI'}</b><small data-ui="ticket-destination">{planet}</small></div>
+        <span className={styles.path} aria-hidden="true"><span className={styles.dots} /><svg className={styles.arrow} viewBox="0 0 16 16"><path d="M5 3l6 5-6 5" /></svg></span>
+        <div className={styles.to}><b data-ui="ticket-code"><Flaps text={CODES[destination] ?? 'GAI'} world={destination} /></b><small data-ui="ticket-destination">{planet}</small></div>
       </div>
-      {onDestination && (
-        <div className={styles.worlds} role="radiogroup" aria-label="Destination" data-ui="destination-pick" data-voting={worldVoters ? '' : undefined}>
-          {TICKET_WORLDS.map(id => {
-            const mine = worldVoters ? id === myWorld : id === destination, open = openWorlds.includes(id);
-            return (
-              <button key={id} type="button" role="radio" aria-checked={mine} disabled={!open} title={open ? undefined : 'Coming soon'} data-world={id} data-leading={(worldVoters && id === destination) || undefined} className={styles.world}
-                onClick={() => { if (!mine) onDestination(id); }}>{WORLDS.find(w => w.id === id).name}{worldVoters && <Voters list={worldVoters[id]} />}</button>
-            );
-          })}
-        </div>
-      )}
-      <dl className={styles.details}>
-        {fields.map(([label, value]) => <div key={label} data-field={label}><dt>{label}</dt><dd data-gate={label === pass.gate ? gateMark.kind : undefined}>{value}</dd></div>)}
-      </dl>
+      <Fields seat={seat} mode={modeName(mode, solo)} boarding={boarding} />
       <div className={styles.actions}>{children}</div>
+      <div className={styles.stubWrap} data-ui="ticket-stub"><div>
       <div className={styles.stub}>
-        <Barcode className={styles.barcode} value={code || flight.replace(/\s/g, '')} />
-        {onBack && <button type="button" className={styles.back} onClick={onBack} data-ui={solo ? 'menu-back' : 'pass-leave'} data-kind={solo ? 'back' : 'leave'}>{backLabel}</button>}
+        {onBack && <button type="button" className={styles.back} onClick={onBack} data-ui={solo ? 'menu-back' : 'pass-leave'} data-kind={solo ? 'back' : 'leave'}><BackLabel text={backLabel} /></button>}
+        {solo && !code && (
+          <span className={styles.code} data-ui="solo-flight"><small>Flight</small><strong>{flightOf('', destination).flight}</strong></span>
+        )}
         {code && (
           <span className={styles.code} data-ui="party-code">
             <small>Party code</small><strong>{code}</strong>
@@ -121,6 +245,7 @@ export function LobbyTicket({ vehicle = 'plane', name = '', onName = null, onNam
           </span>
         )}
       </div>
+      </div></div>
     </aside>
   );
 }

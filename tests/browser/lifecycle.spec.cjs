@@ -37,7 +37,7 @@ function installProbe() {
   const webgl = new Map();
   const getContext = HTMLCanvasElement.prototype.getContext;
   HTMLCanvasElement.prototype.getContext = function (type, ...rest) { const gl = getContext.call(this, type, ...rest); if (/webgl/.test(type) && gl) webgl.set(this, gl); return gl; };
-  const backdrop = canvas => canvas.matches('[data-ui=loading-planet], [data-ui=atlas-canvas], [data-ui=lobby-canvas]');
+  const backdrop = canvas => canvas.matches('[data-ui=loading-planet], [data-ui=atlas-canvas]');
   window.__ppProbe = () => ({
     listeners: [...listeners.values()].reduce((n, keys) => n + keys.size, 0),
     timers: timers.size,

@@ -1,7 +1,7 @@
 import { setup, assign, createActor } from 'xstate';
 import { sessionDomain, sessionValue, sessionNode } from './recovery.js';
 import { createInitialSessionState, GameModes, lobbyWinner, resolveVote, resolveVoteDetailed, SessionCommands } from '../shared/session.js';
-import { STARTER_COURSE_INDICES, MAX_PLAYERS, MAX_PLAYER_NAME_LENGTH, VOTING_COUNTDOWN_SECONDS } from '../shared/constants.js';
+import { STARTER_COURSE_INDICES, MAX_PLAYERS, MAX_PLAYER_NAME_LENGTH, VOTING_COUNTDOWN_SECONDS, LAUNCH_COUNTDOWN_MS, LAUNCH_LANDING_MS } from '../shared/constants.js';
 import { PLAYER_COLOR_COUNT, isColorIndex } from '../shared/colors.js';
 import { calculateTimeoutScore, calculateMissedHoleScore } from '../shared/scoring.js';
 import { TUNING } from '../shared/tuning.js';
@@ -12,7 +12,8 @@ import { isWorldId, WORLD_IDS } from '../shared/worlds.js';
 
 export const SessionEvents = Object.freeze({ ...SessionCommands, UPDATE_STROKES: 'UPDATE_STROKES', REPORT_SCORE: 'REPORT_SCORE', PRACTICE_STEP: 'PRACTICE_STEP', PRACTICE_MAPS: 'PRACTICE_MAPS' });
 const eventTypes = new Set(Object.values(SessionEvents));
-export const SESSION_TIMING = Object.freeze({ start: 2500, minimumPlay: 1500, fallback: 4000, replay: 2200 });
+// launch and landing: a party's Start countdown and the flight to the voted planet (src/shared/constants.js, owner 2026-11-19).
+export const SESSION_TIMING = Object.freeze({ start: 2500, minimumPlay: 1500, fallback: 4000, replay: 2200, launch: LAUNCH_COUNTDOWN_MS, landing: LAUNCH_LANDING_MS });
 const modes = Object.values(GameModes);
 const own = (object, key) => typeof key === 'string' && Object.hasOwn(object, key);
 const practice = c => [GameModes.PRACTICE, GameModes.PUTT_PRACTICE].includes(c.mode);
@@ -36,6 +37,8 @@ export function createRoomSession({ hostId, controllerId = hostId, hostName = 'H
   if (!clock || !['now', 'setTimeout', 'clearTimeout'].every(key => typeof clock[key] === 'function')) throw new Error('An explicit now/setTimeout/clearTimeout clock is required');
   if ((durable || restore !== null) && !serverOwned) throw new Error('Durable recovery requires server ownership');
   if (restore !== null && !durable) throw new Error('Restore requires externally driven durable deadlines');
+  // The launch countdown has ended: the lobby vote is final while everyone flies to the winning planet.
+  const votesLocked = c => !!c.launchAt && clock.now() >= c.launchAt;
   const timed = (name, transition, on = {}) => durable
     ? { on: { ...on, [`SERVER_TIMER_${name}`]: transition } }
     : { after: { [name]: transition }, on };
@@ -157,10 +160,12 @@ export function createRoomSession({ hostId, controllerId = hostId, hostName = 'H
       // Online rooms fix their rules (power-ups included) when they are created (VIS-U, VIS-M3): No Power-Ups is a Custom rule.
       powerups: ({ context: c, event: e }) => !serverOwned && host(c, e) && typeof e.enabled === 'boolean',
       // Putt Pong is 1v1 (solo plays it as practice): it never starts with more than two players.
-      canStartVoting: ({ context: c, event: e }) => host(c, e) && (c.mode !== GameModes.PONG || ids(c).length <= 2),
+      canStartVoting: ({ context: c, event: e }) => host(c, e) && (c.mode !== GameModes.PONG || ids(c).length <= 2) && !(c.launchAt && clock.now() < c.launchAt + SESSION_TIMING.landing),
+      // A party's Start (owner, 2026-11-19): starts the launch countdown; the host's START_VOTING once it ends locks the planet.
+      canLaunch: ({ context: c, event: e }) => host(c, e) && !c.launchAt,
       destination: ({ context: c, event: e }) => host(c, e) && isWorldId(e.world),
       // Lobby votes (owner, 2026-11-17): any player, a mode and/or a planet; null leaves that part of their vote as it was.
-      lobbyVote: ({ context: c, event: e }) => member(c, e) && (e.mode == null || modes.includes(e.mode)) && (e.world == null || isWorldId(e.world)) && (e.mode != null || e.world != null),
+      lobbyVote: ({ context: c, event: e }) => member(c, e) && (e.mode == null || modes.includes(e.mode)) && (e.world == null || isWorldId(e.world)) && (e.mode != null || e.world != null) && !votesLocked(c),
       mode: ({ context: c, event: e }) => host(c, e) && modes.includes(e.mode) && (![GameModes.PRACTICE, GameModes.PUTT_PRACTICE].includes(e.mode) || ids(c).length === 1),
       vote: ({ context: c, event: e }) => validVote(c, e),
       practice: ({ context: c }) => c.mode === GameModes.PRACTICE,
@@ -263,9 +268,14 @@ export function createRoomSession({ hostId, controllerId = hostId, hostName = 'H
       }),
       powerups: assign(({ context: c, event: e }) => ({ powerups: e.enabled, rules: { ...c.rules, powerups: e.enabled } })),
       clearSeries: assign(({ context: c }) => clearSeries(c)),
+      launch: assign({ launchAt: () => clock.now() + SESSION_TIMING.launch }),
+      // Someone joined: the countdown stops so they can vote; the host starts it again.
+      cancelLaunch: assign({ launchAt: 0 }),
+      // The planet locks to the vote's winner among the players still here (a leaver's ballot no longer counts).
+      lockPlanet: assign(({ context: c }) => ({ launchAt: 0, destination: lobbyWinner(c.lobbyVotes ?? {}, 'world', ids(c), controller(c), WORLD_IDS, c.destination) })),
       clearVotes: assign({ votes: () => ({}), votingDeadline: 0, tie: null }),
       clearTie: assign({ tie: null }),
-      lobby: assign(({ context: c }) => ({ ...clearSeries(c), mode: GameModes.STANDARD })),
+      lobby: assign(({ context: c }) => ({ ...clearSeries(c), mode: GameModes.STANDARD, launchAt: 0 })),
       vote: assign(({ context: c, event: e }) => ({ votes: { ...c.votes, [e.playerId]: e.mapIndex } })),
       deadline: assign(({ context: c }) => ({ votingDeadline: practice(c) ? 0 : c.votingDeadline || clock.now() + VOTING_COUNTDOWN_SECONDS * 1000 })),
       votedMap: assign(({ context: c }) => {
@@ -305,7 +315,7 @@ export function createRoomSession({ hostId, controllerId = hostId, hostName = 'H
         votes: Object.fromEntries(Object.entries(c.votes).filter(([id]) => id !== e.playerId)),
       })),
       abandon: assign(({ context: c }) => ({
-        mode: GameModes.STANDARD, votes: {}, votingDeadline: 0, roster: [],
+        mode: GameModes.STANDARD, votes: {}, votingDeadline: 0, launchAt: 0, roster: [],
         roundNumber: c.roundNumber + 1, players: resetPlayers(c, false),
       })),
     },
@@ -317,7 +327,7 @@ export function createRoomSession({ hostId, controllerId = hostId, hostName = 'H
       players: { [initialControllerId]: fresh(initialControllerId, hostName, isColorIndex(hostColor) ? hostColor : 0, hostToken) }, totals: {}, last: null, tie: restore?.context?.tie ?? null,
     },
     on: {
-      JOIN_ROOM: { guard: 'canJoin', actions: 'join' },
+      JOIN_ROOM: { guard: 'canJoin', actions: ['join', 'cancelLaunch'] },
       LEAVE_ROOM: [{ guard: ({ context: c, event: e }) => !serverOwned && host(c, e), target: '.lobby', actions: ['leave', 'lobby'] }, { guard: 'canLeave', actions: 'leave' }],
       ...(serverOwned ? {
         SERVER_SET_CONTROLLER: { actions: 'setController' },
@@ -326,7 +336,7 @@ export function createRoomSession({ hostId, controllerId = hostId, hostName = 'H
       } : {}),
     },
     states: {
-      lobby: { on: { SET_COLOR: { guard: 'canSetColor', actions: 'setColor' }, SET_NAME: { guard: 'canSetName', actions: 'setName' }, SET_MODE: { guard: 'mode', actions: 'mode' }, SET_POWERUPS: { guard: 'powerups', actions: 'powerups' }, SET_DESTINATION: { guard: 'destination', actions: 'destination' }, LOBBY_VOTE: { guard: 'lobbyVote', actions: 'lobbyVote' }, START_VOTING: { guard: 'canStartVoting', target: 'select', actions: 'clearSeries' } } },
+      lobby: { on: { SET_COLOR: { guard: 'canSetColor', actions: 'setColor' }, SET_NAME: { guard: 'canSetName', actions: 'setName' }, SET_MODE: { guard: 'mode', actions: 'mode' }, SET_POWERUPS: { guard: 'powerups', actions: 'powerups' }, SET_DESTINATION: { guard: 'destination', actions: 'destination' }, LOBBY_VOTE: { guard: 'lobbyVote', actions: 'lobbyVote' }, LAUNCH: { guard: 'canLaunch', actions: 'launch' }, START_VOTING: { guard: 'canStartVoting', target: 'select', actions: ['lockPlanet', 'clearSeries'] } } },
       select: {
         initial: 'waiting',
         states: {

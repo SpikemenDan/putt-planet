@@ -1,0 +1,36 @@
+/* The lobbies' planet picker (owner, 2026-11-18): one comic card, the planet's name between two arrows, then a chip per planet with
+   its voters' balls. The lobby's sky behind shows the destination. */
+.card{--tone:#2fbf5b;display:flex;flex-direction:column;gap:10px;padding:12px 14px 14px;color:var(--ink);background:linear-gradient(160deg,#fffdf4,color-mix(in srgb,var(--tone) 20%,#fff));
+  border:4px solid var(--ink);border-radius:22px;box-shadow:6px 6px 0 var(--ink);pointer-events:auto}
+.card[data-world=luna]{--tone:#8e4ec6}
+.card[data-world=ares]{--tone:#e5484d}
+.head{display:flex;align-items:center;gap:10px}
+.arrow{flex:none;width:46px;height:46px;margin:0;padding:0;font:400 36px/1 var(--font);color:var(--ink);text-shadow:none;background:var(--yellow);border:3px solid var(--ink);border-radius:50%;
+  box-shadow:0 4px 0 var(--ink);cursor:pointer;transition:translate .1s,box-shadow .1s}
+.arrow:hover{translate:0 -2px;box-shadow:0 6px 0 var(--ink)}
+.arrow:active{translate:0 3px;box-shadow:0 1px 0 var(--ink)}
+.name{flex:1;min-width:0;text-align:center}
+.name small{display:block;font:900 11px var(--font);letter-spacing:1.5px;text-transform:uppercase;opacity:.7}
+.name b{display:block;font:400 clamp(30px,3.2vw,44px)/1.05 var(--font);letter-spacing:2px;text-transform:uppercase;color:var(--tone);-webkit-text-stroke:3px var(--ink);paint-order:stroke fill;text-shadow:3px 3px 0 var(--ink)}
+.blurb{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin:-2px 4px 0;font:700 13px/1.3 var(--pp-body,'Nunito',sans-serif);text-align:center;letter-spacing:.2px;opacity:.75;text-wrap:balance}
+.chips{display:flex;gap:8px}
+.chip{--c:#2fbf5b;position:relative;display:flex;flex:1;align-items:center;justify-content:center;gap:6px;margin:0;padding:6px;font:900 14px var(--font);letter-spacing:.5px;text-transform:none;text-shadow:none;color:var(--ink);
+  background:#fff;border:3px solid var(--ink);border-radius:999px;box-shadow:0 3px 0 var(--ink);cursor:pointer;transition:translate .1s,background .15s}
+.chip::before{content:'';flex:none;width:12px;height:12px;border-radius:50%;border:2px solid var(--ink);background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.8) 0 18%,transparent 20%),var(--c)}
+.chip[data-world=luna]{--c:#8e4ec6}
+.chip[data-world=ares]{--c:#e5484d}
+.chip:hover:not(:disabled){background:color-mix(in srgb,var(--c) 22%,#fff)}
+.chip:disabled{cursor:default}
+.chip:disabled:not([aria-checked=true]){opacity:.55}
+.chip[aria-checked=true]{background:var(--c);color:#fff;text-shadow:1px 1px 0 var(--ink);translate:0 3px;box-shadow:0 0 0 var(--ink)}
+.chip[aria-checked=true]::before{border-color:#fff}
+/* The leading planet while voting (owner, 2026-11-19: better than dashed lines): a soft ring in the planet's colour, standing a little off
+   the chip and gently breathing. */
+.card[data-voting] .chip[data-leading]::after{content:'';position:absolute;inset:-7px;border:3px solid var(--c);border-radius:999px;pointer-events:none;
+  box-shadow:0 0 12px 1px color-mix(in srgb,var(--c) 60%,transparent);animation:lead 1.8s ease-in-out infinite}
+@keyframes lead{50%{opacity:.5;scale:1.03}}
+/* Voters' balls on a planet chip (owner, 2026-11-19): above the leading ring, never under it, and small enough that all eight players
+   fit when the vote is unanimous. */
+.chip [data-ui=voters]{z-index:2;top:-12px;right:-4px}
+.chip [data-ui=voters]>span{width:13px;height:13px;margin-left:-4px;border-width:2px}
+@media (prefers-reduced-motion:reduce){.arrow,.chip{transition:none}.card[data-voting] .chip[data-leading]::after{animation:none}}

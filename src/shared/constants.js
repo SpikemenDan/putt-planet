@@ -47,6 +47,10 @@ export const MAX_PLAYERS = 8;
 export const MAX_DEPLOYABLES = 200; // wire safety bound only (G1e): keeps a snapshot far under MAX_MESSAGE_BYTES; no game limit applies below it
 export const SNAPSHOT_INTERVAL_MS = 70;
 export const VOTING_COUNTDOWN_SECONDS = 15;
+// A party's Start (owner, 2026-11-19): a launch countdown (ms) that a join cancels; its end makes the planet vote final, then
+// everyone's lobby flies to the winning planet (ms) before the map vote opens there.
+export const LAUNCH_COUNTDOWN_MS = 5000;
+export const LAUNCH_LANDING_MS = 4000;
 export const RECONNECT_GRACE_PERIOD_MS = 30000;
 
 // Maximum name length

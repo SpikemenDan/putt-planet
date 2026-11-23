@@ -9,8 +9,12 @@ export function createStageHandle() {
   const handle = {
     scene: null,
     view: { space: false, target: 'gaia' },
+    /** The lobby vehicle the sky draws, if any (planet-scene.js `setLobby`); kept here so a sky that arrives later picks it up. */
+    lobby: null,
     setView(view) { handle.view = { ...handle.view, ...view }; handle.scene?.setView?.(handle.view); },
-    attach(scene) { handle.scene = scene; scene?.setView?.(handle.view); },
+    /** Shows (or, with null, removes) the lobby vehicle in the sky. True when the sky draws it. */
+    setLobby(lobby) { handle.lobby = lobby; return !!handle.scene?.setLobby?.(lobby); },
+    attach(scene) { handle.scene = scene; scene?.setView?.(handle.view); if (handle.lobby) scene?.setLobby?.(handle.lobby); },
     detach(scene) { if (handle.scene === scene) handle.scene = null; },
   };
   return handle;

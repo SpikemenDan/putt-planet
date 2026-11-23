@@ -18,13 +18,11 @@ if (tuner) {
   window.__ppTuner = tuner;
   if (new URLSearchParams(window.location.search).has('map')) setTimeout(() => { // ?map: straight to the level select, through the real solo flow; ?map=ares or ?map=luna lands on that planet
     const press = text => [...document.querySelectorAll('button')].find(b => b.textContent === text)?.click();
-    const step = (k, fn) => setTimeout(fn, 60 * k); // Solo steps (VIS-M4): Casual, the planet, Play solo
+    const step = (k, fn) => setTimeout(fn, 60 * k); // Solo opens its lobby (owner, 2026-11-18): the planet, then Play Solo
     const turns = { luna: 1, ares: 2 }[new URLSearchParams(window.location.search).get('map')] ?? 0; // left arrow order: Gaia, Luna, Ares
     step(0, () => document.querySelector('[data-menu=solo]')?.click());
-    step(1, () => [...document.querySelectorAll('[data-ui=solo-steps] button')].find(b => b.textContent.startsWith('Casual'))?.click());
-    for (let k = 0; k < turns; k++) step(2 + k, () => document.querySelector('[data-ui=world-left]')?.click());
-    step(2 + turns, () => document.querySelector('[data-ui=solo-steps] [data-ui=world-choose]')?.click());
-    step(3 + turns, () => press('Play solo')); // the Solo steps open the level select directly, with no lobby
+    for (let k = 0; k < turns; k++) step(1 + k, () => document.querySelector('[data-ui=planet-picker] [data-ui=world-left]')?.click());
+    step(1 + turns, () => press('Play Solo'));
   }, 300);
   if (new URLSearchParams(window.location.search).has('art')) import('../devtools/map-art.js').then(({ mountMapArt }) => mountMapArt(document)).catch(error => console.error('Dev tool failed to load (?art)', error)); // ?art: the flat master map on its own
   if (new URLSearchParams(window.location.search).has('gallery')) import('../devtools/planet-gallery.js').then(({ mountPlanetGallery }) => mountPlanetGallery(document)).catch(error => console.error('Dev tool failed to load (?gallery)', error)); // ?gallery: live close-ups of the loading-screen city, ship and plane

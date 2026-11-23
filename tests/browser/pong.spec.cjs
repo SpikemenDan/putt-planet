@@ -3,35 +3,7 @@ const { test, expect } = require('@playwright/test');
 const { openApp, until, partyCode } = require('./support/app.cjs');
 const { pickMap } = require('./support/maps.cjs');
 
-test('putt pong solo flow: select Putt Pong mode, start match, verify 3D racks and HUD tracker', async ({ page }) => {
-  const ana = await openApp(page, 'Ana');
-  // Solo > Practice > Putt Pong (owner, 2026-11-11), in the local solo room
-  await ana.solo('pong');
-  await pickMap(ana.page);
-
-  // Wait for game view
-  await expect(ana.ui('game')).toBeVisible({ timeout: 20_000 });
-
-  // HUD rack tracker must be visible
-  await expect(ana.ui('pong-hud')).toBeVisible({ timeout: 10_000 });
-
-  // Home and Away cup racks rendered in HUD
-  await expect(ana.ui('pong-rack-home')).toBeVisible();
-  await expect(ana.ui('pong-rack-away')).toBeVisible();
-  await expect(ana.ui('pong-rack-home')).toContainText('10/10');
-  await expect(ana.ui('pong-rack-away')).toContainText('10/10');
-
-  // Turn status shows active shooter
-  const turnInfo = ana.ui('pong-turn-info');
-  await expect(turnInfo).toBeVisible();
-  await expect(turnInfo).toContainText('turn');
-  await expect(turnInfo).toContainText('Balls:');
-
-  // WebGL canvas renders 3D scene with cup racks
-  expect(await ana.canvasColours(), 'WebGL canvas shows rendered course with pong racks').toBeGreaterThan(20);
-
-  expect(ana.errors, 'no page or console errors').toEqual([]);
-});
+// Putt Pong left Solo (owner, 2026-11-19): it is a 1v1 party mode only, so it is covered by the two-player test below.
 
 test('putt pong 2-player lobby: Putt Pong is offered with exactly two players; controller selects it, both clients see mode', async ({ browser }, testInfo) => {
   const code = 'PP' + Date.now().toString(36).slice(-4).toUpperCase();

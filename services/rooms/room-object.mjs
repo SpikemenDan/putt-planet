@@ -493,6 +493,7 @@ export class RoomDurableObject {
     if (state.pong) context.pong = state.pong;
     if (state.destination) context.destination = state.destination;
     if (state.lobbyVotes && Object.keys(state.lobbyVotes).length) context.lobbyVotes = structuredClone(state.lobbyVotes);
+    if (state.launchAt) context.launchAt = state.launchAt;
     const snapshot = {
       roomCode: room.roomCode, sessionId: room.sessionId, rulesVersion: ROOM_RULES_VERSION,
       courseHash: room.courseHash, revision: room.revision, serverTime: this.now(room),

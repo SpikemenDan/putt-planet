@@ -12,8 +12,10 @@ test('party flow: Create shows the code afterwards, Join by code, plane lobby wi
     ana.page.on('websocket', ws => sockets.ana.push(ws.url()));
     ben.page.on('websocket', ws => sockets.ben.push(ws.url()));
 
-    // Opening Party creates nothing, shows no code and asks for no colour.
+    // Opening Party creates nothing, shows no code and asks for no name or colour (owner, 2026-11-19: the name comes from the Solo pass).
+    await ana.named('Ana');
     await ana.menu('party');
+    await expect(ana.ui('landing').getByLabel('Your name')).toHaveCount(0);
     await expect(ana.button('Create party')).toBeVisible();
     await expect(ana.ui('landing').getByLabel('Party code')).toHaveValue('');
     await expect(ana.ui('party-code')).toHaveCount(0);
@@ -21,7 +23,6 @@ test('party flow: Create shows the code afterwards, Join by code, plane lobby wi
     expect(sockets.ana, 'the Party menu opens no room socket').toEqual([]);
 
     // Create: the room service generates the code; the host lands straight in the plane lobby.
-    await ana.ui('landing').getByLabel('Your name').fill('Ana');
     await ana.button('Create party').click();
     await expect(ana.ui('room-lobby')).toBeVisible({ timeout: 30_000 });
     await ana.loaded();
@@ -31,8 +32,8 @@ test('party flow: Create shows the code afterwards, Join by code, plane lobby wi
     await expect(ana.ui('room-lobby').locator('[data-ui=party-code] strong')).toHaveText(code.toUpperCase());
 
     // A wrong code fails on the Party menu and creates nothing.
+    await ben.named('Ben');
     await ben.menu('party');
-    await ben.ui('landing').getByLabel('Your name').fill('Ben');
     await ben.ui('landing').getByLabel('Party code').fill('zzzz9999');
     await ben.button('Join').click();
     await expect(ben.ui('connect-error')).toHaveText('No party has that code. Check it with your host, or create a party.', { timeout: 30_000 });
@@ -70,8 +71,9 @@ test('party flow: Create shows the code afterwards, Join by code, plane lobby wi
     await ben.page.keyboard.press('Escape');
     await expect(benPicker).toHaveCount(0);
     await expect(benBadge).toBeFocused();
-    // A click outside the picker closes it: here on the passenger manifest (the lobby's heading is screen-reader-only text).
-    await ana.ui('lobby-manifest').click({ position: { x: 24, y: 24 } });
+    // A click outside the picker closes it: here on the "Party code" label on the stub, which the open picker
+    // never covers (it now spans the passenger manifest) and which does nothing itself.
+    await ana.ui('party-code').locator('small').click();
     await expect(anaPicker).toHaveCount(0);
 
     // The plane lobby (owner, 2026-11-16: a 3D plane for Gaia): both balls in their colours for both players; Putt Pong is offered with exactly two.

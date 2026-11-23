@@ -2,17 +2,22 @@
    route and fields take the destination's colours (--sea, --land), and the pass sits at a slight tilt (it does not bob: its buttons must hold still under the pointer). */
 .ticket{--sea:#27c8ff;--land:#2fbf5b;position:relative;display:flex;flex-direction:column;gap:10px;width:100%;max-width:360px;padding:0 0 12px;color:var(--ink);text-align:left;
   background:#fffdf4;border:4px solid var(--ink);border-radius:20px;box-shadow:7px 7px 0 var(--ink);rotate:1deg}
-.ticket[data-world=ares]{--sea:#ff8a1f;--land:#e5484d}
-.ticket[data-world=luna]{--sea:#8e4ec6;--land:#25d1e6}
-.head{position:relative;display:flex;flex-direction:column;gap:2px;padding:12px 18px 11px;overflow:hidden;border-bottom:4px solid var(--ink);border-radius:16px 16px 0 0;
-  background:linear-gradient(110deg,var(--pink) 0%,#ff8a1f 58%,var(--yellow) 100%);color:#fff}
-.head::after{content:'';position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.5) 45%,transparent 60%);translate:-120% 0;animation:shine 5s ease-in-out infinite}
-.brand{font:900 12px var(--font);letter-spacing:1px;text-transform:none;color:var(--ink)}
-.title{font:900 25px/1.05 var(--font);letter-spacing:.8px;text-transform:none;text-shadow:2px 2px 0 var(--ink)}
-.passenger small,.route small,.details dt{display:block;font:900 11px var(--font);letter-spacing:.5px;text-transform:none;color:var(--mut)}
-.passenger{position:relative;margin:0 12px;padding:9px 12px;border:3px dashed var(--ink);border-radius:14px;background:color-mix(in srgb,var(--sea) 14%,#fff)}
+/* --code colours the destination letters and the route arrow: Gaia green, Luna purple, Ares red (owner, 2026-11-19). */
+.ticket{--code:#2fbf5b}
+.ticket[data-world=ares]{--sea:#ff8a1f;--land:#e5484d;--code:#e5484d}
+.ticket[data-world=luna]{--sea:#8e4ec6;--land:#25d1e6;--code:#8e4ec6}
+.head{position:relative;display:flex;flex-direction:column;gap:2px;padding:12px 18px 11px;overflow:hidden;border-bottom:4px solid var(--ink);border-radius:16px 16px 0 0;background:var(--ball,var(--pink));color:#fff;transition:background .25s}
+/* The header and the glow take your ball's colour (owner, 2026-11-19); a pale ball gets dark words. */
+.ticket[data-light] .head{color:var(--ink)}
+.ticket[data-light] .title{text-shadow:none}
+.brand{font:900 12px var(--font);letter-spacing:1px;text-transform:none;opacity:.85}
+/* The title stays on one line (owner, 2026-11-19): it shrinks with the pass so "Helicopter Boarding Pass" fits. */
+.ticket{container-type:inline-size}
+.title{font:900 clamp(14px,calc((100cqi - 44px) / 12.6),25px)/1.05 var(--font);letter-spacing:.5px;text-transform:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:2px 2px 0 var(--ink)}
+.passenger small,.route small,.manifest small{display:block;font:900 11px var(--font);letter-spacing:.5px;text-transform:none;color:var(--mut)}
+.passenger{position:relative;margin:0 12px;padding:9px 12px;border:2px solid var(--ink);border-radius:14px;background:#fff}
 .who{display:flex;align-items:center;gap:12px;margin-top:3px}
-.name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:900 27px var(--font);letter-spacing:.5px;color:var(--ink)}
+.name{min-width:0;overflow:hidden;white-space:nowrap;font:900 27px var(--font);letter-spacing:.5px;color:var(--ink)}
 /* The editable name (Solo): printed text until clicked, then a field with a pink underline; a small pencil says it can change. */
 .nameEdit{position:relative;display:flex;flex:1;align-items:center;gap:6px;min-width:0;margin:0;cursor:text}
 .nameEdit .name{flex:1;width:100%;margin:0;padding:0 2px;background:transparent;border:0;border-bottom:3px dashed transparent;border-radius:0;box-shadow:none;outline:none;transition:border-color .15s}
@@ -34,57 +39,121 @@
 @keyframes pencilWiggle{0%,60%,100%{rotate:0deg}70%{rotate:-16deg}80%{rotate:10deg}90%{rotate:-6deg}}
 @media (prefers-reduced-motion:reduce){.nameEdit[data-empty] .name,.nameEdit[data-empty] .pencil{animation:none}}
 /* The route, in airport-style codes. */
-.route{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;padding:0 18px}
+.route{display:grid;grid-template-columns:auto 1fr auto;align-items:start;gap:10px;padding:0 18px}
 .route b{display:block;font:900 34px/1 var(--font);letter-spacing:2px}
 .to{text-align:right}
-.to b{color:var(--land);text-shadow:2px 2px 0 var(--ink)}
-.path{position:relative;height:14px;background:radial-gradient(circle,var(--ink) 2px,transparent 2.5px) 0 50%/12px 12px repeat-x}
-.path::after{content:'➜';position:absolute;right:-4px;top:50%;translate:0 -56%;font:900 20px var(--font);color:var(--sea);text-shadow:1px 1px 0 var(--ink)}
-.worlds{display:flex;gap:8px;padding:2px 16px 4px}
-.world{position:relative;display:flex;flex:1;align-items:center;justify-content:center;gap:6px;margin:0;padding:6px 6px;font:900 14px var(--font);letter-spacing:.5px;text-transform:none;text-shadow:none;color:var(--ink);background:#fff;border:3px solid var(--ink);border-radius:999px;box-shadow:0 3px 0 var(--ink);cursor:pointer;transition:translate .1s,background .15s}
-.world::before{content:'';flex:none;width:12px;height:12px;border-radius:50%;border:2px solid var(--ink);background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.8) 0 18%,transparent 20%),var(--tone)}
-.world[aria-checked=true]::before{border-color:#fff}
-.world[data-world=gaia]{--tone:#2fbf5b}
-.world[data-world=ares]{--tone:#e5484d}
-.world[data-world=luna]{--tone:#8e4ec6}
-.world:hover:not(:disabled){background:color-mix(in srgb,var(--tone) 22%,#fff)}
-.world:disabled{opacity:.45;cursor:not-allowed}
-.worlds[data-voting] .world[data-leading]{outline:3px dashed var(--tone);outline-offset:2px}
-.world[aria-checked=true]{background:var(--tone);color:#fff;text-shadow:1px 1px 0 var(--ink);translate:0 3px;box-shadow:0 0 0 var(--ink)}
-/* Flight details, three across, as on a real pass. */
-.details{display:grid;grid-template-columns:repeat(3,1fr);gap:6px 10px;margin:0;padding:0 18px}
-.details dd{margin:0;font:900 18px var(--font);letter-spacing:.5px;overflow-wrap:anywhere}
-.details [data-field=Seat] dd{color:var(--pink)}
-/* Themed gates: Cloud 9 in sky blue, a Luna crater in violet, an Ares canyon in red, a Gaia lily pad in green. */
-.details dd[data-gate=cloud]{color:#1f9fe0}
-.details dd[data-gate=crater]{color:#8e4ec6}
-.details dd[data-gate=canyon]{color:#e5484d}
-.details dd[data-gate=lily]{color:#2fa84f}
+.to b{color:var(--code);text-shadow:2px 2px 0 var(--ink)}
+/* The route between the codes: still dots ending in a clean arrowhead in the planet's colour. */
+/* It lines up with the letters only (not their small labels), so it sits on the codes' middle. */
+.path{display:flex;align-items:center;gap:4px;min-width:0;height:34px}
+.dots{flex:1;height:4px;background:radial-gradient(circle,var(--ink) 1.6px,transparent 2.1px) 0 50%/9px 4px repeat-x;opacity:.55}
+.arrow{flex:none;width:14px;height:14px;fill:none;stroke:var(--code);stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round}
 .actions{display:flex;flex-direction:column;gap:8px;padding:0 16px}
 .actions > button,.actions > label{width:100%;margin:0}
-/* Perforation, barcode and the stub's small print. */
-.stub{position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin-top:2px;padding:12px 14px 0 18px;border-top:3px dashed var(--ink)}
+/* Perforation and the stub: Back and the party code. */
+.stub{position:relative;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 10px;margin:2px -4px -16px;padding:9px 16px 11px 20px;
+  background:#fffdf4;border:4px solid var(--ink);border-top:3px dashed var(--ink);border-radius:0 0 20px 20px;box-shadow:7px 7px 0 var(--ink)}
 .stub::before,.stub::after{content:'';position:absolute;top:-14px;width:24px;height:24px;border-radius:50%;background:#fffdf4;border:4px solid var(--ink)}
 .stub::before{left:-16px;clip-path:inset(0 0 0 50%)}
 .stub::after{right:-16px;clip-path:inset(0 50% 0 0)}
-.barcode{display:block;flex:1;min-width:0;height:34px;fill:var(--ink)}
-/* The party code under the barcode, like a booking reference, with a small copy-invite icon. */
-.code{display:flex;flex:1 0 100%;align-items:center;justify-content:center;gap:10px;min-width:0;padding-top:2px}
-.code small{flex:none;translate:0 3px;white-space:nowrap;font:900 10px/1 var(--font);letter-spacing:.5px;text-transform:none;color:var(--mut)}
-.code strong{display:block;padding-top:2px;font:400 19px/1 var(--font);letter-spacing:2px;color:var(--ink);user-select:all;white-space:nowrap}
-.copy{flex:none;width:24px;height:24px;margin:0;padding:0;border:2px solid var(--ink);border-radius:7px;background:#fff center/14px no-repeat;cursor:pointer;
+/* The party code, like a booking reference, with a small copy-invite icon. */
+/* The label sits over the code (owner, 2026-11-19: the code and Leave room looked "chopped"), so code and Leave share one row. */
+.code{order:-1;display:grid;grid-template-columns:auto auto;align-items:center;justify-content:start;gap:0 6px;min-width:0}
+.code small{grid-column:1/-1;white-space:nowrap;font:900 10px/1 var(--font);letter-spacing:.5px;text-transform:none;color:var(--mut)}
+.code strong{display:block;font:400 17px/1 var(--font);letter-spacing:1.5px;color:var(--ink);user-select:all;white-space:nowrap}
+.copy{flex:none;width:22px;height:22px;margin:0;padding:0;border:2px solid var(--ink);border-radius:7px;background:#fff center/14px no-repeat;cursor:pointer;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23141029' stroke-width='2.6' stroke-linejoin='round'%3E%3Crect x='8' y='8' width='12' height='12' rx='3'/%3E%3Cpath d='M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2'/%3E%3C/svg%3E");transition:background-color .15s,scale .1s}
 .copy:hover{background-color:var(--yellow)}
 .copy:active{scale:.9}
 .hiddenText{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 /* Back (Solo) or Leave room (party), in the stub's bottom-right corner: a round-cornered comic tag with an arrow. */
-.back{flex:none;display:inline-flex;align-items:center;gap:6px;margin:0;padding:7px 14px 7px 10px;font:900 15px var(--font);letter-spacing:.5px;text-transform:none;text-shadow:none;
-  color:var(--ink);background:var(--yellow);border:3px solid var(--ink);border-radius:999px;box-shadow:0 4px 0 var(--ink);cursor:pointer;transition:translate .1s,box-shadow .1s,background .15s}
-.back::before{content:'';width:18px;height:18px;border-radius:50%;background:var(--ink) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M14 6l-6 6 6 6' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/14px no-repeat;transition:translate .15s}
-.back:hover{background:#fff27a;translate:0 -2px;box-shadow:0 6px 0 var(--ink)}
+/* Smaller (owner, 2026-11-19), so the stub reads as a real ticket stub with the flight number or code in front. */
+/* Leave room lines up with the code itself, not the label above it (owner, 2026-11-19). */
+.back{flex:none;align-self:flex-end;display:inline-flex;align-items:center;gap:4px;margin:0 0 0 auto;padding:3px 9px 3px 4px;font:900 11px var(--font);letter-spacing:.5px;text-transform:none;text-shadow:none;
+  color:#fff;text-shadow:1px 1px 0 var(--ink);background:var(--ball,var(--yellow));border:2.5px solid var(--ink);border-radius:999px;box-shadow:0 3px 0 var(--ink);cursor:pointer;transition:translate .1s,box-shadow .1s,background .15s}
+/* Back and Leave wear your ball colour (owner, 2026-11-19); a pale ball gets dark words. */
+.ticket[data-light] .back{color:var(--ink);text-shadow:none}
+.back::before{content:'';width:15px;height:15px;border-radius:50%;background:var(--ink) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M14 6l-6 6 6 6' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/11px no-repeat;transition:translate .15s}
+.back:hover{background:color-mix(in srgb,var(--ball,var(--yellow)) 82%,#fff);translate:0 -1px;box-shadow:0 4px 0 var(--ink)}
 .back:hover::before{translate:-3px 0}
-.back:active{translate:0 3px;box-shadow:0 1px 0 var(--ink)}
-.back[data-kind=leave]{background:#ffb3c9}
-.back[data-kind=leave]:hover{background:#ffc9d8}
-@keyframes shine{0%,70%{translate:-120% 0}100%{translate:120% 0}}
-@media (prefers-reduced-motion:reduce){.head::after{animation:none}.back,.back::before,.pencil{transition:none}}
+.back:active{translate:0 2px;box-shadow:0 1px 0 var(--ink)}
+@media (prefers-reduced-motion:reduce){.back,.back::before,.pencil{transition:none}}
+
+/* A livelier pass (owner, 2026-11-18: "make it look cool and color"). Knobs are display.lobbyLook, set as CSS variables on the Solo
+   lobby; the fallbacks are the shipped values, so the party lobby's pass looks the same. */
+.ticket::before{content:'';position:absolute;inset:-4px;z-index:-1;border-radius:22px;pointer-events:none;
+  box-shadow:0 0 calc(34px * var(--look-glow,1)) calc(4px * var(--look-glow,1)) color-mix(in srgb,var(--ball,var(--land)) 55%,transparent)}
+/* The destination code: plain letters in the planet's colour, each flipping down into place one after another. */
+.to b{display:inline-flex;perspective:300px}
+.flap{display:inline-block;transform-origin:50% 0;
+  animation:flip var(--look-flip,.5s) cubic-bezier(.3,1.5,.5,1) calc(var(--i) * var(--look-flip,.5s) * .35) both}
+@keyframes flip{from{transform:rotateX(-100deg);opacity:0}60%{opacity:1}to{transform:rotateX(0)}}
+@media (prefers-reduced-motion:reduce){.flap{animation:none}}
+/* The passenger list (party): one plain line per player, two to a row, with their ball; the host wears a star and your name is pink. */
+.manifest{margin:0 12px;padding:0 4px}
+.aboard{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;margin:4px 0 0;padding:0;list-style:none}
+.aboard li{display:flex;align-items:center;gap:5px;min-width:0}
+.ball{flex:none;width:16px;height:16px;border-radius:50%;border:2px solid var(--ink);background:var(--ball)}
+.who2{min-width:0;overflow:hidden;white-space:nowrap;font:900 15px var(--font);color:var(--ink)}
+/* A name too long for half a row, even shrunk, takes the whole row. */
+.aboard li[data-wide]{grid-column:1/-1}
+.host{flex:none;width:16px;height:16px;background:var(--yellow);border:2px solid var(--ink);border-radius:50%;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 4l2.4 5 5.4.6-4 3.7 1.1 5.4L12 16l-4.9 2.7 1.1-5.4-4-3.7 5.4-.6z' fill='%23141029'/%3E%3C/svg%3E");background-size:12px;background-position:center;background-repeat:no-repeat}
+.manifestHead{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.seats{display:flex;gap:3px}
+.seat{width:10px;height:10px;box-sizing:border-box;border-radius:50%;border:2px dashed color-mix(in srgb,var(--ink) 35%,transparent)}
+.seat[data-taken]{border:2px solid var(--ink);background:var(--ball)}
+/* The pass's main button (Start Game, Play Solo) takes your ball's colour too (owner, 2026-11-19); a pale ball gets dark words. */
+.ticket .actions > button{background:var(--ball,var(--pink))}
+.ticket .actions > button:hover:not(:disabled){background:color-mix(in srgb,var(--ball,var(--pink)) 82%,#fff)}
+.ticket[data-light] .actions > button{color:var(--ink);text-shadow:none}
+/* Seat, mode and boarding (owner, 2026-11-19), under the route like an airline pass. */
+.fields{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:14px;margin:0 18px;padding:7px 0 0;border-top:2px solid color-mix(in srgb,var(--ink) 12%,transparent)}
+.fields div{min-width:0}
+.fields dt{font:900 11px var(--font);letter-spacing:.5px;color:var(--mut)}
+.fields dd{margin:2px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:900 17px/1.1 var(--font);letter-spacing:.5px;color:var(--ink)}
+.boarding{text-align:right}
+.boarding dd{font-variant-numeric:tabular-nums}
+.boarding dd[data-state=awaiting]{color:var(--mut)}
+.boarding dd[data-state=awaiting]::before{content:'';display:inline-block;width:7px;height:7px;margin:0 5px 2px 0;border-radius:50%;background:var(--ball,var(--pink));animation:await 1.6s ease-in-out infinite}
+.boarding dd[data-state=counting],.boarding dd[data-state=now]{color:var(--ink)}
+@keyframes await{50%{opacity:.25}}
+/* The countdown: plain black digits (owner, 2026-11-19: "simpler"); the digit that changes flips down into place on the tick. */
+.boarding dd[data-state=counting]{display:inline-flex;perspective:200px}
+.tile{display:inline-block;min-width:.62em;text-align:center;color:var(--ink);transform-origin:50% 0;animation:flipTick .3s ease-out both}
+.colon{color:var(--ink)}
+@keyframes flipTick{from{transform:rotateX(-90deg);opacity:0}to{transform:none;opacity:1}}
+/* A quick shine across the header when the ball colour changes. */
+.sheen{position:absolute;inset:0;pointer-events:none;background:linear-gradient(105deg,transparent 30%,rgb(255 255 255 / .55) 48%,transparent 66%);translate:-100% 0;animation:sheen .45s ease-out forwards}
+@keyframes sheen{to{translate:100% 0}}
+/* A slight lean toward the mouse (--tx and --ty run -0.5 … 0.5, set as the pointer moves). */
+.ticket{transform:perspective(900px) rotateY(calc(var(--tx,0) * 5deg)) rotateX(calc(var(--ty,0) * -5deg));transition:transform .25s ease-out}
+/* The stub tears off along the perforation once boarding starts (owner, 2026-11-19: "peel then rip"): a small tug, then the right
+   corner peels up off the pass while the left end holds, it strains a moment, rips free with a snap (the pass jolts and closes up
+   behind it) and falls away under gravity, turning as it drops. Cancel (Solo) brings it back. */
+.stubWrap{display:grid;grid-template-rows:1fr;transition:grid-template-rows .3s cubic-bezier(.3,0,.2,1)}
+.stubWrap > div{min-height:0}
+.ticket[data-torn] .stubWrap{grid-template-rows:0fr;transition:grid-template-rows .2s cubic-bezier(.3,0,.2,1) .56s}
+.ticket[data-torn] .stub{z-index:2;pointer-events:none;transform-origin:0 0;animation:tear 1.15s linear forwards,gone 0s 1.15s forwards;
+  -webkit-mask:conic-gradient(from 135deg at top,#0000,#000 1deg 89deg,#0000 90deg) 50% 0/11px 100%;mask:conic-gradient(from 135deg at top,#0000,#000 1deg 89deg,#0000 90deg) 50% 0/11px 100%}
+.ticket[data-torn] .stub::before,.ticket[data-torn] .stub::after{display:none}
+.ticket[data-torn]{animation:jolt .32s ease-out .56s}
+@keyframes tear{
+  0%{transform:perspective(600px) translate(0,0) rotateY(0) rotate(0) scale(1);animation-timing-function:ease-in-out}
+  7%{transform:perspective(600px) translate(0,-2px) rotateY(0) rotate(0) scale(1);box-shadow:7px 7px 0 var(--ink);animation-timing-function:cubic-bezier(.2,.6,.3,1)}
+  36%{transform:perspective(600px) translate(0,0) rotateY(-26deg) rotate(4deg) scale(1);box-shadow:10px 12px 14px rgb(0 0 0 / .25);animation-timing-function:ease-in-out}
+  46%{transform:perspective(600px) translate(0,-1px) rotateY(-31deg) rotate(5deg) scale(1);animation-timing-function:cubic-bezier(.2,.8,.3,1)}
+  52%{transform:perspective(600px) translate(7px,14px) rotateY(-10deg) rotate(13deg) scale(1);box-shadow:4px 14px 18px rgb(0 0 0 / .25);opacity:1;animation-timing-function:cubic-bezier(.55,0,1,.6)}
+  86%{opacity:1}
+  100%{transform:perspective(600px) translate(30px,112px) rotateY(-4deg) rotate(27deg) scale(.88);box-shadow:4px 18px 24px rgb(0 0 0 / .15);opacity:0}}
+/* Once it has fallen it takes up no room, so the lobby never scrolls to where it landed. */
+@keyframes gone{to{transform:scale(0);visibility:hidden;opacity:0}}
+@keyframes jolt{30%{translate:0 -4px}65%{translate:0 1px}}
+@media (prefers-reduced-motion:reduce){
+  .ticket{transform:none;transition:none}
+  .sheen,.boarding dd::before,.tile{animation:none}
+  .sheen{display:none}
+  .stubWrap{transition:none}
+  .ticket[data-torn] .stub{animation:none;visibility:hidden}
+  .ticket[data-torn]{animation:none}
+}

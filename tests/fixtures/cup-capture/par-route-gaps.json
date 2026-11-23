@@ -3,7 +3,7 @@
   "task": "SV1: shortest robust route within par 2..6 per putt (hole-in-one optional)",
   "mode": "full",
   "gravity": 700,
-  "simulationSha256": "7a53c6b628ac798ab2d782c47fb47e9df025ee6e68574bcca1529a20d93b38b1",
+  "simulationSha256": "28a331b7dd1a86d748ac4e9b26f1fec3e24b41900617fa5fd11cb77224018d67",
   "solverConfig": {
     "version": 2,
     "minPar": 2,
@@ -76,13 +76,14 @@
         }
       ],
       "verified": true,
+      "world": "gaia",
       "provenance": {
         "version": 2,
         "courseId": "grand-finale",
         "puttId": "grand-finale-putt-1",
         "gravity": 700,
         "courseSha256": "97cf219dff1101d1c95b956b67fb028d5c8b5337d7a2409f39d3148352b0774e",
-        "simulationSha256": "7a53c6b628ac798ab2d782c47fb47e9df025ee6e68574bcca1529a20d93b38b1",
+        "simulationSha256": "28a331b7dd1a86d748ac4e9b26f1fec3e24b41900617fa5fd11cb77224018d67",
         "configurationSha256": "1110cf6d0cbdc4a650aace1ca5b464557ec341ba74fbc1c8e5c087fac86ab5e6",
         "searchMode": "full"
       }
@@ -116,13 +117,14 @@
         }
       ],
       "verified": true,
+      "world": "gaia",
       "provenance": {
         "version": 2,
         "courseId": "grand-finale",
         "puttId": "grand-finale-putt-3",
         "gravity": 700,
         "courseSha256": "97cf219dff1101d1c95b956b67fb028d5c8b5337d7a2409f39d3148352b0774e",
-        "simulationSha256": "7a53c6b628ac798ab2d782c47fb47e9df025ee6e68574bcca1529a20d93b38b1",
+        "simulationSha256": "28a331b7dd1a86d748ac4e9b26f1fec3e24b41900617fa5fd11cb77224018d67",
         "configurationSha256": "1110cf6d0cbdc4a650aace1ca5b464557ec341ba74fbc1c8e5c087fac86ab5e6",
         "searchMode": "full"
       }

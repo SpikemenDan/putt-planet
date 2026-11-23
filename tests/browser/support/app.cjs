@@ -63,16 +63,11 @@ async function openApp(page, name) {
       await expect(button).toBeEnabled();
       await button.click({ force: true });
     },
-    /** Solo steps (VIS-M4): pick the mode and Gaia, name, Play solo; lands on the map select with no lobby. */
+    /** Solo lobby (owner, 2026-11-18): pick the mode on the bar (Gaia is the default planet), name, Play Solo; lands on the map select. */
     async solo(mode = 'standard') {
       await p.menu('solo');
-      const [kind, sub] = { standard: ['Casual'], tournament_3: ['Tournament', '3 maps'], tournament_5: ['Tournament', '5 maps'], tournament_7: ['Tournament', '7 maps'], practice: ['Practice', 'Whole map'], putt_practice: ['Practice', 'One putt'], pong: ['Practice', 'Putt Pong'] }[mode];
-      const steps = visible('solo-steps');
-      while (await steps.getAttribute('data-step') !== 'mode') await page.locator('[data-ui=menu-back]').click();
-      await steps.getByRole('button', { name: new RegExp('^' + kind) }).click();
-      if (sub) await steps.getByRole('button', { name: new RegExp('^' + sub) }).click();
-      await steps.locator('[data-ui=world-choose]').click();
-      await visible('landing').getByLabel('Your name').fill(name);
+      await visible('solo-modes').locator(`[data-mode=${mode}]`).click();
+      await page.locator('[data-ui=solo-lobby] [data-ui=ticket-name]').fill(name);
       await p.button('Play Solo').click();
       await expect(visible('map-select')).toBeVisible();
       await p.loaded();
@@ -84,18 +79,27 @@ async function openApp(page, name) {
     async loaded() {
       await expect(page.locator('[data-ui=loading]')).toHaveCount(0, { timeout: 60_000 });
     },
+    /**
+     * Types this player's name. The Party menu asks for none (owner, 2026-11-19), so it goes in on the Solo pass, whose name the
+     * Party menu then uses; Solo opens no room until Play Solo.
+     */
+    async named(as = name) {
+      await p.menu('solo');
+      await page.locator('[data-ui=solo-lobby] [data-ui=ticket-name]').fill(as);
+      await page.locator('[data-ui=menu-back]').click();
+    },
     /** Party menu (VIS-M3): Create; the party opens straight on the lobby. Returns the party code. */
     async create() {
+      await p.named();
       await p.menu('party');
-      await visible('landing').getByLabel('Your name').fill(name);
       await p.button('Create party').click();
       await p.enter();
       return page.evaluate(() => window.__ppApp.room.roomCode);
     },
     /** Party menu (VIS-M3): type the code in the Join box and Join. */
     async joinCode(code) {
+      await p.named();
       await p.menu('party');
-      await visible('landing').getByLabel('Your name').fill(name);
       await visible('landing').getByLabel('Party code').fill(code);
       await p.button('Join').click();
       await p.enter();

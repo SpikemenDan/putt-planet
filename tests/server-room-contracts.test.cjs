@@ -17,7 +17,7 @@ const assert = require('node:assert/strict');
   });
   await test('server authority separate from controller; versions 4 (peer) and 5 (server room) carry global hazards',async()=>{
     assert.equal((await import('../src/shared/constants.js')).PROTOCOL_VERSION,7);
-    assert.equal(c.SERVER_ROOM_VERSION,14);assert.ok(c.validRoomSnapshot(snapshot));
+    assert.equal(c.SERVER_ROOM_VERSION,15);assert.ok(c.validRoomSnapshot(snapshot));
     // Version 12 (owner, 2026-11-16): the controller's SET_DESTINATION, and an optional destination in the context.
     assert.ok(c.CONTROLLER_COMMANDS.includes('SET_DESTINATION'));
     assert.ok(c.validServerCommand({type:'SET_DESTINATION',world:'ares'}));
@@ -41,6 +41,12 @@ const assert = require('node:assert/strict');
     assert.equal(c.validServerCommand({type:'SET_NAME',name:'  '}),false,'a blank name is refused');
     assert.equal(c.validServerCommand({type:'SET_NAME',name:'x'.repeat(15)}),false,'a name past the limit is refused');
     assert.equal(c.validServerCommand({type:'SET_NAME'}),false);
+    // Version 15 (owner, 2026-11-19): the controller's LAUNCH starts a party's countdown, and an optional launchAt in the context.
+    assert.ok(c.CONTROLLER_COMMANDS.includes('LAUNCH'),'only the host starts the countdown');
+    assert.ok(c.validServerCommand({type:'LAUNCH'}));
+    assert.equal(c.validServerCommand({type:'LAUNCH',at:5}),false);
+    const launching=copy(snapshot);launching.session.context.launchAt=snapshot.serverTime+5000;assert.ok(c.validRoomSnapshot(launching),'a snapshot may carry the countdown');
+    launching.session.context.launchAt=-1;assert.equal(c.validRoomSnapshot(launching),false,'a negative launch time is refused');
     const invalid=copy(snapshot);invalid.session.context.hostId='p1';assert.equal(c.validRoomSnapshot(invalid),false);
     assert.equal(c.authorizeRoomFrame(command(),binding,snapshot,snapshot.serverTime),null);
     assert.equal(c.authorizeRoomFrame({...command(),connectionId:'socket_p2'},{...binding,playerId:'p2',connectionId:'socket_p2'},snapshot,snapshot.serverTime),'unauthorized');

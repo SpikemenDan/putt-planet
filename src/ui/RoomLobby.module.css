@@ -1,5 +1,5 @@
-/* Party lobby (VIS-M3 #175; full screen, owner 2026-11-16): the vehicle fills the screen over the planet sky; the title and manifest
-   sit on the left, the boarding pass on the right, the host's mode tiles and Start Game along the bottom. */
+/* Party lobby (VIS-M3 #175; full screen, owner 2026-11-16): the vehicle fills the screen over the planet sky; the planet picker
+   sits on the left, the boarding pass (with the passenger list) on the right, the host's mode tiles and Start Game along the bottom. */
 .lobby{position:fixed;inset:0;z-index:3;overflow:hidden auto}
 .lobby[hidden]{display:none}
 .left,.right,.dock{position:absolute;z-index:2}

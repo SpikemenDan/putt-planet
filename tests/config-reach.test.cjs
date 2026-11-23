@@ -107,10 +107,10 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
       scene.step(0.5);
       seen.updateMatrixWorld(true);
       const axis = new THREE.Vector3(0, 1, 0).applyQuaternion(seen.children.find(o => o.isGroup).quaternion);
-      let glow = null, gate = null;
-      seen.traverse(o => { const u = o.material?.uniforms; if (u?.atmosphere && glow === null) glow = u.atmosphere.value; if (u?.cloudGate && gate === null) gate = u.cloudGate.value; });
+      let glow = null, gate = null, dim = null;
+      seen.traverse(o => { const u = o.material?.uniforms; if (u?.atmosphere && glow === null) glow = u.atmosphere.value; if (u?.cloudGate && gate === null) gate = u.cloudGate.value; if (u?.dim && dim === null) dim = u.dim.value; });
       const cloudLead = seen.children.find(o => o.isGroup).children.map(g => g.rotation.y);
-      const out = { spin: scene.spin, axisX: axis.x, glow, gate, cloudLead: cloudLead[1] - cloudLead[0], traffic: scene.traffic, stats: scene.stats, camera: scene.cameraPosition };
+      const out = { spin: scene.spin, axisX: axis.x, glow, gate, dim, cloudLead: cloudLead[1] - cloudLead[0], traffic: scene.traffic, stats: scene.stats, camera: scene.cameraPosition };
       scene.dispose(); dom.window.close();
       return out;
     };
@@ -127,10 +127,33 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
     assert.ok(changed('atmosphereHeight', 0.8).stats.airTop > lbase.stats.airTop && Math.abs(lbase.stats.airTop - 162) < 1e-9, 'loading.atmosphereHeight lifts the top of the air');
     assert.ok(changed('citySize', 3).stats.tallestCity > lbase.stats.tallestCity * 1.5 && lbase.stats.tallestCity > 5 && lbase.stats.tallestCity < 10, 'loading.citySize makes the skylines taller; by default the tallest stands clear of the ground but below the big mountains');
     assert.ok(Math.abs(changed('outlineWidth', 3).stats.ink - 3) < 1e-9 && Math.abs(lbase.stats.ink - 1.6) < 1e-9, 'loading.outlineWidth sets the ink width in pixels at 1280 wide');
-    assert.ok(Math.abs(changed('lunaSize', 1).stats.lunaPixels * 2.6 - lbase.stats.lunaPixels) < 1e-6 && changed('lunaSize', 1).stats.lunaPixels > 5 && changed('lunaSize', 1).stats.lunaPixels < 16, 'loading.lunaSize scales Luna, and 1 is its true size at the real distance');
+    assert.ok(Math.abs(lbase.dim - 0.72) < 1e-9 && Math.abs(changed('backgroundDim', 0.3).dim - 0.3) < 1e-9, 'loading.backgroundDim dims Luna and Ares in the horizon sky');
+    assert.ok(Math.abs(changed('lunaSize', 1).stats.lunaPixels * 2 - lbase.stats.lunaPixels) < 1e-6 && changed('lunaSize', 1).stats.lunaPixels > 5 && changed('lunaSize', 1).stats.lunaPixels < 16, 'loading.lunaSize scales Luna, and 1 is its true size at the real distance');
     assert.equal(changed('planes', 2).traffic.planes, 2, 'loading.planes sets the number of planes');
     assert.equal(changed('boats', 5).traffic.boats, 5, 'loading.boats sets the number of boats');
     assert.equal(changed('satellites', 6).traffic.satellites, 6, 'loading.satellites sets the number of satellites');
+    { // loading.paintedMaps: the painted maps replace the procedural surfaces once loaded, and 0 brings the procedural ones back.
+      const live = structuredClone(DEFAULT_DISPLAY);
+      const dom = new JSDOM('<canvas></canvas>', { pretendToBeVisual: true });
+      dom.window.HTMLCanvasElement.prototype.getContext = () => new Proxy({}, { get: (_, k) => (k === 'createRadialGradient' ? () => ({ addColorStop() {} }) : () => {}), set: () => true });
+      const canvas = dom.window.document.querySelector('canvas');
+      canvas.getBoundingClientRect = () => ({ width: 1280, height: 720 });
+      let seen = null;
+      const createWebGLRenderer = () => ({ render(s) { seen = s; }, setPixelRatio() {}, getPixelRatio: () => 1, setSize() {}, setClearColor() {}, dispose() {}, capabilities: { getMaxAnisotropy: () => 1 } });
+      const loaded = {}, loadMap = ({ name, flipY = true }) => Promise.resolve(loaded[name] = Object.assign(new THREE.DataTexture(new Uint8Array(4), 1, 1), { flipY, mapName: name }));
+      const scene = createPlanetScene({ THREE, canvas, display: live, random: mulberry32(9), planet: sharedPlanet, win: dom.window, createWebGLRenderer, loadMap });
+      await new Promise(resolve => setTimeout(resolve, 0));
+      scene.start(); scene.step(0.1);
+      const surfaces = () => { const out = { gaia: null, maps: [] }; seen.traverse(o => { const u = o.material?.uniforms; if (u?.mapOn) out.gaia = u.mapOn.value; if (o.material?.map?.image?.width === 512) out.maps.push('procedural'); if (o.material?.map?.mapName) out.maps.push(o.material.map.mapName); }); return out; };
+      const on = surfaces();
+      assert.deepEqual(scene.stats.paintedMaps, ['gaia', 'ares', 'luna'], 'all three painted maps are in use by default');
+      assert.ok(on.gaia === 1 && on.maps.includes('ares') && on.maps.includes('luna'), 'Gaia samples its painting; Ares and Luna wear theirs');
+      assert.equal(loaded.gaia.flipY, false, 'Gaia keeps row 0 at the north, as the shader samples the flat master map');
+      live.loading.paintedMaps = 0; scene.step(0.1);
+      const off = surfaces();
+      assert.ok(off.gaia === 0 && !off.maps.includes('ares') && !off.maps.includes('luna') && off.maps.filter(m => m === 'procedural').length === on.maps.filter(m => m === 'procedural').length + 2 && scene.stats.paintedMaps.length === 0, 'loading.paintedMaps 0 brings back the procedural surfaces');
+      scene.dispose(); dom.window.close();
+    }
     const reach = m => Math.hypot(...m.camera) - 100;
     assert.ok(Math.abs(reach(lbase) - 40) < 1e-6 && Math.abs(reach(changed('cameraAltitude', 1.2)) - 120) < 1e-6, 'loading.cameraAltitude sets how high the camera flies (40 units by default, inside the air)');
     // environment (VIS-E #166): strength and density reach the Ares and Luna scenery, and only their own world's.
@@ -164,22 +187,35 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
       live.space.distance = 2;
       assert.ok(fromGaia(run(0.1)) > fromGaia(base) * 1.6, 'space.distance moves the camera further out');
       reset(); run(0.1);
-      const orbitDelta = () => { const a = scene.space.orbit; return (run(2).orbit - a + 1) % 1; };
-      const slowOrbit = orbitDelta();
-      live.space.orbitSeconds = 20;
-      assert.ok(orbitDelta() > slowOrbit * 4, 'space.orbitSeconds sets how fast Luna orbits');
-      reset();
       live.space.travelSeconds = 0.5;
       assert.equal(fly('luna', 0.6).travel, 1, 'a short travelSeconds finishes the flight sooner');
       reset(); fly('gaia', 4);
       const half = fly('luna', 0.6);
       assert.ok(half.travel < 1, 'space.travelSeconds sets the flight time');
       assert.equal(half.fov, 32, 'the short Gaia-Luna trip keeps the lens');
-      fly('gaia', 4);
-      assert.ok(fly('ares', 1).fov > 36, 'space.aresZoom widens the lens on the long trip to Ares');
       fly('gaia', 6);
-      live.space.aresZoom = 0;
-      assert.equal(fly('ares', 1).fov, 32, 'with space.aresZoom 0 the long trip is a plain glide');
+      assert.equal(fly('ares', 1).fov, 32, 'the long trip to Ares keeps the lens too: the planets never zoom (owner, 2026-11-18)');
+      reset();
+      // The arrival (owner, 2026-11-18: smooth and continuous, no loop and no jolt): measured from Luna, which keeps moving along its
+      // orbit, the camera's step from frame to frame grows and shrinks gradually, never jumping, and comes to rest on the usual view.
+      fly('gaia', 12);
+      scene.setView({ space: true, target: 'luna', near: true });
+      const seen = s => s.camera.map((v, i) => v - s.luna[i]);
+      const steps = [];
+      let before = seen(scene.space), done = null;
+      for (let i = 0; i < 30 * 7; i++) {
+        scene.step(1 / 30);
+        const s = scene.space, now = seen(s);
+        steps.push(Math.hypot(now[0] - before[0], now[1] - before[1], now[2] - before[2]));
+        if (done === null && s.travel === 1) done = i;
+        before = now;
+      }
+      const fastest = Math.max(...steps);
+      assert.ok(done !== null && fastest > 1, 'the camera flies to Luna within the trip time');
+      const kick = Math.max(...steps.slice(1).map((v, i) => Math.abs(v - steps[i])));
+      assert.ok(kick < fastest * 0.08, `the camera's speed changes gradually, with no jolt (largest change ${kick.toFixed(3)} of ${fastest.toFixed(3)})`);
+      assert.ok(steps[done] < fastest * 0.01 && Math.max(...steps.slice(done + 1)) < fastest * 0.01, 'it slows to a stop as the trip ends and then holds still: no loop after');
+      assert.equal(scene.space.arrive, 1, 'and the turn into the view has finished with it');
       reset();
       assert.ok(run(0.1).nebula > 0, 'the nebula shows in space');
       live.space.nebula = 0;
@@ -205,9 +241,10 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
     }
     // loading.finishTime, ballPulse and ballBounce are checked in tests/ui.test.cjs, where the screen really closes after the first
     // and the progress balls carry the other two as CSS variables, and so is the menu group
-    // (VIS-M2), where each value lands on its own CSS variable on the real main menu, and the lobby group, on the lobby vehicle scene.
+    // (VIS-M2), where each value lands on its own CSS variable on the real main menu, and the lobby group, on the lobby vehicle scene,
+    // and space.hopZoom, space.hopWait, space.hopDelay and space.hopSlide, where the lobby vehicle hops between planets, and the lobbyLook group, where each value lands on its own CSS variable on the real Solo lobby.
     // The table covers every DISPLAY setting, so a new setting cannot be added without a reach check.
-    assert.deepEqual([...Object.keys(expectations), 'ball.visualScale', ...['spinSpeed', 'axisTilt', 'horizonHeight', 'cameraAltitude', 'cloudCover', 'cloudDrift', 'finishTime', 'atmosphere', 'atmosphereHeight', 'citySize', 'lunaSize', 'outlineWidth', 'planes', 'boats', 'satellites', 'ballPulse', 'ballBounce'].map(k => 'loading.' + k), ...['orbitSeconds', 'travelSeconds', 'aresZoom', 'nebula', 'distance', 'revolveSeconds'].map(k => 'space.' + k), ...['buttonScale', 'stagger', 'bob', 'tilt', 'shineSeconds', 'cardTint'].map(k => 'menu.' + k), ...['zoom', 'sway', 'bob', 'spinSeconds'].map(k => 'lobby.' + k), ...['aresWind', 'aresWindDensity', 'lunaDust', 'lunaDustDensity', 'lunaSolar'].map(k => 'environment.' + k)].sort(), DISPLAY_FIELDS.map(f => f[0]).sort());
+    assert.deepEqual([...Object.keys(expectations), 'ball.visualScale', ...['spinSpeed', 'axisTilt', 'horizonHeight', 'cameraAltitude', 'cloudCover', 'cloudDrift', 'finishTime', 'atmosphere', 'atmosphereHeight', 'citySize', 'lunaSize', 'backgroundDim', 'outlineWidth', 'planes', 'boats', 'satellites', 'paintedMaps', 'ballPulse', 'ballBounce'].map(k => 'loading.' + k), ...['travelSeconds', 'nebula', 'distance', 'revolveSeconds'].map(k => 'space.' + k), ...['buttonScale', 'stagger', 'bob', 'tilt', 'shineSeconds', 'cardTint'].map(k => 'menu.' + k), ...['zoom', 'sway', 'bob', 'spinSeconds'].map(k => 'lobby.' + k), ...['hopZoom', 'hopWait', 'hopDelay', 'hopSlide'].map(k => 'space.' + k), ...['glow', 'flipSeconds'].map(k => 'lobbyLook.' + k), ...['aresWind', 'aresWindDensity', 'lunaDust', 'lunaDustDensity', 'lunaSolar'].map(k => 'environment.' + k)].sort(), DISPLAY_FIELDS.map(f => f[0]).sort());
   });
 
   // ---- TUNING probes: [name, setting, value, code printing one number, expected default, expected with the override]
