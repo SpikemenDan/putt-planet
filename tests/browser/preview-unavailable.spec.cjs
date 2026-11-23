@@ -33,8 +33,8 @@ test('preview maintenance: backend failure is actionable and solo remains availa
     page.on('websocket', ws => sockets.push(ws.url()));
     page.on('pageerror', error => runtimeErrors.push(error.message));
     const player = await openApp(page, 'Ana');
+    await player.named('Ana');
     await player.menu('party');
-    await player.ui('landing').getByLabel('Your name').fill('Ana');
     await player.ui('landing').getByLabel('Party code').fill('maintenance');
     await player.button('Join').click();
     await expect(player.ui('connect-error')).toContainText(/room service.*unavailable|Could not reach the room service/);

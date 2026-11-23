@@ -40,7 +40,7 @@ test('recovery: a player reloading mid-map resumes the same seat and scores', as
 
   await ben.page.reload();
   await ben.menu('party');
-  await expect(ben.ui('landing').getByLabel('Your name')).toHaveValue('Ben');
+  await expect(ben.ui('landing').getByLabel('Your name')).toHaveCount(0); // the Party menu asks for no name; the room remembers Ben
   await expect(ben.ui('landing').getByLabel('Party code')).toHaveValue(code.toLowerCase());
   await ben.button('Join').click();
   await expect(ben.ui('game')).toBeVisible({ timeout: 30_000 });

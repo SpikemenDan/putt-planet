@@ -79,18 +79,27 @@ async function openApp(page, name) {
     async loaded() {
       await expect(page.locator('[data-ui=loading]')).toHaveCount(0, { timeout: 60_000 });
     },
+    /**
+     * Types this player's name. The Party menu asks for none (owner, 2026-11-19), so it goes in on the Solo pass, whose name the
+     * Party menu then uses; Solo opens no room until Play Solo.
+     */
+    async named(as = name) {
+      await p.menu('solo');
+      await page.locator('[data-ui=ticket-name]').fill(as);
+      await page.locator('[data-ui=menu-back]').click();
+    },
     /** Party menu (VIS-M3): Create; the party opens straight on the lobby. Returns the party code. */
     async create() {
+      await p.named();
       await p.menu('party');
-      await visible('landing').getByLabel('Your name').fill(name);
       await p.button('Create party').click();
       await p.enter();
       return page.evaluate(() => window.__ppApp.room.roomCode);
     },
     /** Party menu (VIS-M3): type the code in the Join box and Join. */
     async joinCode(code) {
+      await p.named();
       await p.menu('party');
-      await visible('landing').getByLabel('Your name').fill(name);
       await visible('landing').getByLabel('Party code').fill(code);
       await p.button('Join').click();
       await p.enter();

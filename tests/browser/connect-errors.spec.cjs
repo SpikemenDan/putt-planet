@@ -21,8 +21,8 @@ test('connect errors: a player past the cap is told the room is full and stays o
 
     const extraName = 'P' + (MAX_PLAYERS + 1);
     const extra = await openPlayer(browser, testInfo, extraName, { contexts });
+    await extra.named(extraName);
     await extra.menu('party');
-    await extra.ui('landing').getByLabel('Your name').fill(extraName);
     await extra.ui('landing').getByLabel('Party code').fill(partyCode(code));
     await extra.button('Join').click();
     await expect(extra.ui('connect-error')).toHaveText('That room is full. Ask someone to leave, or use a different room code.', { timeout: 30_000 });

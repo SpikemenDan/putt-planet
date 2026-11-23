@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { NAME_LIMIT, UiCommands } from './commands.js';
+import { UiCommands } from './commands.js';
 import { useCommands, useUiContext, useView } from './context.js';
 import { ColorPicker } from './ColorPicker.jsx';
 import { SoloSteps } from './SoloSteps.jsx';
@@ -86,7 +86,6 @@ export function Landing({ hidden, initialName = '', initialRoomCode = '', initia
     if (view !== 'home') root.current?.querySelector('[data-menu-view] input, [data-menu-view] button')?.focus();
   }, [view]);
 
-  const nameField = <label>Your name<input maxLength={NAME_LIMIT} autoComplete="off" value={name} onChange={e => setName(e.target.value)} /></label>;
   const colorField = <div className={menu.field}>Ball colour<ColorPicker selected={color} onPick={c => send(UiCommands.SET_COLOR, { color: c })} /></div>;
   const backButton = <button type="button" className={menu.back} onClick={back} data-ui="menu-back">Back</button>;
   const homeButton = (id, label, sub, cls, icon) => (
@@ -114,7 +113,8 @@ export function Landing({ hidden, initialName = '', initialRoomCode = '', initia
           {view === 'solo' && <SoloSteps name={name} onName={setName} colorField={colorField} connecting={connecting} send={send} onExit={back} overlay={root.current} />}
           {view === 'party' && <>
             <h2 className={menu.heading}><MenuIcon name="party" className={menu.headingIcon} />Party</h2>
-            {nameField}
+            {/* Owner, 2026-11-19: the Party menu asks for no name, only Create party or a code to Join. The name you typed in Solo (or
+                the one this room remembers) goes with you, else Player; rename yourself on the boarding pass in the lobby. */}
             {/* VIS-M3 #175: Host creates the party and only then gets its code; opening this menu makes no room and no code. */}
             {/* Cleaner Party menu (owner, 2026-11-17): one big pink Create party, then "or join with a code" and a sky Join card whose code
                 box uses the boarding pass's code font. */}

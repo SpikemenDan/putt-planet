@@ -29,4 +29,8 @@
 .card[data-voting] .chip[data-leading]::after{content:'';position:absolute;inset:-7px;border:3px solid var(--c);border-radius:999px;pointer-events:none;
   box-shadow:0 0 12px 1px color-mix(in srgb,var(--c) 60%,transparent);animation:lead 1.8s ease-in-out infinite}
 @keyframes lead{50%{opacity:.5;scale:1.03}}
+/* Voters' balls on a planet chip (owner, 2026-11-19): above the leading ring, never under it, and small enough that all eight players
+   fit when the vote is unanimous. */
+.chip [data-ui=voters]{z-index:2;top:-12px;right:-4px}
+.chip [data-ui=voters]>span{width:13px;height:13px;margin-left:-4px;border-width:2px}
 @media (prefers-reduced-motion:reduce){.arrow,.chip{transition:none}.card[data-voting] .chip[data-leading]::after{animation:none}}

@@ -925,11 +925,21 @@ function fakeClock() {
     await act(async () => t.store.setLocal({ active: false }));
     const landing = t.within('[data-ui=landing]');
     assert.ok(shown(landing));
+    const setValue = async (el, value) => {
+      const setter = Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype, 'value').set;
+      await act(async () => { setter.call(el, value); el.dispatchEvent(new dom.window.Event('input', { bubbles: true })); });
+    };
+    // The Party menu asks for no name (owner, 2026-11-19): the name typed on the Solo pass goes with you.
+    await click(landing.querySelector('[data-menu=solo]'));
+    await setValue(landing.querySelector('[data-ui=ticket-name]'), '  Zed  ');
+    await click(landing.querySelector('[data-ui=menu-back]'));
     await click(landing.querySelector('[data-menu=party]'));
     assert.equal(landing.querySelectorAll('[data-ui=color-picker]').length, 0, 'the colour is picked after Create or Join, before the lobby');
     assert.equal(landing.querySelector('[data-ui=party-code]'), null, 'opening Party shows no code');
-    const [nameInput, codeInput] = landing.querySelectorAll('input');
-    assert.equal(nameInput.maxLength, 12, 'names take at most 12 characters (owner, 2026-11-16)'); assert.equal(codeInput.maxLength, 12);
+    const inputs = landing.querySelectorAll('input');
+    assert.equal(inputs.length, 1, 'only the Join code box: Party asks for no name');
+    const codeInput = inputs[0];
+    assert.equal(codeInput.maxLength, 12);
     assert.equal(codeInput.value, '', 'the Join box starts empty: the menu never makes up a code');
     assert.equal(codeInput.closest('form').dataset.ui, 'party-join');
     const create = button('Create party');
@@ -937,14 +947,9 @@ function fakeClock() {
     assert.equal(join.parentElement, codeInput.closest('label').parentElement, 'Join sits beside the code box');
     assert.equal(create.disabled, false, 'Create needs no code');
     assert.equal(join.disabled, true, 'an empty code disables Join');
-    const setValue = async (el, value) => {
-      const setter = Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype, 'value').set;
-      await act(async () => { setter.call(el, value); el.dispatchEvent(new dom.window.Event('input', { bubbles: true })); });
-    };
     await setValue(codeInput, '   ');
     assert.equal(join.disabled, true, 'blank code disables Join');
     await setValue(codeInput, 'Fun-Room!');
-    await setValue(nameInput, '  Zed  ');
     t.commands.length = 0;
     await click(join);
     await act(async () => { codeInput.closest('form').dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true })); });
