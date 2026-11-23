@@ -67,7 +67,7 @@ async function openApp(page, name) {
     async solo(mode = 'standard') {
       await p.menu('solo');
       await visible('solo-modes').locator(`[data-mode=${mode}]`).click();
-      await page.locator('[data-ui=ticket-name]').fill(name);
+      await page.locator('[data-ui=solo-lobby] [data-ui=ticket-name]').fill(name);
       await p.button('Play Solo').click();
       await expect(visible('map-select')).toBeVisible();
       await p.loaded();
@@ -85,7 +85,7 @@ async function openApp(page, name) {
      */
     async named(as = name) {
       await p.menu('solo');
-      await page.locator('[data-ui=ticket-name]').fill(as);
+      await page.locator('[data-ui=solo-lobby] [data-ui=ticket-name]').fill(as);
       await page.locator('[data-ui=menu-back]').click();
     },
     /** Party menu (VIS-M3): Create; the party opens straight on the lobby. Returns the party code. */
