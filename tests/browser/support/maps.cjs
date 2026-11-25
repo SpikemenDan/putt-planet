@@ -13,22 +13,30 @@ async function inAtlas(page) {
   return (await page.locator(ATLAS).count()) > 0;
 }
 
+/** The course indexes the atlas offers, in card order. data-maps holds course indexes, which skip numbers when a
+ *  mode offers only some courses (Practice lists the starters), so a card position is not a course index. */
+async function atlasCourses(page) {
+  const lists = await page.locator(`${ATLAS} button[data-region]`).evaluateAll(buttons => buttons.map(b => b.dataset.maps));
+  return lists.flatMap(list => (list ? list.split(' ').map(Number) : [])).sort((a, b) => a - b);
+}
+
 /** Votes for map `index` (its card order, as the plain list shows it). */
 async function pickMap(page, index = 0) {
   if (!(await inAtlas(page))) {
     await page.locator('[data-ui=map-select] button[data-v]').nth(index).click();
     return;
   }
+  const course = (await atlasCourses(page))[index];
+  expect(course, `the atlas offers a map at card ${index}`).toBeDefined();
   const world = page.locator(ATLAS);
-  await world.locator(`button[data-region][data-maps~="${index}"]`).click();
-  await world.locator(`button[data-map="${index}"]`).click({ timeout: 60_000 }); // shown once the camera settles on the region
+  await world.locator(`button[data-region][data-maps~="${course}"]`).click();
+  await world.locator(`button[data-map="${course}"]`).click({ timeout: 60_000 }); // shown once the camera settles on the region
 }
 
 /** How many maps the picker offers. */
 async function mapCount(page) {
   if (!(await inAtlas(page))) return page.locator('[data-ui=map-select] button[data-v]').count();
-  const lists = await page.locator(`${ATLAS} button[data-region]`).evaluateAll(buttons => buttons.map(b => b.dataset.maps));
-  return lists.reduce((n, list) => n + (list ? list.split(' ').length : 0), 0);
+  return (await atlasCourses(page)).length;
 }
 
 module.exports = { pickMap, mapCount };
