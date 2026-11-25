@@ -14,9 +14,11 @@ async function inAtlas(page) {
 }
 
 /** The course indexes the atlas offers, in card order. data-maps holds course indexes, which skip numbers when a
- *  mode offers only some courses (Practice lists the starters), so a card position is not a course index. */
+ *  mode offers only some courses (Practice lists the starters), so a card position is not a course index.
+ *  Read with getAttribute, not evaluateAll: evaluating in the page's main world installs Playwright's injected script,
+ *  whose event listeners the lifecycle spec's leak probe would count. */
 async function atlasCourses(page) {
-  const lists = await page.locator(`${ATLAS} button[data-region]`).evaluateAll(buttons => buttons.map(b => b.dataset.maps));
+  const lists = await Promise.all((await page.locator(`${ATLAS} button[data-region]`).all()).map(button => button.getAttribute('data-maps')));
   return lists.flatMap(list => (list ? list.split(' ').map(Number) : [])).sort((a, b) => a - b);
 }
 
