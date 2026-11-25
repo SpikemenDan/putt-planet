@@ -2,7 +2,7 @@
 
 Product direction, technology choices and remaining stages. Live work is tracked in GitHub issues (docs/ISSUES.md); TASKS.md is the roadmap snapshot and PROJECT_STATUS.md records the accepted state of main.
 
-Naming: the game is now called **Putt Planet** (owner vision, 2026-11-03). The repository, package and hosted names still say Putt Pals; renaming them is a separate task (VIS-R) and is not implied by this document.
+Naming: the game is now called **Putt Planet** (owner vision, 2026-11-03). The repository, package and player-visible names say Putt Planet (VIS-R, owner-approved 2026-11-25). Hosted resource names (the Cloudflare Worker, Durable Object room names) and existing storage keys, network prefixes and tooling environment variables still say putt-pals; renaming those needs separate authorization and a migration.
 
 ## Product direction
 
@@ -165,7 +165,7 @@ Raised by the 2026-11-03 vision; nothing below is decided or scheduled.
 - Skins unlocking through play or an account (not needed now).
 - **Missed-hole numbers:** the maximum-hole score and the missed-hole penalty (tuning fields to be added) and how a rejoining player's hole timer is held while they are away.
 - **Late join and rejoin across a tournament:** how a late arrival's penalties are scored in a tournament total.
-- **Product rename** from Putt Pals to Putt Planet in code, package and hosting (VIS-R).
+- **Hosted-name rename** from putt-pals to putt-planet (Cloudflare Worker, room-object names, storage keys); the code, package and player-visible rename landed under VIS-R (owner-approved 2026-11-25).
 
 ### Decided 2026-11-11
 

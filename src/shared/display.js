@@ -1,5 +1,5 @@
 /**
- * Presentation settings for Putt Pals: sizes and looks that change what a player sees, never how the ball moves.
+ * Presentation settings for Putt Planet: sizes and looks that change what a player sees, never how the ball moves.
  *
  * Unlike TUNING (src/shared/tuning.js), nothing here is read by the simulation, so a client may override these
  * values without desyncing a room or invalidating recorded difficulty. Defaults equal the values the renderer

@@ -1,4 +1,4 @@
-export { PuttPalsUi } from './App.jsx';
+export { PuttPlanetUi } from './App.jsx';
 export { spreadPins } from './WorldSelect.jsx';
 export { PongHud } from './PongHud.jsx';
 export { mountUi, createUiDispatcher } from './mount.jsx';

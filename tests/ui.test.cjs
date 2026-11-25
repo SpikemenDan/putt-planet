@@ -1742,7 +1742,7 @@ function fakeClock() {
     const reactRoot = createRoot(root);
     await act(async () => {
       reactRoot.render(React.createElement(React.Profiler, { id: 'ui', onRender: () => { commits++; } },
-        React.createElement(ui.PuttPalsUi, { store, dispatch: () => {}, aim })));
+        React.createElement(ui.PuttPlanetUi, { store, dispatch: () => {}, aim })));
     });
     const before = commits, snapshot = store.getSnapshot();
     const meter = root.querySelector('[role=meter]');

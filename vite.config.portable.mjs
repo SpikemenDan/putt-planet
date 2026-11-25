@@ -15,7 +15,7 @@ export default defineConfig({
   base: './',
   publicDir: false,
   build: {
-    outDir: 'release/putt-pals',
+    outDir: 'release/putt-planet',
     emptyOutDir: true,
     cssMinify: false,
     modulePreload: false,

@@ -20,12 +20,12 @@ export function createStageHandle() {
   return handle;
 }
 
-/** { store, dispatch, aim, display, stage } supplied by <PuttPalsUi>. */
+/** { store, dispatch, aim, display, stage } supplied by <PuttPlanetUi>. */
 export const UiContext = createContext(null);
 
 export function useUiContext() {
   const context = useContext(UiContext);
-  if (!context) throw new Error('Putt Pals UI components must be rendered inside <PuttPalsUi>');
+  if (!context) throw new Error('Putt Planet UI components must be rendered inside <PuttPlanetUi>');
   return context;
 }
 

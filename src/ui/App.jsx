@@ -50,7 +50,7 @@ function Screens({ onCanvas, initialName, initialRoomCode, initialView }) {
  * @param {number} [props.soloBoardingMs] Solo's boarding countdown after Play Solo; the party launch countdown's length by default
  * @param {Function} [props.createLoadingScene] Builds the 3D planet behind the menu and loading screen; without it only the CSS sky shows
  */
-export function PuttPalsUi({ store, dispatch, aim = null, onCanvas, initialName = '', initialRoomCode = '', initialView = 'home', display = DISPLAY, createLoadingScene = null, createAtlasScene = null, soloBoardingMs = LAUNCH_COUNTDOWN_MS }) {
+export function PuttPlanetUi({ store, dispatch, aim = null, onCanvas, initialName = '', initialRoomCode = '', initialView = 'home', display = DISPLAY, createLoadingScene = null, createAtlasScene = null, soloBoardingMs = LAUNCH_COUNTDOWN_MS }) {
   const [stage] = useState(createStageHandle);
   return (
     <UiContext.Provider value={{ store, dispatch, aim, display, createLoadingScene, createAtlasScene, stage, soloBoardingMs }}>

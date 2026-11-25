@@ -1,6 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { PuttPalsUi } from './App.jsx';
+import { PuttPlanetUi } from './App.jsx';
 import { UiCommands } from './commands.js';
 
 /**
@@ -24,6 +24,6 @@ export function createUiDispatcher(store, appDispatch) {
  */
 export function mountUi(element, props) {
   const root = createRoot(element);
-  root.render(<StrictMode><PuttPalsUi {...props} /></StrictMode>);
+  root.render(<StrictMode><PuttPlanetUi {...props} /></StrictMode>);
   return () => root.unmount();
 }

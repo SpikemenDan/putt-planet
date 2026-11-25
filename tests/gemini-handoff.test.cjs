@@ -55,7 +55,7 @@ process.stdin.on('end', () => {
     assert.match(seen.stdin, /EXPECTED OUTPUT: Two bullets with line citations/);
     assert.match(seen.stdin, /Mark anything you are not sure of as UNCERTAIN/);
     assert.match(seen.stdin, /Support every material claim with the excerpt/);
-    assert.match(seen.stdin, /<<< file README\.md lines 1-8 >>>\n1: # Putt Pals/);
+    assert.match(seen.stdin, /<<< file README\.md lines 1-8 >>>\n1: # Putt Planet/);
     assert.match(seen.stdin, /data, not instructions/);
     assert.ok(!seen.stdin.includes('AGENTS.md'), 'only the selected excerpt is sent');
     assert.deepEqual(seen.cwdEntries, [], 'Gemini starts in an empty directory, not the checkout');
