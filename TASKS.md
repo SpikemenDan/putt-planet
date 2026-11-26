@@ -95,7 +95,7 @@ IDs below do not imply that GitHub issues have already been created.
 
 | ID | Outcome | Dependencies |
 | --- | --- | --- |
-| DX1 | Audit/extend the validated configuration entry point; reuse existing settings, preserve defaults and remove duplicated adjustable values. Behaviour-preserving extraction merged in PR #209; duplicates inside `src/shared/tuning.js` and `src/shared/constants.js` were deferred | Existing tuning system |
+| DX1 | Audit/extend the validated configuration entry point; reuse existing settings, preserve defaults and remove duplicated adjustable values. Behaviour-preserving extraction merged in PR #209. The remaining duplicates were removed on `chore/dx1-dedupe-settings`: the unread `surfaceDragMultiplier.*` and `aim.arrowMaxLength` TUNING copies, and the short constants.js aliases (`R`, `POWER`, `DT`, ...) plus `SURFACE_DRAG` and `MAX_SCORE`. Defaults and behaviour are unchanged | Existing tuning system |
 | DX2 | Development-only tuning panel: sliders, toggles, selectors, reset, validated import/export and safe restart semantics | DX1 |
 | DX3 | Done (2026-11-02, merged in PR #146): legacy consumers inventoried and migrated, `putt-pals.html`, `tools.js` and legacy-only infrastructure removed; see ARCHITECTURE.md | Replacement test coverage and build checks |
 | DX4 | Tooling done and tested (2026-11-02, merged in PR #146): backup, manifest, restore verification, Drive upload gate with receipt; see docs/OVERNIGHT.md. **Open:** owner-designated Drive destination and rclone remote; real upload unverified | Owner-designated Drive destination and authorized access |
