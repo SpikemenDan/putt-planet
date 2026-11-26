@@ -204,4 +204,21 @@ export function createTuning(overrides = {}) {
   return deepFreeze(validateTuning(merge(DEFAULT_TUNING, overrides)));
 }
 
-export const TUNING = createTuning();
+/**
+ * DX2: development builds may stage gameplay overrides for one tab. src/devtools/tuning-boot.js (the first import of
+ * src/app/main.js, inert in production) copies them onto this global before any module reads TUNING, so they apply
+ * from the page's start and can never change mid-match. Nothing else sets it: production builds, the CLI, the solver
+ * and the tests always get the shipped values. Invalid overrides are ignored, never partly applied.
+ */
+export const TUNING_OVERRIDES_GLOBAL = '__PP_DEV_TUNING__';
+// Production bundles never read it (Vite replaces import.meta.env.PROD with true there); Node has no import.meta.env.
+const requested = import.meta.env?.PROD ? null : globalThis[TUNING_OVERRIDES_GLOBAL];
+let startupProblem = null;
+function startupTuning() {
+  if (requested == null) return createTuning();
+  try { return createTuning(requested); } catch (error) { startupProblem = error.message; return createTuning(); }
+}
+
+export const TUNING = startupTuning();
+/** Whether this page started with development gameplay overrides, and why requested ones were refused. */
+export const TUNING_STARTUP = Object.freeze({ overridden: requested != null && startupProblem === null, problem: startupProblem });

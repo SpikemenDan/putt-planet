@@ -39,13 +39,13 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
     async function settle() { for (let i = 0; i < 5; i++) await act(async () => { await Promise.resolve(); }); }
     async function run(ms) { for (let t = 0; t < ms; t += 500) { await act(async () => { scheduler.advance(Math.min(500, ms - t)); }); await settle(); } }
     async function until(fn, ms = 60000, label = 'condition') { for (let t = 0; t <= ms; t += 100) { if (fn()) return; await run(100); } assert.fail('timed out waiting for ' + label); }
-    async function client(name, { url, createWebGLRenderer = renderers.factory, memoryTransport = true, storage = {}, local = {} } = {}) {
+    async function client(name, { url, createWebGLRenderer = renderers.factory, memoryTransport = true, storage = {}, local = {}, appOptions = {} } = {}) {
       const win = createWindow(scheduler, { url });
       for (const [k, v] of Object.entries(local)) win.w.localStorage.setItem(k, v);
       for (const [k, v] of Object.entries(storage)) win.w.sessionStorage.setItem(k, v); // a reloaded tab keeps its sessionStorage
       const audio = createAudioRecorder();
       let app;
-      await act(async () => { app = createApp({ root: win.w.document.getElementById('root'), THREE, window: win.w, random, soloBoardingMs: 30, createWebGLRenderer, createAudio: () => audio, createTransport: memoryTransport ? options => hub.create(options) : undefined }); });
+      await act(async () => { app = createApp({ root: win.w.document.getElementById('root'), THREE, window: win.w, random, soloBoardingMs: 30, createWebGLRenderer, createAudio: () => audio, createTransport: memoryTransport ? options => hub.create(options) : undefined, ...appOptions }); });
       await settle();
       const doc = win.w.document;
       const shown = el => !!el && !el.closest('[hidden]');
@@ -228,6 +228,25 @@ async function scenario(name, fn) { await fn(); passed++; console.log('PASS ' + 
     ana.button('Create party').disabled = true;
     await ana.click(ana.button('Create party'));
     assert.ok(!tracked(ana).slice(before).includes('ui:click'), 'a disabled button is silent');
+  });
+
+  await scenario('DX2: while development gameplay overrides are active, party rooms are refused and Solo still plays', async () => {
+    const W = world();
+    const ana = await W.client('Ana', { appOptions: { devTuningActive: true } });
+    await act(async () => { ana.app.dispatch({ type: 'create-party', name: 'Ana' }); });
+    await W.run(300);
+    assert.equal(ana.win.alerts.length, 1);
+    assert.match(ana.win.alerts[0], /Party rooms are disabled so every player simulates the same physics/);
+    assert.equal(ana.app.room, null, 'no party room was opened');
+    await act(async () => { ana.app.dispatch({ type: 'join', name: 'Ana', roomCode: 'ABCD' }); });
+    assert.equal(ana.win.alerts.length, 2, 'joining a party is refused too');
+    await ana.solo();
+    assert.ok(ana.app.room, 'Solo opens a room');
+    const ben = await W.client('Ben');
+    await ben.menu('party');
+    await ben.click('Create party');
+    await ben.enter();
+    assert.deepEqual(ben.win.alerts, [], 'without overrides a party opens normally');
   });
 
   await scenario('No Power-Ups (GM1, a Custom rule since 2026-11-11): a party created with power-ups off plays without power-up boxes for everyone', async () => {
