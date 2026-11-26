@@ -1,8 +1,8 @@
 {
-  "name": "putt-pals",
+  "name": "putt-planet",
   "version": "0.0.0",
   "private": true,
-  "description": "Putt Pals desktop browser mini-golf game",
+  "description": "Putt Planet desktop browser mini-golf game",
   "engines": {
     "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
   },

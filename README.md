@@ -1,4 +1,4 @@
-# Putt Pals
+# Putt Planet
 
 A fast-paced 3D multiplayer mini-golf game for desktop browsers. It blends arcade party chaos (power-ups, hazards, trick shots) with skill-based putting: easy to jump into with friends, with real depth for competitive players. Modes today: solo practice, single-putt replay, private friend rooms, and 3-, 5- and 7-map tournaments. Planned: Putt Pong, a No Power-Ups mode, a full power-up and hazard catalog, vertical courses and cosmetics. See [MODERNIZATION_PLAN.md](MODERNIZATION_PLAN.md) for the vision and plan.
 
@@ -45,8 +45,8 @@ Both contributors, once per machine:
 2. Clone the repository (you start on `main`; make a task branch before you edit, see [Branch workflow](#branch-workflow)):
 
 ```sh
-git clone https://github.com/SpikemenDan/putt-pals.git
-cd putt-pals
+git clone https://github.com/SpikemenDan/putt-planet.git
+cd putt-planet
 ```
 
 3. Install the exact dependency tree from the lockfile and start the game:
@@ -83,7 +83,7 @@ Commands are listed as they exist in `package.json`; keep this table in sync whe
 | `npm run test:rooms:local` | Build, then check the local Cloudflare Worker and Durable Object runtime |
 | `npm test` | The main suites above, sequentially; allow several minutes |
 | `npm run build` | Build `dist/` (one page) and check headers, assets and that no development-only code ships |
-| `npm run build:portable` | Build `release/putt-pals/` and `release/putt-pals.zip`: unzip and double-click `index.html` (no server; rooms still need internet). Not a supported distribution path (offline distribution is out of scope); not verified |
+| `npm run build:portable` | Build `release/putt-planet/` and `release/putt-planet.zip`: unzip and double-click `index.html` (no server; rooms still need internet). Not a supported distribution path (offline distribution is out of scope); not verified |
 | `npm run preview` | Serve the built game locally, normally at `http://127.0.0.1:4173/` |
 | `npm run rooms:dev` | Run the local Worker room runtime (see [Cloudflare setup](docs/networking/CLOUDFLARE_SETUP.md)) |
 | `npm run config:report` | Every DISPLAY and TUNING setting with default, range, units, restart rule and the files that read it; flags settings nothing reads (see [docs/DISPLAY.md](docs/DISPLAY.md)) |

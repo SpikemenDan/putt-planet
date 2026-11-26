@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
-const outDir = path.join(root, 'release', 'putt-pals');
+const outDir = path.join(root, 'release', 'putt-planet');
 const htmlPath = path.join(outDir, 'index.html');
 
 // Browsers block module scripts and CORS-mode loads from file://, so use a classic deferred script.
@@ -25,7 +25,7 @@ for (const ref of refs) {
 }
 
 fs.writeFileSync(path.join(outDir, 'HOW TO PLAY.txt'), [
-  'Putt Pals',
+  'Putt Planet',
   '',
   '1. Unzip this folder (do not run it from inside the zip).',
   '2. Double-click index.html. Use Chrome or Edge on a desktop.',
@@ -34,7 +34,7 @@ fs.writeFileSync(path.join(outDir, 'HOW TO PLAY.txt'), [
   '',
 ].join('\r\n'));
 
-const zip = path.join(root, 'release', 'putt-pals.zip');
+const zip = path.join(root, 'release', 'putt-planet.zip');
 if (process.platform === 'win32') {
   fs.rmSync(zip, { force: true });
   const result = spawnSync('powershell', ['-NoProfile', '-Command',

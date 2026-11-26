@@ -1,5 +1,5 @@
 /**
- * The modular Putt Pals application: composes courses (D1), simulation (S1),
+ * The modular Putt Planet application: composes courses (D1), simulation (S1),
  * session (L1), transports (N1), audio (A1), renderer/camera (R1) and the
  * React UI and input (U1). It owns exactly one animation-frame loop and one
  * HUD tick, and dispose() releases every listener, timer, room, GPU and audio
@@ -599,7 +599,7 @@ export function createApp({ worldPreview = null, soloHazards = false, soloBoardi
     const url = new URL(win.location.href);
     url.hash = 'room=' + code;
     try {
-      await win.navigator.clipboard.writeText(win.location.protocol === 'file:' ? 'Putt Pals room: ' + code : url.href);
+      await win.navigator.clipboard.writeText(win.location.protocol === 'file:' ? 'Putt Planet room: ' + code : url.href);
       toast(MESSAGES.inviteCopied);
     } catch {
       toast('Share room code: ' + code);
@@ -616,7 +616,7 @@ export function createApp({ worldPreview = null, soloHazards = false, soloBoardi
       renderer = createGameRenderer({ THREE, canvas, random, devicePixelRatio: win.devicePixelRatio || 1, ...(createWebGLRenderer ? { createWebGLRenderer } : {}), display });
     } catch (error) {
       webglFailed = true;
-      win.console?.warn('Putt Pals: 3D view unavailable.', error);
+      win.console?.warn('Putt Planet: 3D view unavailable.', error);
       setLocal({ webglUnavailable: true });
       return;
     }

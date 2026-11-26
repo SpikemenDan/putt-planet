@@ -1,5 +1,5 @@
 /**
- * Putt Pals - Shared Module Entry Point
+ * Putt Planet - Shared Module Entry Point
  * Exports all core contracts, schemas, constants, pure scoring functions,
  * coordinate transformations, and mocks.
  */
