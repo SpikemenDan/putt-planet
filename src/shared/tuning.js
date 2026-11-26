@@ -3,7 +3,8 @@
  *
  * Defaults equal the values the game shipped with (T2 is a no-behavior-change move).
  * Simulation, input and renderer read from TUNING; src/shared/constants.js keeps its
- * old export names as aliases. Every field is validated at load: finite numbers
+ * older named exports (BALL_RADIUS, SHOT_POWER, ...) as the one alias of each value.
+ * Presentation (the aim arrow's length and look) lives in src/shared/display.js, not here. Every field is validated at load: finite numbers
  * inside a sane range. Retuning (S3) edits DEFAULT_TUNING only.
  *
  * Units: distances in world units (the ball radius is 5), time in seconds,
@@ -38,10 +39,6 @@ export const TUNING_FIELDS = Object.freeze([
   ['surface.padFrictionBonus', 0, 10, 'Added to turf friction on raised pads.'],
   ['surface.speedFrictionGain', 0, 2, 'Extra friction fraction at high speed.'],
   ['surface.speedFrictionRef', 1, 5000, 'Speed at which speedFrictionGain is fully applied.'],
-  ['surfaceDragMultiplier.turf', 0, 100, 'Legacy relative drag multiplier for turf (SURFACE_DRAG export).'],
-  ['surfaceDragMultiplier.sand', 0, 100, 'Legacy relative drag multiplier for sand.'],
-  ['surfaceDragMultiplier.ice', 0, 100, 'Legacy relative drag multiplier for ice.'],
-  ['surfaceDragMultiplier.slime', 0, 100, 'Legacy relative drag multiplier for slime.'],
 
   ['bounce.wallRestitution', 1, 3, 'Reflection factor on walls and movers (1 = no loss, 2 = perfect mirror).'],
   ['bounce.ledgeDamping', 0, 2, 'Speed multiplier (reversed) when the ball hits a terrain ledge.'],
@@ -129,7 +126,6 @@ export const TUNING_FIELDS = Object.freeze([
   ['aim.spreadExponent', 0.1, 10, 'How sharply spread grows with power.'],
   ['aim.fullPullPx', 10, 5000, 'Drag distance (CSS px) for full power.'],
   ['aim.canvasPullFraction', 0.01, 1, 'Full pull is also capped at this fraction of canvas width.'],
-  ['aim.arrowMaxLength', 1, 2000, 'World-unit length of the aim arrow at full power (no minimum).'],
   ['aim.dragRadiansPerPx', 0, 1, 'Aim rotation per pixel of orbit-less drag.'],
   ['aim.keyStep', 0, 1, 'Aim rotation per arrow-key press (radians).'],
   ['aim.guideMinCharge', 0, 1, 'Below this charge no aim guide is drawn.'],
@@ -155,7 +151,6 @@ export const DEFAULT_TUNING = {
     speedFrictionGain: 0.15,
     speedFrictionRef: 200,
   },
-  surfaceDragMultiplier: { turf: 1.0, sand: 3.5, ice: 0.15, slime: 6.0 },
   bounce: { wallRestitution: 1.82, ledgeDamping: 0.8, ledgeHeight: 5, landingRestitution: 0.25, landingSpeed: 180 },
   rest: { maxSlope: 0.015, maxSpeed: 6, maxVertical: 5, airTolerance: 0.8, groundTolerance: 0.6 },
   powerups: { magnetRange: 90, magnetPull: 300, chipLaunch: 300, auraRange: 120, auraPull: 260, auraPush: 260, smallBallScale: 0.6, tallBallScale: 1.5 },
@@ -167,7 +162,7 @@ export const DEFAULT_TUNING = {
   wind: { groundMultiplier: 0.25, airMultiplier: 1.0 },
   aim: {
     swayPeriod: 1.4, spinPeriod: 3, sweepPeriod: 2.4, spreadBase: 0.002, spreadGain: 0.14, spreadExponent: 2.6,
-    fullPullPx: 380, canvasPullFraction: 0.18, arrowMaxLength: 300, dragRadiansPerPx: 0.006, keyStep: 0.06,
+    fullPullPx: 380, canvasPullFraction: 0.18, dragRadiansPerPx: 0.006, keyStep: 0.06,
     guideMinCharge: 0.015, shotMinCharge: 0.025,
   },
   scoring: { maxHoleScore: 10, missedHolePenalty: 2 },

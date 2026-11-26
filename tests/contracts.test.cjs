@@ -9,13 +9,13 @@ async function run() {
 
   // 1. Constants
   assert.equal(shared.BALL_RADIUS, 5);
-  assert.equal(shared.R, 5);
   assert.equal(shared.DEFAULT_CUP_RADIUS, 15);
   assert.equal(shared.MIN_CUP_RADIUS, 8);
   assert.equal(shared.SHOT_POWER, 600);
-  assert.equal(shared.POWER, 600);
   assert.equal(shared.TURF_FRICTION, 0.5);
   assert.equal(shared.FIXED_TIMESTEP, 1 / 240);
+  // DX1: each value has one exported name; the short duplicates and the unread legacy exports are gone.
+  for (const gone of ['R', 'CUP', 'CUP_MIN', 'K_TURF', 'POWER', 'DT', 'STARTERS', 'SURFACE_DRAG', 'MAX_SCORE']) assert.equal(shared[gone], undefined, gone);
   assert.deepEqual(Array.from(shared.STARTER_COURSE_INDICES), [0, 8, 20, 21, 5, 19, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39]);
   console.log('PASS: Constants match P32 baseline');
 

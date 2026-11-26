@@ -3,7 +3,7 @@
  *
  * Only units and the restart rule are written down here. Consumers are derived from the source itself (`findConsumers`), so
  * the list cannot go stale: it follows `TUNING.a.b`, `DISPLAY.a.b`, aliases such as `const AIM = TUNING.aim`, destructuring
- * such as `const { surface: SURF } = TUNING`, and group-wide uses such as `{ ...TUNING.surfaceDragMultiplier }`.
+ * such as `const { surface: SURF } = TUNING`, and group-wide uses such as `{ ...TUNING.globalHazards }`.
  *
  * This file is not imported by the simulation, so editing it never changes the simulation fingerprint.
  */
@@ -26,13 +26,12 @@ export const TUNING_UNITS = Object.freeze([
   [/^wind\.(?:groundMultiplier|airMultiplier)$/, 'factor'],
   [/^(?:gravity|worlds\.(?:ares|luna)\.gravity)$/, 'units/s²'],
   [/^shotPower$/, 'units/s (launch speed at full charge)'],
-  [/^(?:ball\.radius|wallHeight|cup\.(?:defaultRadius|minRadius|depth|sinkMargin|filletWidth|filletDepth)|bounce\.ledgeHeight|rest\.(?:airTolerance|groundTolerance)|powerups\.(?:magnetRange|auraRange)|hazards\.(?:padRadius|teleporterRadius)|aim\.arrowMaxLength)$/, 'world units'],
+  [/^(?:ball\.radius|wallHeight|cup\.(?:defaultRadius|minRadius|depth|sinkMargin|filletWidth|filletDepth)|bounce\.ledgeHeight|rest\.(?:airTolerance|groundTolerance)|powerups\.(?:magnetRange|auraRange)|hazards\.(?:padRadius|teleporterRadius))$/, 'world units'],
   [/^cup\.lipRestitution(?:Base|Gain)$/, 'factor'],
   [/^surface\.(?:turf|sand|ice|slime)\.friction$|^surface\.padFrictionBonus$/, '1/s'],
   [/^surface\.(?:turf|sand|ice|slime)\.drag$/, 'units/s²'],
   [/^surface\.speedFrictionGain$/, 'fraction'],
   [/^surface\.speedFrictionRef$/, 'units/s'],
-  [/^surfaceDragMultiplier\./, 'multiplier'],
   [/^bounce\.(?:wallRestitution|ledgeDamping|landingRestitution)$/, 'factor'],
   [/^bounce\.landingSpeed$/, 'units/s'],
   [/^rest\.maxSlope$/, 'slope (rise over run)'],
@@ -166,7 +165,7 @@ export function findConsumers(path, sources, roots) {
     // Alias assignments (`const AIM = TUNING.aim;`) declare a name, not a use; they are handled below.
     const stripped = source.replace(new RegExp(`(?:const|let|var)\\s+\\w+\\s*=\\s*${rootPattern}(?:\\.\\w+)+\\s*;`, 'g'), '');
     let hit = new RegExp(`\\b${rootPattern}\\.${escape(path)}(?![\\w])`).test(source);
-    // A whole group used at once, for example `{ ...TUNING.surfaceDragMultiplier }`.
+    // A whole group used at once, for example `{ ...TUNING.globalHazards }`.
     for (let n = 1; !hit && n < parts.length; n++) hit = new RegExp(`\\b${rootPattern}\\.${escape(parts.slice(0, n).join('.'))}(?![.\\w])`).test(stripped);
     if (!hit) {
       for (const [alias, prefix] of aliasesIn(source, roots)) {

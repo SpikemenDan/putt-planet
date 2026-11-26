@@ -34,10 +34,6 @@ Worlds (VIS-W #164): `src/shared/worlds.js` names Gaia, Ares and Luna and resolv
 | `surface.padFrictionBonus` | 0.05 | 0 to 10 | Added to turf friction on raised pads. |
 | `surface.speedFrictionGain` | 0.15 | 0 to 2 | Extra friction fraction at high speed. |
 | `surface.speedFrictionRef` | 200 | 1 to 5000 | Speed at which speedFrictionGain is fully applied. |
-| `surfaceDragMultiplier.turf` | 1 | 0 to 100 | Legacy relative drag multiplier for turf (SURFACE_DRAG export). |
-| `surfaceDragMultiplier.sand` | 3.5 | 0 to 100 | Legacy relative drag multiplier for sand. |
-| `surfaceDragMultiplier.ice` | 0.15 | 0 to 100 | Legacy relative drag multiplier for ice. |
-| `surfaceDragMultiplier.slime` | 6 | 0 to 100 | Legacy relative drag multiplier for slime. |
 | `bounce.wallRestitution` | 1.82 | 1 to 3 | Reflection factor on walls and movers (1 = no loss, 2 = perfect mirror). |
 | `bounce.ledgeDamping` | 0.8 | 0 to 2 | Speed multiplier (reversed) when the ball hits a terrain ledge. |
 | `bounce.ledgeHeight` | 5 | 0 to 50 | Terrain step taller than this above the ball acts as a ledge. |
@@ -99,7 +95,6 @@ Worlds (VIS-W #164): `src/shared/worlds.js` names Gaia, Ares and Luna and resolv
 | `aim.spreadExponent` | 2.6 | 0.1 to 10 | How sharply spread grows with power. |
 | `aim.fullPullPx` | 380 | 10 to 5000 | Drag distance (CSS px) for full power. |
 | `aim.canvasPullFraction` | 0.18 | 0.01 to 1 | Full pull is also capped at this fraction of canvas width. |
-| `aim.arrowMaxLength` | 300 | 1 to 2000 | Unused. The arrow length is `DISPLAY.aim.arrowMaxLength` (180, docs/DISPLAY.md); this field is slated for removal with a fingerprint regeneration. |
 | `aim.dragRadiansPerPx` | 0.006 | 0 to 1 | Aim rotation per pixel of orbit-less drag. |
 | `aim.keyStep` | 0.06 | 0 to 1 | Aim rotation per arrow-key press (radians). |
 | `aim.guideMinCharge` | 0.015 | 0 to 1 | Below this charge no aim guide is drawn. |

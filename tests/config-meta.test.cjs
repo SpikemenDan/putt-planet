@@ -41,7 +41,7 @@ const load = rel => import(pathToFileURL(path.join(root, rel)).href);
       'src/b.js': 'const AIM = TUNING.aim;\nconst k = AIM.fullPullPx + AIM.swayPeriod;',
       'src/c.js': 'const { surface: SURF, bounce: BOUNCE } = TUNING;\nconst f = SURF.sand.friction; const r = BOUNCE.wallRestitution;',
       'src/d.js': 'const S = TUNING.surface;\nconst T = S.turf;\nconst d = T.drag;',
-      'src/e.js': 'export const M = Object.freeze({ ...TUNING.surfaceDragMultiplier });',
+      'src/e.js': 'export const M = Object.freeze({ ...TUNING.globalHazards });',
       'src/f.js': 'const { gravity } = TUNING;\nconst g = gravity * 2;',
       'src/g.js': 'const { gravity } = TUNING;',
       'src/h.js': 'const unrelated = OTHER.aim.fullPullPx; const aim = { fullPullPx: 1 };',
@@ -55,14 +55,14 @@ const load = rel => import(pathToFileURL(path.join(root, rel)).href);
     assert.deepEqual(t('surface.sand.friction'), ['src/c.js']);
     assert.deepEqual(t('bounce.wallRestitution'), ['src/c.js']);
     assert.deepEqual(t('surface.turf.drag'), ['src/d.js'], 'alias of an alias');
-    assert.deepEqual(t('surfaceDragMultiplier.ice'), ['src/e.js'], 'whole group used at once');
+    assert.deepEqual(t('globalHazards.roamInset'), ['src/e.js'], 'whole group used at once');
     assert.deepEqual(t('gravity'), ['src/f.js'], 'a destructured leaf counts only when it is used after the declaration');
     assert.deepEqual(meta.findConsumers('aim.arrowMaxLength', synthetic, ['DISPLAY', 'display']), ['src/i.js'], 'a leaf assigned from the root is a use');
     assert.deepEqual(meta.findConsumers('aim.arrowOpacity', synthetic, ['DISPLAY', 'display']), ['src/i.js'], 'alias of the root group');
     assert.deepEqual(t('aim.keyStep'), [], 'nothing reads it');
   });
 
-  await scenario('consumers: every DISPLAY setting is read, and exactly one TUNING setting (documented) is not', async () => {
+  await scenario('consumers: every DISPLAY and TUNING setting is read', async () => {
     const display = meta.buildReport({ domain: 'display', fields: DISPLAY_FIELDS, defaults: DEFAULT_DISPLAY, sources });
     assert.deepEqual(display.filter(r => !r.consumers.length).map(r => r.path), []);
     const byPath = Object.fromEntries(display.map(r => [r.path, r.consumers]));
@@ -70,9 +70,10 @@ const load = rel => import(pathToFileURL(path.join(root, rel)).href);
     assert.ok(byPath['aim.arrowOpacity'].includes('src/render/actors.js'));
     assert.ok(byPath['aim.arrowMaxLength'].includes('src/input/adapter.js') && byPath['aim.arrowMaxLength'].includes('src/render/actors.js'));
     const tuning = meta.buildReport({ domain: 'tuning', fields: TUNING_FIELDS, defaults: DEFAULT_TUNING, sources });
-    // TUNING.aim.arrowMaxLength is superseded by DISPLAY.aim.arrowMaxLength and read by nothing; removing it changes the simulation
-    // fingerprint (docs/DISPLAY.md). Any other setting nothing reads fails here: wire it up or remove it deliberately.
-    assert.deepEqual(tuning.filter(r => !r.consumers.length).map(r => r.path), ['aim.arrowMaxLength']);
+    // A setting nothing reads fails here: wire it up or remove it deliberately (DX1 removed the superseded TUNING.aim.arrowMaxLength
+    // and the legacy surfaceDragMultiplier group).
+    assert.deepEqual(tuning.filter(r => !r.consumers.length).map(r => r.path), []);
+    assert.equal(TUNING_FIELDS.some(([p]) => p === 'aim.arrowMaxLength' || p.startsWith('surfaceDragMultiplier.')), false, 'the aim arrow length is a DISPLAY setting only');
     const friction = tuning.find(r => r.path === 'surface.sand.friction');
     assert.deepEqual(friction.consumers, ['src/simulation/physics.js']);
     assert.equal(friction.units, '1/s');
@@ -86,9 +87,9 @@ const load = rel => import(pathToFileURL(path.join(root, rel)).href);
     const text = all.lines.join('\n');
     assert.match(text, /DISPLAY \(presentation\): 50 settings\. Defined in src\/shared\/display\.js, documented in docs\/DISPLAY\.md/);
     assert.match(text, /live: read every frame/);
-    assert.match(text, /TUNING \(simulation, input, physics\): 115 settings/);
+    assert.match(text, /TUNING \(simulation, input, physics\): 110 settings/);
     assert.match(text, /aim\.arrowShaftHalfWidth = 2\.6 \(0\.1 to 50\) world units\n\s+read by: src\/render\/actors\.js/);
-    assert.match(text, /Not read by anything: aim\.arrowMaxLength/);
+    assert.doesNotMatch(text, /Not read by anything/);
     assert.match(text, /Every setting is read by at least one source file\./);
     const json = JSON.parse(report.runConfig(['display', '--json'], root).lines[0]);
     assert.equal(json.display.length, 50);
@@ -142,9 +143,9 @@ const load = rel => import(pathToFileURL(path.join(root, rel)).href);
     assert.equal(tuner.get('aim.arrowHeadLength'), 20, 'a rejected import changes nothing');
     // The TUNING section lists every simulation setting, read-only: no controls and nothing editable.
     const details = doc.querySelector('.pp-tune details');
-    assert.match(details.querySelector('summary').textContent, /Simulation settings \(TUNING\), read-only: 115/);
+    assert.match(details.querySelector('summary').textContent, /Simulation settings \(TUNING\), read-only: 110/);
     assert.match(details.textContent, /Not editable here\. reload: read when the modules load/);
-    assert.equal(details.querySelectorAll('.pp-tune-ro').length, 115);
+    assert.equal(details.querySelectorAll('.pp-tune-ro').length, 110);
     assert.equal(details.querySelectorAll('input, button, textarea').length, 0, 'TUNING cannot be edited from the panel');
     assert.equal(doc.querySelectorAll('.pp-tune input[type=range]').length, DISPLAY_FIELDS.length, 'only DISPLAY has sliders');
     assert.match(details.textContent, /aim\.fullPullPx = 380 CSS px/);

@@ -12,7 +12,6 @@ async function run() {
   assert.equal(shared.MIN_CUP_RADIUS, 8);
   assert.equal(shared.TURF_FRICTION, 0.5); // S3 retune
   assert.equal(shared.SHOT_POWER, 600);
-  assert.deepEqual({ ...shared.SURFACE_DRAG }, { turf: 1.0, sand: 3.5, ice: 0.15, slime: 6.0 });
   assert.equal(physics.GRAVITY, 700);
   assert.equal(physics.WALL_HEIGHT, 28);
   assert.equal(physics.CUP_DEPTH, 36);

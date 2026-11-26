@@ -7,29 +7,17 @@ import { TUNING } from './tuning.js';
 
 // --- Ball & Cup Physics Constants (P32 baseline; values live in ./tuning.js) ---
 export const BALL_RADIUS = TUNING.ball.radius;
-export const R = BALL_RADIUS;
 
 export const DEFAULT_CUP_RADIUS = TUNING.cup.defaultRadius;
-export const CUP = DEFAULT_CUP_RADIUS;
 
 export const MIN_CUP_RADIUS = TUNING.cup.minRadius;
-export const CUP_MIN = MIN_CUP_RADIUS;
 
 export const TURF_FRICTION = TUNING.surface.turf.friction;
-export const K_TURF = TURF_FRICTION;
 
 export const SHOT_POWER = TUNING.shotPower;
-export const POWER = SHOT_POWER;
 
 // Simulation timestep (240 Hz fixed tick)
 export const FIXED_TIMESTEP = 1 / 240;
-export const DT = FIXED_TIMESTEP;
-
-// Surface drag multipliers
-export const SURFACE_DRAG = Object.freeze({ ...TUNING.surfaceDragMultiplier });
-
-// Deprecated compatibility export: scores have no gameplay cap. Bound wire counts to exact integers.
-export const MAX_SCORE = Number.MAX_SAFE_INTEGER;
 
 // --- Course & Rule Constants ---
 export const MIN_TIMEOUT_SECONDS = 120;
@@ -39,7 +27,6 @@ export const DEFAULT_PENALTY = 3;
 
 // Starter courses in official tournament order
 export const STARTER_COURSE_INDICES = Object.freeze([0, 8, 20, 21, 5, 19, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39]); // the playable maps: 22 and 23 are Gaia's Sandstorm Spire and Obsidian Spiral (owner, 2026-11-12), 24-31 Ares and 32-39 Luna (VIS-G #165)
-export const STARTERS = STARTER_COURSE_INDICES;
 
 // --- Multiplayer & Protocol Constants ---
 export const PROTOCOL_VERSION = 7; // 6: map indices run to MAP_COUNT (24) with the VIS-G maps; 7: MAP_COUNT 40 with the Ares and Luna maps
