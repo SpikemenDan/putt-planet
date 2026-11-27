@@ -69,7 +69,9 @@ export function WorldSelect({ cards, onPick, onUnavailable, children }) {
       scene.start();
       setReady(true);
     };
-    build();
+    // Built a task later, as the menu planet is: dispose() gives the canvas's context up at once (browsers cap live contexts), so a
+    // scene built and torn down in the same task, as StrictMode's double effect does in development, would leave the next build a dead canvas.
+    retry = setTimeout(build, 0);
     return () => { clearTimeout(retry); sceneRef.current = null; scene?.dispose(); };
   }, [createAtlasScene, onUnavailable]);
 

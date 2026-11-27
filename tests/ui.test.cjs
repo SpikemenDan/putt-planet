@@ -549,6 +549,8 @@ function fakeClock() {
     await t.send({ type: 'SET_MODE', playerId: 'host', mode: 'tournament_3' });
     await t.send({ type: 'START_VOTING', playerId: 'host' });
     const region = id => t.within(`[data-region=${id}]`), pause = () => act(async () => { await new Promise(q => setTimeout(q, 30)); });
+    await pause(); // the atlas is built a task after mounting (a StrictMode remount must not reuse a released context)
+    assert.equal(builds, 1, 'the atlas is built once');
     assert.ok(t.within('[data-ui=world-select]'), 'the atlas replaces the list');
     assert.equal(t.root.querySelectorAll('[data-region]').length, 6, 'every region reads on the world');
     assert.ok(region('tropical').disabled, 'a region with no course in this set cannot open');
@@ -576,6 +578,7 @@ function fakeClock() {
       await t2.send({ type: 'JOIN_ROOM', playerId: 'g1', name: 'Ben' });
       await t2.send({ type: 'SET_MODE', playerId: 'host', mode: 'tournament_3' });
       await t2.send({ type: 'START_VOTING', playerId: 'host' });
+      await pause(); // let the atlas build before the click
       console.error = (...args) => logged.push(args);
       try {
         await act(async () => { t2.within('[data-region=desert]').click(); });
