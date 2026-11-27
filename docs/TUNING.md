@@ -4,7 +4,7 @@ The existing T2 gameplay configuration is implemented in `src/shared/tuning.js` 
 
 Units: distances in world units (ball radius 5), time in seconds, friction in 1/s, drag in units/s^2. Sand uses turf constant drag.
 
-Traceability: every setting's units, how a change takes effect and the source files that read it are available with `npm run config:report -- tuning` (consumers are derived from the source, not listed by hand; see docs/DISPLAY.md, "Traceability"). All `TUNING` settings are read when the modules load, so a change needs a reload and a new match, and editing `src/shared/tuning.js` changes the simulation fingerprint (docs/GITHUB_WORKFLOW.md). The development panel shows these values read-only; it cannot edit them.
+Traceability: every setting's units, how a change takes effect and the source files that read it are available with `npm run config:report -- tuning` (consumers are derived from the source, not listed by hand; see docs/DISPLAY.md, "Traceability"). All `TUNING` settings are read when the modules load, so a change needs a reload and a new match, and editing `src/shared/tuning.js` changes the simulation fingerprint (docs/GITHUB_WORKFLOW.md). In development builds the panel can stage edits to them and restart the game with them (DX2, "Development gameplay overrides" below); it never changes the shipped defaults.
 
 Worlds (VIS-W #164): `src/shared/worlds.js` names Gaia, Ares and Luna and resolves each world's gravity from this file (`worldGravity(id)`): Gaia uses `gravity`, Ares and Luna use `worlds.<id>.gravity`. `SimulationEngine` takes a `gravity` option (default Gaia), the par solver solves at any world's gravity (`node tools/cli/main.mjs solve <map> <putt> --world luna`) and records it, and rolling friction does not depend on gravity, so flat putts roll the same on every world. The Ares and Luna values were chosen on 2026-11-11 and accepted by the owner after a playtest on 2026-11-12. For further tuning, on the dev server `?world` shows a world gravity box that stages a world and a gravity slider, validated, and applies it only when the putt restarts and only in solo rooms (parties always use Gaia's shipped gravity). It never changes these defaults; export its JSON to have chosen values made defaults. Matches do not yet carry a world, so normal play stays on Gaia until worlds have their own courses (VIS-G #165).
 
@@ -170,8 +170,35 @@ For proposed appearance or feel changes:
 5. Rerun affected verification.
 
 If browser access is unavailable, provide the exact local URL and steps and mark
-interactive verification/acceptance pending. The panel remains a target until
-implementation and verification are recorded.
+interactive verification/acceptance pending.
+
+### Development gameplay overrides (DX2)
+
+DISPLAY settings apply live (docs/DISPLAY.md). TUNING settings are read when the
+modules load, so the panel never changes them in a running game. On the dev server
+(`npm run dev`), open the Tuning panel (bottom right) and its "Gameplay settings
+(TUNING)" section:
+
+- Each field has a slider and a number box, grouped by domain, with its units,
+  range, shipped value and the files that read it. Edits are staged and validated
+  as a whole (ranges and cross-field rules such as `cup.minRadius <= cup.defaultRadius`);
+  an invalid edit changes nothing and says why. A staged value that differs from the
+  running one is marked "running X until Apply and reload".
+- "Apply and reload" stores the staged overrides in this tab's sessionStorage
+  (`putt-pals.gameplay-overrides`) and reloads with `?tune`. Before `src/shared/tuning.js`
+  loads, `src/devtools/tuning-boot.js` (the first import of `src/app/main.js`) hands
+  them over and `TUNING` is built from them. Invalid stored overrides are ignored as a
+  whole and the panel reports why. Without `?tune`, or in production builds, stored
+  overrides never apply.
+- While overrides are active the toggle shows "TEMP PHYSICS · SOLO ONLY" and the app
+  refuses to create or join party rooms, because every player must simulate the same
+  physics. Custom rules (VIS-U) keep scaling from the shipped values.
+- "Reset all to shipped" then "Apply and reload" returns to shipped values and drops
+  `?tune`. Export gives `{"version": 1, "tuning": {...}}`; Import validates it (unknown
+  fields and out-of-range values are rejected) before staging anything.
+
+To ship chosen values, export them and edit `DEFAULT_TUNING` deliberately, then
+regenerate the affected solver evidence (this is a retune, not an extraction).
 
 ## G1g course mechanics
 

@@ -63,7 +63,7 @@ Units: world units (ball radius 5) and multipliers. Opacity is 0..1. The shaft h
 
 ## Development tuning panel
 
-`npm run dev` shows a "Display tuning" button (bottom right). It lists every field above as a slider with its unit, range and default, plus per-field Reset, Reset all, Export and Import. Code is in `src/devtools/`; it is only included when vite's `import.meta.env.DEV` is true, so production builds contain none of it.
+`npm run dev` shows a "Tuning" button (bottom right). Its display section lists every field above as a slider with its unit, range and default, plus per-field Reset, Reset all, Export and Import. Code is in `src/devtools/`; it is only included when vite's `import.meta.env.DEV` is true, so production builds contain none of it.
 
 - Overrides are temporary: they live in this browser tab's `sessionStorage`, a **TEMP OVERRIDES** badge shows while any are active, and they never change `DEFAULT_DISPLAY`. To ship a value, edit the default in `src/shared/display.js` and the table above, then rerun the checks.
 - Export gives `{"version": 1, "display": {...}}` containing only non-default values. Import validates the whole document (unknown keys, out-of-range values, shaft wider than head) and applies nothing if any part is invalid.

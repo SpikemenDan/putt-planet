@@ -1,8 +1,10 @@
 // Browser entry for the modular game (index.html).
+import '../devtools/tuning-boot.js'; // DX2: must stay first, so development gameplay overrides (?tune) reach TUNING before it is built
 import * as THREE from 'three';
 import { createApp } from './app.js';
 import { createDisplayTuner } from '../devtools/display-tuner.js';
 import { createWorldPreview } from '../devtools/world-preview.js';
+import { TUNING_STARTUP } from '../shared/tuning.js';
 
 // Optional loopback service origin for development; normal hosting uses same-origin WSS.
 // Development builds (vite dev only; the flag is false in production builds) get a live, tunable DISPLAY and a panel.
@@ -12,7 +14,7 @@ const tuner = import.meta.env.DEV ? createDisplayTuner({ storage: devStorage() }
 const worldPreview = import.meta.env.DEV && new URLSearchParams(window.location.search).has('world') ? createWorldPreview({ storage: devStorage() }) : null;
 const app = createApp({ root: document.getElementById('root'), THREE,
   serverEndpoint: window.__PP_ROOM_ENDPOINT,
-  ...(tuner ? { display: tuner.display, soloHazards: true, worldPreview } : {}), // development only: lets the preview try weather without a second player
+  ...(tuner ? { display: tuner.display, soloHazards: true, worldPreview, devTuningActive: TUNING_STARTUP.overridden } : {}), // development only: lets the preview try weather without a second player
 });
 if (tuner) {
   window.__ppTuner = tuner;
@@ -26,7 +28,7 @@ if (tuner) {
   }, 300);
   if (new URLSearchParams(window.location.search).has('art')) import('../devtools/map-art.js').then(({ mountMapArt }) => mountMapArt(document)).catch(error => console.error('Dev tool failed to load (?art)', error)); // ?art: the flat master map on its own
   if (new URLSearchParams(window.location.search).has('gallery')) import('../devtools/planet-gallery.js').then(({ mountPlanetGallery }) => mountPlanetGallery(document)).catch(error => console.error('Dev tool failed to load (?gallery)', error)); // ?gallery: live close-ups of the loading-screen city, ship and plane
-  Promise.all([import('../devtools/panel.js'), import('../devtools/sources.js'), import('../devtools/powerup-catalog.js'), import('../devtools/loading-preview.js')]).then(([{ mountTuningPanel }, { sources, tuning }, { mountPowerupCatalog }, { mountLoadingPreview }]) => { mountTuningPanel(document, tuner, { sources, tuning }); mountPowerupCatalog(document, app); mountLoadingPreview(document, app); }).catch(error => console.error('Dev tools failed to load', error));
+  Promise.all([import('../devtools/panel.js'), import('../devtools/sources.js'), import('../devtools/powerup-catalog.js'), import('../devtools/loading-preview.js'), import('../devtools/gameplay-tuner.js')]).then(([{ mountTuningPanel }, { sources, tuning }, { mountPowerupCatalog }, { mountLoadingPreview }, { createGameplayTuner }]) => { mountTuningPanel(document, tuner, { sources, tuning, gameplay: createGameplayTuner({ storage: devStorage(), location: window.location }) }); mountPowerupCatalog(document, app); mountLoadingPreview(document, app); }).catch(error => console.error('Dev tools failed to load', error));
   if (worldPreview) import('../devtools/world-preview.js').then(({ mountWorldPreview }) => mountWorldPreview(document, worldPreview, app)).catch(error => console.error('Dev tool failed to load (?world)', error));
 }
 // Development/test hook, inert in normal play: lets browser checks inspect the running app.

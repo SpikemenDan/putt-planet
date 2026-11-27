@@ -36,6 +36,7 @@ const SOLO_START_MODES = Object.freeze([GameModes.STANDARD, GameModes.TOURNAMENT
 const PRESENCE_MODES = { play: 'play', sunk: 'sunk', wait: 'sunk', spectator: 'spectator' };
 /** Per-tab room identity for each code, so a reload can resume the same seat. */
 const RESUME_KEY = code => 'putt-pals:server-resume:' + code;
+export const DEV_TUNING_PARTY_REFUSAL = 'Development TUNING overrides are on (?tune). Party rooms are disabled so every player simulates the same physics. Clear them in the tuning panel (Reset all to shipped, then Apply and reload) to play online.';
 
 /**
  * @param {object} options
@@ -50,7 +51,7 @@ const RESUME_KEY = code => 'putt-pals:server-resume:' + code;
  * @param {(options: object) => object} [options.createTransport] Online transport seam (tests use the in-memory hub)
  * @param {{active: boolean, gravity: number}|null} [options.worldPreview] Development only (src/devtools/world-preview.js): world gravity used in solo rooms; parties always use Gaia's shipped gravity
  */
-export function createApp({ worldPreview = null, soloHazards = false, soloBoardingMs, root, THREE, window: win = root.ownerDocument.defaultView, random = Math.random, createWebGLRenderer, createAudio = () => createAudioAdapter(), createTransport, serverEndpoint, WebSocket = win.WebSocket, display = DISPLAY }) {
+export function createApp({ devTuningActive = false, worldPreview = null, soloHazards = false, soloBoardingMs, root, THREE, window: win = root.ownerDocument.defaultView, random = Math.random, createWebGLRenderer, createAudio = () => createAudioAdapter(), createTransport, serverEndpoint, WebSocket = win.WebSocket, display = DISPLAY }) {
   const clock = { now: () => win.performance.now(), setTimeout: (f, d) => win.setTimeout(f, d), clearTimeout: id => win.clearTimeout(id) };
   const data = createCourseData();
   const courses = createCourseInfo(data);
@@ -109,6 +110,8 @@ export function createApp({ worldPreview = null, soloHazards = false, soloBoardi
   async function join({ multi, create = false, name, roomCode, start = null, rules = null }) {
     const request = parseJoinRequest({ multi, create, name, roomCode });
     if (!request.ok) { alert(request.message); return; }
+    // DX2: development gameplay overrides would desynchronise a party room, where every player must simulate the same physics.
+    if (multi && devTuningActive) { alert(DEV_TUNING_PARTY_REFUSAL); return; }
     // Custom rules (VIS-U) from the menu are validated here, at the UI boundary; null plays standard rules.
     if (rules !== null && !validRules(rules)) { alert('Those custom rules are not valid. Reset them and try again.'); return; }
     if (room) leave(true);
