@@ -193,7 +193,8 @@ function gameplaySection(el, gameplay, consumersLine) {
       reset);
     const stage = value => { try { gameplay.set(path, value); say(''); } catch (error) { say(error.message); refresh(); } };
     slider.addEventListener('input', () => stage(Number(slider.value)));
-    number.addEventListener('change', () => stage(Number(number.value)));
+    // An empty or non-numeric box is refused rather than read as 0 (Number('') is 0).
+    number.addEventListener('change', () => { if (number.value.trim() === '' || !Number.isFinite(Number(number.value))) { say(path + ' needs a number'); refresh(); } else stage(Number(number.value)); });
     reset.addEventListener('click', () => { gameplay.reset(path); say(''); });
     rows.set(path, { slider, number, running, row });
     groups.get(group).append(row);

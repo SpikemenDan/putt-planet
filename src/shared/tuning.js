@@ -214,9 +214,24 @@ export const TUNING_OVERRIDES_GLOBAL = '__PP_DEV_TUNING__';
 // Production bundles never read it (Vite replaces import.meta.env.PROD with true there); Node has no import.meta.env.
 const requested = import.meta.env?.PROD ? null : globalThis[TUNING_OVERRIDES_GLOBAL];
 let startupProblem = null;
+/** Leaf paths of a nested override object that are not TUNING fields (createTuning's merge would drop them silently). */
+function unknownFields(obj, prefix = '') {
+  if (!isObj(obj)) return [prefix || '(overrides)'];
+  const known = new Set(TUNING_FIELDS.map(([path]) => path));
+  const out = [];
+  for (const [k, v] of Object.entries(obj)) {
+    const path = prefix ? prefix + '.' + k : k;
+    if (isObj(v)) out.push(...unknownFields(v, path)); else if (!known.has(path)) out.push(path);
+  }
+  return out;
+}
 function startupTuning() {
   if (requested == null) return createTuning();
-  try { return createTuning(requested); } catch (error) { startupProblem = error.message; return createTuning(); }
+  try {
+    const unknown = unknownFields(requested);
+    if (unknown.length) throw new Error('Invalid tuning: unknown field(s) ' + unknown.join(', '));
+    return createTuning(requested);
+  } catch (error) { startupProblem = error.message; return createTuning(); }
 }
 
 export const TUNING = startupTuning();

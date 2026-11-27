@@ -39,6 +39,13 @@ async function run() {
   assert.equal(bad.TUNING.cup.minRadius, DEFAULT_TUNING.cup.minRadius);
   assert.equal(bad.TUNING_STARTUP.overridden, false);
   assert.match(bad.TUNING_STARTUP.problem, /gravity/);
+  // Unknown or misshapen fields (for example from a build where a field was later removed) also refuse the whole set,
+  // instead of the valid part applying while the rest is dropped.
+  globalThis[TUNING_OVERRIDES_GLOBAL] = { gravity: DEFAULT_TUNING.gravity * 2, surfaceDragMultiplier: { sand: 2 }, cup: 5 };
+  const unknown = await import('../src/shared/tuning.js?dx2-unknown');
+  assert.equal(unknown.TUNING.gravity, DEFAULT_TUNING.gravity, 'the valid gravity is not applied on its own');
+  assert.equal(unknown.TUNING_STARTUP.overridden, false);
+  assert.match(unknown.TUNING_STARTUP.problem, /unknown field\(s\) surfaceDragMultiplier\.sand, cup$/);
   delete globalThis[TUNING_OVERRIDES_GLOBAL];
 
   // Boot reader: only a versioned object is accepted, and it never throws.
@@ -139,6 +146,11 @@ async function run() {
   assert.equal(panelTuner.get('gravity'), 700, 'an invalid entry changes nothing');
   assert.match(section.querySelector('.pp-tune-status').textContent, /gravity must be within/);
   assert.equal(number.value, '700', 'the field shows the staged value again');
+  number.value = '';
+  number.dispatchEvent(new dom.window.Event('change'));
+  assert.equal(panelTuner.get('gravity'), 700, 'an emptied box is refused, not read as 0');
+  assert.match(section.querySelector('.pp-tune-status').textContent, /gravity needs a number/);
+  assert.equal(number.value, '700');
   panel.dispose();
   // Without a gameplay tuner the read-only list stays and nothing is editable.
   const readOnly = mountTuningPanel(doc, createDisplayTuner(), { tuning: { fields: panelTuner.fields, values: TUNING, defaults: DEFAULT_TUNING } });
