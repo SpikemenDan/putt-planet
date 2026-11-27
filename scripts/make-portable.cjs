@@ -7,6 +7,9 @@ const root = path.resolve(__dirname, '..');
 const outDir = path.join(root, 'release', 'putt-planet');
 const htmlPath = path.join(outDir, 'index.html');
 
+// Builds made before the Putt Planet rename (VIS-R) went to release/putt-pals; remove them so a stale copy is not shared.
+for (const legacy of ['putt-pals', 'putt-pals.zip']) fs.rmSync(path.join(root, 'release', legacy), { recursive: true, force: true });
+
 // Browsers block module scripts and CORS-mode loads from file://, so use a classic deferred script.
 let html = fs.readFileSync(htmlPath, 'utf8');
 html = html
@@ -37,8 +40,11 @@ fs.writeFileSync(path.join(outDir, 'HOW TO PLAY.txt'), [
 const zip = path.join(root, 'release', 'putt-planet.zip');
 if (process.platform === 'win32') {
   fs.rmSync(zip, { force: true });
+  // Paths travel as environment variables into .NET's ZipFile, so quotes or brackets in the checkout path stay literal
+  // (Compress-Archive treats brackets in its destination as wildcards). The zip holds the putt-planet folder itself.
   const result = spawnSync('powershell', ['-NoProfile', '-Command',
-    `Compress-Archive -Path '${outDir}' -DestinationPath '${zip}'`], { stdio: 'inherit' });
+    "Add-Type -AssemblyName System.IO.Compression.FileSystem; [IO.Compression.ZipFile]::CreateFromDirectory($env:PORTABLE_SOURCE, $env:PORTABLE_ZIP, 'Optimal', $true)"],
+    { stdio: 'inherit', env: { ...process.env, PORTABLE_SOURCE: outDir, PORTABLE_ZIP: zip } });
   assert.equal(result.status, 0, 'zip creation failed');
   console.log(`PORTABLE_OK: ${zip}`);
 } else {
